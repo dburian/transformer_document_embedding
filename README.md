@@ -24,7 +24,7 @@ Options:
 [Article](https://repositori.upf.edu/bitstream/handle/10230/42015/bogdanov_ICML2019__Jamendo.pdf?sequence=1)
 
 - 55 000 clips
-- median duration ~ 224s
+- median duration 224s
 - 95 genre tags
 - 41 instrumental tags
 - 59 mood tags
@@ -32,3 +32,9 @@ Options:
 
 #### MTAT
 #### MSD
+
+#### Music4All, 2020
+
+[Article](https://sites.google.com/view/contact4music4all)
+
+
