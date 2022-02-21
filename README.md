@@ -4,11 +4,20 @@
 
 Options:
   - MIR - music information retrieval (+ image generation)
-  - image generation based on emotions, feelings
+  - image generation based on emotions, feelings (BIG NONO)
+
+### MIR
+
+- continuous prediction of percived emotion classes based on songs
 
 ## Datasets
 
 ### MIR - tagging
+
+#### MediaEval DEAM - Database for Emotional Analysis in Music, 2013
+
+- valorence and arousal axis
+- 1802 songs
 
 #### FMA: Free Music Archive, 2017
 
@@ -36,5 +45,9 @@ Options:
 #### Music4All, 2020
 
 [Article](https://sites.google.com/view/contact4music4all)
+
+
+
+
 
 
