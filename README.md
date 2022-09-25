@@ -19,13 +19,13 @@
 [cisi]: https://www.kaggle.com/datasets/dmaso01dsta/cisi-a-dataset-for-information-retrieval
 [trec_wp]: https://trec.nist.gov/data/wapost/
 [gutenberg]: https://www.gutenberg.org/ebooks/offline_catalogs.html#the-project-gutenberg-catalog-metadata-in-machine-readable-format
-[oshumend]: https://huggingface.co/datasets/ohsumed
+[oshumed]: https://huggingface.co/datasets/ohsumed
 [scidocs]: https://github.com/allenai/scidocs
 [relish]: https://figshare.com/projects/RELISH-DB/60095
 [beir]: https://github.com/beir-cellar/beir
 [mldoc]: https://github.com/facebookresearch/MLDoc
 [enwiki8]: https://huggingface.co/datasets/enwik8
-[encthr]: https://archive.org/details/ECtHR-NAACL2021
+[ecthr]: https://archive.org/details/ECtHR-NAACL2021
 [imdb]: https://aclanthology.org/P11-1015
 [hyperpartisan]: https://aclanthology.org/S19-2145/
 
