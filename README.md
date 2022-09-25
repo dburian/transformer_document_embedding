@@ -3,6 +3,26 @@
 [longformer]: https://arxiv.org/pdf/2004.05150v2.pdf
 [reformer]: https://arxiv.org/pdf/2001.04451.pdf
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
+[dai_22]: https://arxiv.org/pdf/2204.06683.pdf
+[xiong_21]: https://arxiv.org/pdf/2112.07210.pdf
+[mullenbach_18]: https://aclanthology.org/N18-1100.pdf
+[luo_21]: https://arxiv.org/pdf/2103.14542.pdf
+[awesome_ds]: https://github.com/malteos/awesome-document-similarity
+[medic_22]: https://arxiv.org/pdf/2209.05452.pdf
+[relish_article]: https://academic.oup.com/database/article/doi/10.1093/database/baz085/5608006?login=false
+
+[reuters]: https://www.kaggle.com/datasets/nltkdata/reuters
+[ppdb]: http://paraphrase.org/#/download
+[cisi]: https://www.kaggle.com/datasets/dmaso01dsta/cisi-a-dataset-for-information-retrieval
+[trec_wp]: https://trec.nist.gov/data/wapost/
+[gutenberg]: https://www.gutenberg.org/ebooks/offline_catalogs.html#the-project-gutenberg-catalog-metadata-in-machine-readable-format
+[oshumend]: https://huggingface.co/datasets/ohsumed
+[scidocs]: https://github.com/allenai/scidocs
+[relish]: https://figshare.com/projects/RELISH-DB/60095
+[beir]: https://github.com/beir-cellar/beir
+[mldoc]: https://github.com/facebookresearch/MLDoc
+[enwiki8]: https://huggingface.co/datasets/enwik8
+[encthr]: https://archive.org/details/ECtHR-NAACL2021
 
 # Diploma thesis
 
@@ -25,6 +45,66 @@ Worse than high-quality NLI(Natural Language Inference) datasets.
 
 ## Evaluation tasks
 
+The problem is to find at least one dataset(task) on which I could show my model
+embeds the documents well.
+
+Ideas:
+
+- dataset used in evaluations of Longformer - no
+- dataset used in evaluations of BigBird
+- dataset used in doc2vec, ... - small datasets?
+- document retrieval tasks
+- document classification tasks - not really what I want to teach the model
+- SIGIR
+- TREC - just pain to navigate that site
+
+Thoughts:
+
+What I really want to teach the model is similarity between documents. This 
+
+
+### Looked through
+
+#### Classification
+
+- *IMDB* - avg. length of 300 wordpieces
+- *Hyperpartisan* - binary classification, only ~600 documents long enough
+- MIMIC-III - multilabel classification, see more at [example
+  usage][mullenbach_18] used by BigBird
+- 20news - 20 classes, only 20k docs of unknown length
+- [Reuters-21578][reuters] - 90 classes, skewed, 10k docs, usually smaller size
+- [OSHUMED][oshumed] - titles and abstracts of medical articles
+- [*MLDoc*][mldoc] - another (and newer then Reuters-21578) Reuters news
+  collection with similar multilingual priors, for the official original dataset
+  an agreement is needed
+- [ECtHR][ecthr] - court hearings mapping allegations to articles that were
+  allegedly violated
+
+#### Text similarity
+
+- [PPDB][ppdb] - paraphrases, possibly too short, though I have not find any
+  example
+- [SciDocs][scidocs] - scientific article similarity benchmark based on
+  citations, "may be overly optimistic", not from a single domain although 70%
+  are Comp. Science
+- [RELISH][relish] - another scientific article similarity benchmark annotated
+  by experts, [article here][relish_article]
+
+#### Information Retrieval
+
+- [CISI][cisi] - short documents, questions as queries
+- [BEIR][beir] - comprehensive IR benchmark on 18 datasets, not sure about the
+  length of documents - they presented SBERT as an example
+
+
+#### Unlaballed documents
+
+- [enwiki8][enwiki8] - The enwik8 dataset is the first 100,000,000 (100M) bytes
+  of the English Wikipedia XML dump on Mar. 3, 2006 and is typically used to
+  measure a model's ability to compress data.
+- [TREC Wahington post][trec_wp] - news articles, no goal attribute
+- [Gutenberg project books][gutenberg] - books with metadata
+
 
 ## Sources
 
@@ -40,6 +120,17 @@ Worse than high-quality NLI(Natural Language Inference) datasets.
 Tianyu Gao, Xingcheng Yao, and Danqi Chen. SimCSE: Simple contrastive learning
 of sentence embeddings. In Empirical Methods in Natural Language Processing
 (EMNLP), 2021.
+
+- [comparison of transformers for long documents][dai_22]
+- [comparison of attention types for longer documents][xiong_21]
+- [Unsupervised Document Embedding via Contrastive Augmentation - 21 with
+  doc2vecC as backbone][luo_21]
+
+- [Awesome document similarity site][awesome_ds] covers all from methodology,
+  models to benchmarks
+
+
+- [testing article encoders for recommendation][medic_22]
 
 ## Interesting snippets
 
