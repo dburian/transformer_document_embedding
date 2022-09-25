@@ -1,6 +1,6 @@
 [wang_20]: http://proceedings.mlr.press/v119/wang20k.html
 [google_doc_topic]: https://docs.google.com/document/d/13Yb34eyklpX6bGzaf3m0jlsFb8rF10KvLXh4DuY4SD0/edit#heading=h.k2zhq4p261n
-[sbert]: https://arxiv.org/pdf/1908.10084.pdf
+[sbert]: https://arxiv.org/abs/1908.10084
 [longformer]: https://arxiv.org/pdf/2004.05150v2.pdf
 [reformer]: https://arxiv.org/pdf/2001.04451.pdf
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
@@ -12,6 +12,7 @@
 [medic_22]: https://arxiv.org/pdf/2209.05452.pdf
 [relish_article]: https://academic.oup.com/database/article/doi/10.1093/database/baz085/5608006?login=false
 
+[orcas]: https://microsoft.github.io/msmarco/ORCAS
 [rcv1]: https://jmlr.csail.mit.edu/papers/volume5/lewis04a/
 [reuters]: https://www.kaggle.com/datasets/nltkdata/reuters
 [ppdb]: http://paraphrase.org/#/download
@@ -25,7 +26,7 @@
 [mldoc]: https://github.com/facebookresearch/MLDoc
 [enwiki8]: https://huggingface.co/datasets/enwik8
 [encthr]: https://archive.org/details/ECtHR-NAACL2021
-[imdb]: https://aclanthology.org/P11-1015.pdf
+[imdb]: https://aclanthology.org/P11-1015
 [hyperpartisan]: https://aclanthology.org/S19-2145/
 
 
@@ -49,23 +50,6 @@ Worse than high-quality NLI(Natural Language Inference) datasets.
 
 
 ## Evaluation tasks
-
-The problem is to find at least one dataset(task) on which I could show my model
-embeds the documents well.
-
-Ideas:
-
-- dataset used in evaluations of Longformer - no
-- dataset used in evaluations of BigBird
-- dataset used in doc2vec, ... - small datasets?
-- document retrieval tasks
-- document classification tasks - not really what I want to teach the model
-- SIGIR
-- TREC - just pain to navigate that site
-
-Thoughts:
-
-What I really want to teach the model is similarity between documents. This 
 
 ### Chosen
 
@@ -127,11 +111,12 @@ TODO: What here?
 - [RELISH][relish] - another scientific article similarity benchmark annotated
   by experts, [article here][relish_article]
 
-#### Information Retrieval
+#### Document Retrieval
 
 - [CISI][cisi] - short documents, questions as queries
 - [BEIR][beir] - comprehensive IR benchmark on 18 datasets, not sure about the
   length of documents - they presented SBERT as an example
+- [Orcas][orcas] - click-based document-ranking dataset
 
 
 #### Unlaballed documents
