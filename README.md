@@ -1,3 +1,4 @@
+[wang_20]: http://proceedings.mlr.press/v119/wang20k.html
 [google_doc_topic]: https://docs.google.com/document/d/13Yb34eyklpX6bGzaf3m0jlsFb8rF10KvLXh4DuY4SD0/edit#heading=h.k2zhq4p261n
 [sbert]: https://arxiv.org/pdf/1908.10084.pdf
 [longformer]: https://arxiv.org/pdf/2004.05150v2.pdf
@@ -11,6 +12,7 @@
 [medic_22]: https://arxiv.org/pdf/2209.05452.pdf
 [relish_article]: https://academic.oup.com/database/article/doi/10.1093/database/baz085/5608006?login=false
 
+[rcv1]: https://jmlr.csail.mit.edu/papers/volume5/lewis04a/
 [reuters]: https://www.kaggle.com/datasets/nltkdata/reuters
 [ppdb]: http://paraphrase.org/#/download
 [cisi]: https://www.kaggle.com/datasets/dmaso01dsta/cisi-a-dataset-for-information-retrieval
@@ -23,6 +25,9 @@
 [mldoc]: https://github.com/facebookresearch/MLDoc
 [enwiki8]: https://huggingface.co/datasets/enwik8
 [encthr]: https://archive.org/details/ECtHR-NAACL2021
+[imdb]: https://aclanthology.org/P11-1015.pdf
+[hyperpartisan]: https://aclanthology.org/S19-2145/
+
 
 # Diploma thesis
 
@@ -62,21 +67,53 @@ Thoughts:
 
 What I really want to teach the model is similarity between documents. This 
 
+### Chosen
+
+#### Classifiaction
+
+The goal with classification evaluation is to show our model is able to
+differentiate documents across diverse set of attributes. There are different
+"spaces" for sentiments, content, ...
+
+Get an idea how our model compares on shorter inputs:
+
+- [IMDB][imdb] - avg. length of 300 wordpieces, sentiment classification
+- [Hyperpartisan][hyperpartisan] - binary classification, only ~600 documents
+  long enough
+
+Proper longer inputs:
+
+- [RCV1][rcv1] - Reuters English news collection, 103 classes divided to 3 views
+  of the data
+
+Alternativelly for multilingual classification:
+
+- [MLDoc][mldoc] - multilingual Reuters news collection with uniform
+  distribution accross languages, for the official original dataset an agreement
+  is needed (in a TREC track)
+
+
+#### Document similarity/retrieval
+
+The goal with document retrieval tasks is to show our model maps similar
+documents close to each other in the feature space.
+
+TODO: What here?
+
+#### Study the embedding itself
+
+- [Uniformity and Alignment][wang_20] - also discussed in [Jian 22][jian_22]
+
 
 ### Looked through
 
 #### Classification
 
-- *IMDB* - avg. length of 300 wordpieces
-- *Hyperpartisan* - binary classification, only ~600 documents long enough
-- MIMIC-III - multilabel classification, see more at [example
-  usage][mullenbach_18] used by BigBird
+- MIMIC-III - multilabel classification, avg. length of 710 tokens, see more at
+  [example usage][mullenbach_18] used by BigBird
 - 20news - 20 classes, only 20k docs of unknown length
 - [Reuters-21578][reuters] - 90 classes, skewed, 10k docs, usually smaller size
 - [OSHUMED][oshumed] - titles and abstracts of medical articles
-- [*MLDoc*][mldoc] - another (and newer then Reuters-21578) Reuters news
-  collection with similar multilingual priors, for the official original dataset
-  an agreement is needed
 - [ECtHR][ecthr] - court hearings mapping allegations to articles that were
   allegedly violated
 
@@ -139,8 +176,6 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
 > "we show that Transformer models can generalize better by learning a similar
 > task (i.e., clustering) with multi-task losses using non-parallel examples
 > from different modalities."
-
-
 
 
 
