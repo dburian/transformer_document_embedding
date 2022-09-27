@@ -11,9 +11,11 @@
 [luo_21]: https://arxiv.org/pdf/2103.14542.pdf
 [awesome_ds]: https://github.com/malteos/awesome-document-similarity
 [medic_22]: https://arxiv.org/pdf/2209.05452.pdf
-[relish_article]: https://academic.oup.com/database/article/doi/10.1093/database/baz085/5608006?login=false
+[relish_article]: https://academic.oup.com/database/article/doi/10.1093/database/baz085/5608006
 [xiong_20]: https://arxiv.org/abs/2007.00808
+[ir_datasets]: https://ir-datasets.com/index.html
 
+[codec]: https://github.com/grill-lab/CODEC
 [msmarco_v1paper]: https://arxiv.org/abs/1611.09268
 [msmarco]: https://microsoft.github.io/msmarco/
 [trec-robust04]: https://trec.nist.gov/data/t13_robust.html
@@ -52,9 +54,9 @@ In short combine [SBERT][sbert] and either [Longformer][longformer] or
 [Reformer][reformer]. The goal is to create contextual embedding of the entire
 document.
 
-## Finetuning datsets
+## Finetuning datasets
 
-- unsupervised datset (Wikipedia) with contrastive loss
+- unsupervised dataset (Wikipedia) with contrastive loss
 
 Worse than high-quality NLI(Natural Language Inference) datasets.
 
@@ -193,8 +195,11 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
 - [Awesome information retrieval][awesome_ir]
 
 
-- [testing article encoders for recommendation][medic_22]
+- [Testing article encoders for recommendation][medic_22]
 - [Contrative learning for Dense Representations][xiong_20]
+
+- [IR datasets python package][ir_datasets]
+
 
 ## Interesting snippets
 
