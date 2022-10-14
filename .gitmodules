@@ -1,0 +1,3 @@
+[submodule "diploma_src"]
+	path = diploma_src
+	url = https://github.com/dburian/diploma_src.git
