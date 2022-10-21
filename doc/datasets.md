@@ -1,7 +1,8 @@
+[d/relish_dataset]: doc/relish_dataset.md
+[d/imdb_dataset]: doc/imdb_dataset.md
 [wang_20]: http://proceedings.mlr.press/v119/wang20k.html
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
 [mullenbach_18]: https://aclanthology.org/N18-1100.pdf
-[relish_article]: https://academic.oup.com/database/article/doi/10.1093/database/baz085/5608006
 [codec]: https://github.com/grill-lab/CODEC
 
 [msmarco_v1paper]: https://arxiv.org/abs/1611.09268
@@ -21,15 +22,24 @@
 [gutenberg]: https://www.gutenberg.org/ebooks/offline_catalogs.html#the-project-gutenberg-catalog-metadata-in-machine-readable-format
 [oshumed]: https://huggingface.co/datasets/ohsumed
 [scidocs]: https://github.com/allenai/scidocs
-[relish]: https://figshare.com/projects/RELISH-DB/60095
 [beir]: https://github.com/beir-cellar/beir
 [mldoc]: https://github.com/facebookresearch/MLDoc
 [enwiki8]: https://huggingface.co/datasets/enwik8
 [ecthr]: https://archive.org/details/ECtHR-NAACL2021
-[imdb]: https://aclanthology.org/P11-1015
 [hyperpartisan]: https://aclanthology.org/S19-2145/
+[20news]: https://kdd.ics.uci.edu/databases/20newsgroups/20newsgroups.data.html
 
 # Datasets
+
+todo:
+- BigBird - Arxiv, Patent, Hyperpartisan datasets
+- STS and Spearman's correlation
+- write personality classification
+- that other from "Multi-Document Transformer for Personality Detection" -
+  Pandora
+- Istella22
+- look at trec covid, scidocs, csfcube
+- MIMIC-III
 
 My quick research into suitable datasets for long document classification and
 similiarity/retrieval tasks.
@@ -44,9 +54,7 @@ differentiate documents across diverse set of attributes. There are different
 
 Get an idea how our model compares on shorter inputs:
 
-- [IMDB][imdb] - avg. length of 300 wordpieces, sentiment classification
-- [Hyperpartisan][hyperpartisan] - binary classification, only ~600 documents
-  long enough
+- [IMDB][d/imdb_dataset] - avg. length of 300 wordpieces, sentiment classification
 
 Proper longer inputs:
 
@@ -67,8 +75,8 @@ documents close to each other in the feature space.
 
 High quality documents, domain specific dataset.
 
-- [RELISH][relish] - another scientific article similarity benchmark annotated
-  by experts, [article here][relish_article], 3K/2K seed articles in total/eval
+- [RELISH][d/relish_dataset] - another scientific article similarity benchmark annotated
+  by experts, 3K/2K seed articles in total/eval
   set, each seed article compared to 60 other articles. I may need to send an
   email to get the data.
 
@@ -91,11 +99,19 @@ Classification
 
 - MIMIC-III - multilabel classification, avg. length of 710 tokens, see more at
   [example usage][mullenbach_18] used by BigBird
-- 20news - 20 classes, only 20k docs of unknown length
+- [Hyperpartisan][hyperpartisan] - binary classification, only ~600 documents
+  long enough
+- [20news][20news] - 20 classes, only 20k docs of unknown length
 - [Reuters-21578][reuters] - 90 classes, skewed, 10k docs, usually smaller size
 - [OSHUMED][oshumed] - titles and abstracts of medical articles
 - [ECtHR][ecthr] - court hearings mapping allegations to articles that were
   allegedly violated
+- [Blog Authorship corpus][blog_auth_corpus] - 600k of posts from 19k bloggers,
+  each post is on average 207 words with label blogger id, age, gender, idustry
+  and astrological sign. There are on average 35 posts and 7250 words per
+  blogger. Could be interesting to see the resulting embedding space for this
+  one.
+
 
 Text similarity
 
@@ -141,3 +157,10 @@ Unlaballed documents
 - KILT from Meta AI - different tasks to what I need
 
 
+---
+
+### Articles I've searched through
+
+- Longformer,
+- Reformer,
+- 
