@@ -10,7 +10,9 @@ Scientific article similarity annotaded by experts.
 
 ## Problems:
 
-ONLY ABSTRACTS ARE AVAILABLE
+ONLY ABSTRACTS ARE AVAILABLE - not all may be lost, reread the article, maybe
+they chose only articles freely available like
+[here](https://library.shu.edu/pubmed-toolkit/get-full-text)
 
 ## Links
 

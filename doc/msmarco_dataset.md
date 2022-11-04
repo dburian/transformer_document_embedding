@@ -33,9 +33,9 @@ There were number of versions of this dataset:
 
 - original **v1** - used for TREC DL 2019, 2020 and for the official MS MARCO
   leaderboard
-- **v2** - used for TREC DL 2021, 2022. Created by adding more documents by a later
-  crawl of the data (even bigger lag between passage crawl and document crawl
-  viz. [problems](#problems)).
+- **v2** - used for TREC DL 2021, 2022. Created by adding more documents by a
+  later crawl of the data (even bigger lag between passage crawl and document
+  crawl viz. [problems](#problems)).
 
 
 ### Evaluation
@@ -52,3 +52,21 @@ earlier or not even exist. This problem is thought of as being "realistic" in a
 sence there is high probability of encountering broken data in the wild. Instead
 of investing resources to completely new dataset, NIST decided to invest effort
 into cleaning the dataset and reusing old labels. [source][dl_overview21]
+
+## Data analysis
+
+- #docs: 138M
+- avg. number of words in first 200k docs: 1545
+
+Example questions:
+
+- "define extreme"
+- "tattoo fixers how much does it cost"
+- "what is a bank transit number"
+- "what are the four major groups of elements"
+- "blood clots in urine after menopause"
+- "what is delta in2ition"
+- "symptoms of an enlarged heart in dogs"
+- "number of times congress voted to repeal aca"
+- "how does a firefly light up"
+- "what was introduced to the human diet in what year"
