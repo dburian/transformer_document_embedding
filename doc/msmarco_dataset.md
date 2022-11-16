@@ -4,7 +4,7 @@
 [trec22]: https://microsoft.github.io/msmarco/TREC-Deep-Learning
 
 
-# MS MARCO
+# MS MARCO [REJECTED]
 
 ## Links
 
@@ -38,19 +38,26 @@ There were number of versions of this dataset:
   crawl viz. [problems](#problems)).
 
 
-### Evaluation
-
-TODO: MRR, NDCG, MSMARCO Qrels and NIST qrels
-
-
 ## Problems
+
+### IR task - the main problem
+
+The nature of the dataset is problematic since we do not have source document
+but a short query. This means we cannot use document embedding as a similarity
+measure since embedding of a short query should be intuitively different than
+embedding of a long elaborate document. Also such IR tasks require models to
+understand the question, what it is the user is asking about. Embedding does not
+care about some questions, it simply tries to understand the nature of the text
+in context of many other documents.
+
+### Relevance of passage vs relevance of document
 
 Relevance of documents is inferred based on relevance of passages contained
 within that document. However, documents were collected as an additional
 processing step and therefore are likely to not contain the passages obtained
-earlier or not even exist. This problem is thought of as being "realistic" in a
-sence there is high probability of encountering broken data in the wild. Instead
-of investing resources to completely new dataset, NIST decided to invest effort
+earlier or not even exist. This problem is thought of as being "realistic" since
+there is high probability of encountering broken data in the wild. Instead of
+investing resources to completely new dataset, NIST decided to invest effort
 into cleaning the dataset and reusing old labels. [source][dl_overview21]
 
 ## Data analysis

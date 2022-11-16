@@ -9,7 +9,7 @@
 [milvus]: https://milvus.io
 [ppdb]: http://paraphrase.org/#/download
 [cdlm]: https://aclanthology.org/2021.findings-emnlp.225
-
+[ginzburg_21]: https://arxiv.org/pdf/2106.01186.pdf
 
 
 # Related work
@@ -29,6 +29,7 @@ All the sources in the field to give me some inspiration with my thing.
     words in all sentences"
 - [CDLM][cdlm] - Cross-Document Language Modeling - adaptation of Longformer for
   cross-document tasks
+- [Self-Supervised Document Similarity][ginzburg_21]
 
 ## Learning
 

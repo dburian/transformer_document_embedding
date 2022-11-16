@@ -1,6 +1,7 @@
 [article]: https://aclanthology.org/P11-1015
 [download]: http://ai.stanford.edu/~amaas/data/sentiment/
 [tf_dataset]: https://www.tensorflow.org/datasets/catalog/imdb_reviews
+[hf_dataset]: https://huggingface.co/datasets/imdb
 
 # IMDB dataset
 
@@ -10,8 +11,8 @@ classify the review to one of two classes: `positive` or `negative`.
 ## Links
 
 - [article][article] to by cited if used
-- [download][download]
 - [Tensorflow Dataset][tf_datset]
+- [Hugging face dataset][hf_dataset]
 
 ## Summary
 
@@ -32,13 +33,3 @@ Additional data:
 
 The goal is to guess positive/negative label for the whole set of 50k reviews.
 The determining metric is **classification accuracy**.
-
-## Data analysis
-
-- size: 50k
-- classes: 2
-- train/test split:
-- class distribution:
-
-- min/mean + std/max wordpiece length:
-- examples:

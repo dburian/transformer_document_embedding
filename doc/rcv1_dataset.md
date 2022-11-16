@@ -4,7 +4,7 @@
 [nist_download]: https://trec.nist.gov/data/reuters/reuters.html
 
 
-# Reuters Corpus Volume 1 - version 2
+# Reuters Corpus Volume 1 - version 2 [REJECTED]
 
 Collection of Reuters manually classified news articles.
 
@@ -15,8 +15,6 @@ Problem: too short documents
 > average number of unique terms in a document is 75.7.
 >
 > Lewis 2004
-
-
 
 ## License
 

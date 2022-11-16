@@ -3,16 +3,14 @@
 [download_aspire]: https://figshare.com/articles/dataset/RELISH-Aspire/19425506
 [download_pub_annotations]: http://pubannotation.org/projects/RELISH-DB
 
-# RELISH
+# RELISH [REJECTED]
 
 Scientific article similarity annotaded by experts.
 
 
 ## Problems:
 
-ONLY ABSTRACTS ARE AVAILABLE - not all may be lost, reread the article, maybe
-they chose only articles freely available like
-[here](https://library.shu.edu/pubmed-toolkit/get-full-text)
+**Only abstracts are available.**
 
 ## Links
 

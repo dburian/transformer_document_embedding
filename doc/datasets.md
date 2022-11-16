@@ -79,18 +79,17 @@ The goal with classification evaluation is to show our model is able to
 differentiate documents across diverse set of attributes. There are different
 "spaces" for sentiments, content, ...
 
+### Chosen, but rejected
+
+- [RCV1][d/rcv1_dataset] - Reuters English news collection, 103 classes divided
+  to 3 views of the data. **Articles are too short.**
+
 #### Chosen
 
 Get an idea how our model compares on shorter inputs:
 
 - [IMDB][d/imdb_dataset] - avg. length of 300 wordpieces, sentiment
   classification
-
-Proper longer inputs(before I realized Reuters articles are rather small):
-
-- [RCV1][d/rcv1_dataset] - Reuters English news collection, 103 classes divided
-  to 3 views of the data
-
 - [Long document dataset (Github)][ldd_github] - 33k Arxiv articles classified
   into 11 topic classes; used by [BigBird][bigbird]; [dataset paper][ldd_paper],
   available on [Huggingface][ldd_hd]. Previous SOTA from [Adapting pretrained
@@ -131,13 +130,12 @@ Sorted according to relevance and good fit. Best are at the top.
 The goal with document similarity tasks is to show our model maps similar
 documents close to each other in the feature space.
 
-#### Chosen
-
-High quality documents, domain specific dataset.
+#### Chosen, but rejected
 
 - [RELISH][d/relish_dataset] - another scientific article similarity benchmark
   annotated by experts, 3K/2K seed articles in total/eval set, each seed article
   compared to 60 other articles. I may need to send an email to get the data.
+  **Only abstracts provided.**
 
 
 #### Alternatives
@@ -159,7 +157,7 @@ Sorted according to relevance and good fit. Best are at the top.
 In IR setting we are testing whether the embedding captures the main thought of
 the article.
 
-#### Chosen
+#### Chosen, but rejected
 
 Low quality documents, many domains. Not really ideal since we get one query
 question and corresponding document(s). It'd be better if query would be another
@@ -172,7 +170,15 @@ document. I also find an interesting (not sure how valid)
   query. The documents were picked by humans. There is v1 version and a bigger
   v2 version. Paper for [v1][msmarco_v1paper]. 480 queries, 12M docs, 13K qrels.
 
+#### Chosen
+
+
 TODO: alternative wanted...
+
+We could use S2ORC to create new document similarity/retireval task. The core
+idea is based on citations: Two articles citing the same other (third) article
+are deemed similar, whereas two articles not referencing one common article are
+deemed as different.
 
 #### Alternatives
 
@@ -207,7 +213,8 @@ Also not sure how document embeddings fit in all of this...
 - [A Benchmark for Document Relation Prediction and Localization][zhou_gitio]
   introduced in [Multilevel Text Alignment with Cross-Document
   Attention][zhou_20]. The documents are rather small though (122, 190, 263,
-  1569 words per pair).
+  1569 words per pair). The plagiarism detection (task `PAN`) seems like a good
+  fit.
 
 ### Generative task
 
