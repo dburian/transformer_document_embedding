@@ -251,7 +251,11 @@ forms would be stored?
 - CSFCube - dataset for evaluation of IR methods based on faceted Query by
   example task in scientific paper. Basically an example scientific paper is
   given and the task it to find similar scientific papers based on {background,
-  objective, method, result, other} part of the query document.
+  objective, method, result, other} part of the query document. It is unfit due
+  to the nature of faceted queries. I cannot ask an embedding model to embed
+  different parts of the document separately. It cannot therefore do the IR
+  task: "Give me all documents with background similar to this document's
+  background."
 - [TREC Robust 04][trec-robust04] - 250 keyword-queries over 520K news articles
 - [TREC Robust 05][trec-robust05] - 50 hard queries from Robust 04 over 1M docs
   from AQUAINT - license is needed and data must be paid for

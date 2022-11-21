@@ -54,31 +54,31 @@
 %%% Basic information on the thesis
 
 % Thesis title in English (exactly as in the formal assignment)
-\def\ThesisTitle{Thesis title}
+\def\ThesisTitle{Document embedding using Transformers}
 
 % Author of the thesis
-\def\ThesisAuthor{Name Surname}
+\def\ThesisAuthor{David Burian}
 
 % Year when the thesis is submitted
-\def\YearSubmitted{YEAR}
+\def\YearSubmitted{2023}
 
 % Name of the department or institute, where the work was officially assigned
 % (according to the Organizational Structure of MFF UK in English,
 % or a full name of a department outside MFF)
-\def\Department{Name of the department}
+\def\Department{Institute of Formal and Applied Linguistics}
 
 % Is it a department (katedra), or an institute (ústav)?
-\def\DeptType{Department}
+\def\DeptType{Institute}
 
 % Thesis supervisor: name, surname and titles
-\def\Supervisor{Supervisor's Name}
+\def\Supervisor{Jindřich, Libovický Mgr. Ph.D.}
 
 % Supervisor's department (again according to Organizational structure of MFF)
-\def\SupervisorsDepartment{department}
+\def\SupervisorsDepartment{Institute of Formal and Applied Linguistics}
 
 % Study programme and specialization
-\def\StudyProgramme{study programme}
-\def\StudyBranch{study branch}
+\def\StudyProgramme{Computer Science}
+\def\StudyBranch{Artificial Inteligence}
 
 % An optional dedication: you can thank whomever you wish (your supervisor,
 % consultant, a person who lent the software, etc.)
@@ -93,7 +93,8 @@ Abstract.
 
 % 3 to 5 keywords (recommended), each enclosed in curly braces
 \def\Keywords{%
-{key} {words}
+  {text embedding} {document embedding} {transformers} {document
+  classification} {document similarity}
 }
 
 %% The hyperref package for clickable links in PDF and also for storing
@@ -114,11 +115,10 @@ Abstract.
 \tableofcontents
 
 %%% Each chapter is kept in a separate file
-\include{preface}
-\include{chap01}
-\include{chap02}
+\include{chapters/preface}
 
-\include{epilog}
+\include{chapters/tasks}
+\include{chapters/epilog}
 
 %%% Bibliography
 \include{bibliography}
@@ -132,7 +132,7 @@ Abstract.
 
 %%% Abbreviations used in the thesis, if any, including their explanation
 %%% In mathematical theses, it could be better to move the list of abbreviations to the beginning of the thesis.
-\chapwithtoc{List of Abbreviations}
+% \chapwithtoc{List of Abbreviations}
 
 %%% Attachments to the master thesis, if any. Each attachment must be
 %%% referred to at least once from the text of the thesis. Attachments
@@ -148,7 +148,7 @@ Abstract.
 \appendix
 \chapter{Attachments}
 
-\section{First Attachment}
+% \section{First Attachment}
 
 \openright
 \end{document}

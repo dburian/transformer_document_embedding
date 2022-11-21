@@ -2,6 +2,7 @@
 [download]: http://ai.stanford.edu/~amaas/data/sentiment/
 [tf_dataset]: https://www.tensorflow.org/datasets/catalog/imdb_reviews
 [hf_dataset]: https://huggingface.co/datasets/imdb
+[d/imdb]: ../data/imdb.ipynb
 
 # IMDB dataset
 
@@ -33,3 +34,7 @@ Additional data:
 
 The goal is to guess positive/negative label for the whole set of 50k reviews.
 The determining metric is **classification accuracy**.
+
+## Data Analysis
+
+[In notebook][d/imdb]

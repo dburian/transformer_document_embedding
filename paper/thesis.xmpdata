@@ -1,0 +1,7 @@
+% Metadata to be stored in PDF, see documentation of the pdfx package for more details.
+
+\Author{David Burian}
+\Title{Document embedding using Transformers}
+\Keywords{test embedding\sep document embedding \sep transformer \sep document classification \sep document similarity}
+\Subject{Abstract of thesis}
+\Publisher{Charles University}
