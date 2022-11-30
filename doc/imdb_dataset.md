@@ -25,7 +25,7 @@ Review with >=7 points (out of 10) is marked as positive, reviews with <=4 are
 marked as negative.
 
 Additional data:
-- unlabaled reviews for unsupervised learning,
+- unlabeled reviews for unsupervised learning,
 - BOW feature vectors with associated vocabulary,
 - pairs (review_id, URL for given movie).
 
@@ -35,6 +35,24 @@ Additional data:
 The goal is to guess positive/negative label for the whole set of 50k reviews.
 The determining metric is **classification accuracy**.
 
+### Paragraph vector
+
+Embeddings dimensionality is 400 for both paragraphs and vectors. Sliding window
+is 10 words. Special characters as ,.?! are treated as words, documents are
+pre-pad with NULL word symbol to the required length of 9.
+
+Learning paragraph and word embeddings on all 25k train and 50k unlabeled data.
+Once the paragraph vectors are learned they are fed through a neural network
+with single hidden layer with 50 units and a softmax layer used for
+classification.
+
+### Longformer
+
+Single dense layer on top of the CLS token output with softmax activation and
+Cross-Entropy loss. Additionally global attention is used on the CLS token.
+
 ## Data Analysis
 
 [In notebook][d/imdb]
+
+

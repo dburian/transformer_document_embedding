@@ -1,4 +1,8 @@
-[d/datasets]: doc/datasets.md
+[d/bigbird]: ./bigbird.md
+[d/longformer]: ./longformer.md
+[d/sbert]: ./sbert.md
+[d/doc2vec]: ./doc2vec.md
+[d/datasets]: ./datasets.md
 
 # Baselines
 
@@ -13,15 +17,27 @@ possible.
 
 ## BOW models
 
-- TF-IDF
-- Pargagraph Vector
-- doc2vec
+- (TF-IDF -- just for reference)
+- [Doc2vec][d/doc2vec]
 
 ## Short document embeddings
 
-- SBert
+- [SBert][d/sbert]
+
+## Long document embeddings
+
+- Averaging of Longformer's output layer (similarly to what was done with BERT
+  before SBert according to SBert)
+
+> Researchers have started to input individual sentences into BERT and to derive
+> fixedsize sentence embeddings. The most commonly used approach is to average
+> the BERT output layer (known as BERT embeddings) or by using the output of the
+> first token (the [CLS] token). As we will show, this common practice yields
+> rather bad sentence embeddings, often worse than averaging GloVe embeddings
+> (Pennington et al., 2014).
+> (for example: May et al. (2019); Zhang et al. (2019); Qiao et al. (2019)).
 
 ## SOTAs
 
-- Longformer
-- BigBird
+- [Longformer][d/longformer]
+- [BigBird][d/bigbird]
