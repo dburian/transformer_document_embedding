@@ -14,9 +14,19 @@ def main(args: argparse.Namespace) -> None:
     print(args)
 
     print("Fitting")
-    model.fit(task.train)
+    model.train(task.train, args.experiment_path)
 
-    model.save()
+    print("Saving.")
+    model.save(args.model_save_path)
+
+    print("Evaluating.")
+    test_predictions = model.predict(task.test)
+    results = task.evaluate(test_predictions)
+
+    print("Saving results")
+    # utils.save_resulsts(results, args.experiment_path)
+
+    print("Finished")
 
 
 if __name__ == "__main__":
@@ -67,5 +77,8 @@ if __name__ == "__main__":
 
     if args.model_save_path is None:
         args.model_save_path = os.path.join(args.experiment_path, "model_save")
+
+    os.makedirs(args.experiment_path, exist_ok=True)
+    os.makedirs(args.model_save_path, exist_ok=True)
 
     main(args)

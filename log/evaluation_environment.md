@@ -65,3 +65,65 @@ tensorflow and pytorch models.
 
 Once we are comparing models, it would be quite handy to have one function into
 which we can plug in our model and get results.
+
+---
+
+## problem: evaluation environment
+
+Now that I know what's what I would like to create evaluation evnironment.
+
+## solution:
+
+Let's write the run_experiment script and see what interfaces we need for both
+the model and the task.
+
+## implementation:
+
+- what is the result of evaluation?
+
+For sure I want tensorboard logs for loss and all metrics.
+
+Option 1: dict of number -- final score of the given metric. Nice and simple,
+but it seems the experiment has more to give.
+
+Let's generate more files with extra arguments such as --evaluate_after.
+
+- we need to specify the model and the task to be loaded
+
+Option 1: Dynamic imports - each model, task in a separate file, each named
+"Model" or "Task" with the same interface. I do not like to being forced to have
+the exact same naming for each of the tasks and models, but it is great that it
+is intuitive and does not require additional writing.
+
+Option 2: Dictionary - having two dictionaries for both tasks and models. I do
+not like the additional writing I have to do.
+
+- experiment needs to be saved
+
+Option 1: optional experiment_path - by defualt derived from task, model used
+and time
+
+- model needs to be fitted
+
+Option 1: .fit function accepting task.train dataset and path to
+experiment_path.
+
+- model needs to be saved
+
+Option 1: optional model_save_path - by default derived from experiment_path
+
+- model needs to be evaulated
+
+Option 1: .evaluate method accepting task.test dataset. The disadvantage is that
+the model does effectively see the test data. Also all the models will pretty
+much do the same thing: predict and then run some metric over those predictions.
+
+[CHOSEN] Option 2: .evaluate method on the dataset accepting predictions as numpy array.
+Nice separation, but if the model does not do the evaluation, are the
+tensorboarded-logged values relevant? However we should do the evaluation the
+same for all models.
+
+task must have .evaluate method accepting np.ndarray of predictions.
+model must have .predict method accepting task.test and outputting np.ndarray of
+predictions for each x in task.test
+
