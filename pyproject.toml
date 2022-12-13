@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transformer_document_embedding"
+version = "0.0.1"
+authors = [{name = "David Burian", email = "david.burian@me.com"}]
+dependencies = [
+  "tokenizers>=0.13",
+  "transformers>=4.24",
+  "tensorflow>=2.10",
+  "datasets>=2.6",
+  "matplotlib>=3.6",
+  "gensim>=4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "jupyter>=1.0",
+  "jupyter-ascending>=0.1",
+]
+
+[project.urls]
+homepage = "https://github.com/dburian/transformer_document_embedding"
+repository = "https://github.com/dburian/transformer_document_embedding"

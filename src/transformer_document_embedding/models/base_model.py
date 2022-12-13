@@ -22,3 +22,6 @@ class BaseModel:
         results.
         """
         raise NotImplementedError()
+
+
+Model = BaseModel

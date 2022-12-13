@@ -2,7 +2,8 @@ from typing import Iterable
 
 import datasets
 import tensorflow as tf
-from base_task import BaseTask
+
+from transformer_document_embedding.tasks import BaseTask
 
 
 class IMDBClassification(BaseTask):
