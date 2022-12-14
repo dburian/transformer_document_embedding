@@ -1,48 +1,77 @@
-from typing import Iterable
+from datasets.arrow_dataset import Dataset
+from datasets.combine import concatenate_datasets
+from datasets.load import load_dataset
 
-import datasets
-import tensorflow as tf
+from transformer_document_embedding.tasks.experimental_task import \
+    ExperimentalTask
 
-from transformer_document_embedding.tasks import BaseTask
+IMDBData = Dataset
 
 
-class IMDBClassification(BaseTask):
-    """Classification task done using the IMDB dataset"""
+class IMDBClassification(ExperimentalTask):
+    """Classification task done using the IMDB dataset.
+
+    The dataset is specified as `datasets.Dataset` with 'train', 'test' and
+    'unsupervised' splits.
+    """
 
     def __init__(self) -> None:
-        self.train = None
-        self.test = None
+        self._train = None
+        self._test = None
+        self._unsuper = None
+        self._all_train = None
+        self._test_inputs = None
+        self._train_test_size = 25000
 
     @property
-    def metrics(self) -> list[tf.metrics.Metric]:
-        return [tf.metrics.BinaryAccuracy()]
+    def train(self) -> IMDBData:
+        """
+        Returns datasets.Dataset of both train and unsupervised training
+        documents. Each document is dictionary with keys:
+            - 'text' (str) - text of the document,
+            - 'label' (int) - 1/0 sentiment class index,
+            - 'id' (int) - document id unique among all the documents in the dataset.
+        """
+        if self._all_train is None:
+            self._train = load_dataset("imdb", split="train").map(
+                lambda _, idx: {"id": self._get_id_from_index(idx, "train")},
+                with_indices=True,
+            )
+            self._unsuper = load_dataset("imdb", split="unsupervised").map(
+                lambda _, idx: {"id": self._get_id_from_index(idx, "unsuper")},
+                with_indices=True,
+            )
+
+            self._all_train = concatenate_datasets([self._train, self._unsuper])
+
+        return self._all_train
 
     @property
-    def data_splits(self) -> list[str]:
-        return ["train", "test"]
-
-    def get_data(self, split: str) -> tf.data.Dataset:
-        if split not in self.data_splits:
-            raise TypeError(
-                f"Data split {split} is not supported by {self.__class__} task."
+    def test(self) -> IMDBData:
+        """
+        Returns datasets.Dataset of testing documents. Each document is
+        dictionary with keys:
+            - 'text' (str) - text of the document,
+            - 'id' (int) - document id unique among all the documents in the dataset.
+        """
+        if self._test_inputs is None:
+            self._test = load_dataset("imdb", split="test").map(
+                lambda _, idx: {"id": self._get_id_from_index(idx, "test")},
+                with_indices=True,
             )
+            self._test_inputs = self._test.remove_columns("label")
 
-        if getattr(self, split) is None:
-            setattr(self, split, datasets.load_dataset("imdb", split=split))
+        return self._test_inputs
 
-        if split == "train":
-            return tf.data.Dataset.from_generator(
-                lambda: map(lambda ex: (ex["text"], ex["label"]), self.train),
-                output_signature=(
-                    tf.TensorSpec(shape=(), dtype=tf.string),
-                    tf.TensorSpec(shape=(), dtype=tf.int32),
-                ),
-            )
+    def evaluate(self, test_predictions) -> dict[str, float]:
+        pass
 
-        return tf.data.Dataset.from_generator(
-            lambda: map(lambda ex: ex["text"], self.test),
-            output_signature=tf.TensorSpec(shape=(), dtype=tf.string),
-        )
+    def _get_id_from_index(self, idx: int, split: str) -> int:
+        """
+        Assings global id from document index based on data split.
+        """
+        split_ind = ["test", "train", "unsuper"].index(split)
+        return split_ind * self._train_test_size + idx
 
-    def evaluate(self, y_pred: Iterable) -> dict:
-        return super().evaluate(y_pred)
+
+Task = IMDBClassification

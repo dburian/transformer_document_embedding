@@ -13,9 +13,12 @@
 [xiong_20]: https://arxiv.org/abs/2007.00808
 [ir_datasets]: https://ir-datasets.com/index.html
 
-# Diploma thesis
+# Transformer document embedding
 
-## TOC
+This is a repo containing everything connected to my thesis. **Currently in
+progress.**
+
+## Documentation entry points
 
 - [Datasets info][d/datasets]
 - [Approach][d/approach]
@@ -29,6 +32,26 @@
 
 - [Finalized topic](https://is.cuni.cz/studium/dipl_st/index.php?id=a91fb39f906ae7e035142a978450e151&tid=1&do=main&doo=detail&did=250786)
 
+
+## Installation
+
+This repo contains experiments with different models on different tasks. To run
+these you need to install this python package. I recommend editable install to
+be able to change the source files with:
+
+```bash
+pip install --editable .
+```
+
+
+## Structure of this repo
+
+- `src` - source code for the experiments
+- `notebooks` - jupyter notebooks either showcasing something or containing
+  some really experimental code
+- `paper` - latex source code of my thesis paper
+- `log` - documentation logs for me
+- `model` - repository of our new model, which resulted from our research
 
 ## Helpful sources
 

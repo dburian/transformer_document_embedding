@@ -1,129 +1,84 @@
 # Evaluation environment
 
 We will regularly add new *tasks* and new *models*. We want easy, reliable,
-streamlined way how to test the model on a given task. Something lean, flexible,
+streamlined way how to test given model on given task. Something lean, flexible,
 yet powerful.
 
-## Solution
+### Dataset and model problems
 
-Intuitively we want an interface for both *task* and *model* to allow mixing one
-with another.
+In order to design the interfaces for model and task we need to solve two
+problems: dataset and model problem.
 
-The emphasis is on simplicity. These should be *helpers* functions. The more
-strict these functions will be the more complex they'll be. I'd rather focus on
-the model's themselves.
+- **Dataset problem**: Each dataset will come from another source, meaning it
+  will naturally be in different format. Models on the other hand need unified
+  interface so we can use different tasks for the same model.
+- **Model problem**: Each model will most probably have to be adapted for each
+  task. From hyperparameters to different heads.
 
-Lot of this hangs on the fact that I do not yet know how the baselines will look
-like. I should probably research that, before I'm sketching out an interface
-that will work with them.
+The model problem seems unsolvable. We can get around code duplication with
+sub-classing. If we accept this, suddenly we solve the dataset problem as well.
+Each task will have the natural format and the models tailored for the
+particular task will accept the given data format.
 
----
+Obviously there are more ways how to design the interfaces but this to me seems
+intuitive. I should be on the lookout for sub-classing just for the purpose of
+data transformation. Then I need to think of another solution. Perhaps creating
+transformation pipelines.
 
-### Task
+### Result of evaluation
 
-Task definition should contain everything related to the data. So:
+There is the question what should I remember from the given experiment.
 
-- loading the dataset
-- preparing the data
-- understanding the result -- evaluation of the model (metrics)
+- tensorboard logs: this is a must have for debugging. I do not know any other
+  tool, which is that easy to use and helpful.
+- dict of final scores for each metric: this is obvious. I need some numbers in
+  my latex tables.
 
-Sketch of mandatory interface:
+Maybe there will be other things I need (like graphs train size to evaluation
+metrics).
 
-- `get_data(split)` - returns given split of the dataset as pairs.
-- `metrics` - property, returning metrics implemented as `tf.metrics.Metric`
+## Pseudocode of basic experiment
 
-#### Evaluation in the task or not?
+```python
+model = import(args.model_package).Model
+task = import(args.task_package).Task
 
-Doing evaluation in the task would make it so we can easily make sure the model
-will never see testing data in training and the separation of concernes would be
-quite clear. On the other hand `tf.keras.Model`'s interface is not really
-friendly towards the idea that the model should be evaluated outside of
-`tf.keras.Model` and I expect pytorch's interface to be similar. So in the end I
-decided for the model to take care of the evaluation.
+model.train(task.train)
 
-However, there is an advantage doing evaluation in one place. When we get to it
-(comparing models) I should think of something.
+model.save(args.model_path)
 
-### Model
+test_predictions = model.predict(task.test)
+results = task.evaluate(test_predictions)
 
-Model covers everything from learning to prediction. The models I'll be testing
-are expected to differ in implementation, so we will probably want some
-interface we can rely on in our evaluation environment plus some wrappers for
-tensorflow and pytorch models.
+utils.save_results(results)
+```
 
-<!-- Sketch of mandatory interface: -->
+### The because-s
 
-<!-- - `train((x, y) | tf.data.Dataset)` - trains the model with the given data -->
-<!-- - `predict((x,) | tf.data.Dataset)` - predicts labels for given features -->
+- importing models and tasks by package path
 
-<!-- We should also think about our embedding scenario. It seems it will be a common -->
-<!-- problem the model predicts embeddings, which do not yet solve the task (i.e. -->
-<!-- they are not the predicted labels). It seems like we could getaway with solving -->
-<!-- the problem with base classes which should take care of the overhead. -->
+Can be done differently (e.g. w/ dictionary), but this requires the least amount
+of extra code. Just define a model in separate file and assign it to `Model`
+variable.
 
-### Evaluation environment
+- evaluation in model vs evaluation in task
 
-Once we are comparing models, it would be quite handy to have one function into
-which we can plug in our model and get results.
+I decided against evaluation in model, mainly because I want each model to be
+evaluated equally. This also minimizes the code which should evaluate
+predictions, which would have to be in every model.
 
----
+## Model interface
 
-## problem: evaluation environment
+- `train(train_data)` -- trains the model given the training data
+- `save(dir_path)` -- saves the model into given directory
+- `load(dir_path)` -- loads the saved model from the given directory,
+- `predict(inputs)` -- returns predictions for given inputs, format specific to
+  given task
 
-Now that I know what's what I would like to create evaluation evnironment.
+## Task interface
 
-## solution:
-
-Let's write the run_experiment script and see what interfaces we need for both
-the model and the task.
-
-## implementation:
-
-- what is the result of evaluation?
-
-For sure I want tensorboard logs for loss and all metrics.
-
-Option 1: dict of number -- final score of the given metric. Nice and simple,
-but it seems the experiment has more to give.
-
-Let's generate more files with extra arguments such as --evaluate_after.
-
-- we need to specify the model and the task to be loaded
-
-Option 1: Dynamic imports - each model, task in a separate file, each named
-"Model" or "Task" with the same interface. I do not like to being forced to have
-the exact same naming for each of the tasks and models, but it is great that it
-is intuitive and does not require additional writing.
-
-Option 2: Dictionary - having two dictionaries for both tasks and models. I do
-not like the additional writing I have to do.
-
-- experiment needs to be saved
-
-Option 1: optional experiment_path - by defualt derived from task, model used
-and time
-
-- model needs to be fitted
-
-Option 1: .fit function accepting task.train dataset and path to
-experiment_path.
-
-- model needs to be saved
-
-Option 1: optional model_save_path - by default derived from experiment_path
-
-- model needs to be evaulated
-
-Option 1: .evaluate method accepting task.test dataset. The disadvantage is that
-the model does effectively see the test data. Also all the models will pretty
-much do the same thing: predict and then run some metric over those predictions.
-
-[CHOSEN] Option 2: .evaluate method on the dataset accepting predictions as numpy array.
-Nice separation, but if the model does not do the evaluation, are the
-tensorboarded-logged values relevant? However we should do the evaluation the
-same for all models.
-
-task must have .evaluate method accepting np.ndarray of predictions.
-model must have .predict method accepting task.test and outputting np.ndarray of
-predictions for each x in task.test
+- `train` -- property returning training data
+- `test` -- property returning testing inputs
+- `evaluate(test_predictions)` -- evaluates test predictions, format of
+  test_predictions specific to given task
 

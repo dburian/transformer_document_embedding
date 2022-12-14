@@ -15,6 +15,9 @@ dependencies = [
   "gensim>=4.2",
 ]
 
+[project.scripts]
+run-experiment = "transformer_document_embedding.scripts.run_experiment:main"
+
 [project.optional-dependencies]
 dev = [
   "jupyter>=1.0",

@@ -3,33 +3,14 @@ import importlib
 import os
 from datetime import datetime
 
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")  # Report only TF errors by default
+
 MODEL_PACKAGE_PREFIX = "transformer_document_embedding.models"
 TASK_PACKAGE_PREFIX = "transformer_document_embedding.tasks"
 EXPERIMENTS_DIR = "/home/dburian/docs/transformer_document_embedding/results"
 
 
-def main(args: argparse.Namespace) -> None:
-    model = importlib.import_module(MODEL_PACKAGE_PREFIX + "." + args.model).Model
-    task = importlib.import_module(TASK_PACKAGE_PREFIX + "." + args.task).Task
-    print(args)
-
-    print("Fitting")
-    model.train(task.train, args.experiment_path)
-
-    print("Saving.")
-    model.save(args.model_save_path)
-
-    print("Evaluating.")
-    test_predictions = model.predict(task.test)
-    results = task.evaluate(test_predictions)
-
-    print("Saving results")
-    # utils.save_resulsts(results, args.experiment_path)
-
-    print("Finished")
-
-
-if __name__ == "__main__":
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -81,4 +62,33 @@ if __name__ == "__main__":
     os.makedirs(args.experiment_path, exist_ok=True)
     os.makedirs(args.model_save_path, exist_ok=True)
 
-    main(args)
+    return args
+
+
+def main() -> None:
+    args = parse_args()
+
+    model_pkg = importlib.import_module(MODEL_PACKAGE_PREFIX + "." + args.model)
+    task_pkg = importlib.import_module(TASK_PACKAGE_PREFIX + "." + args.task)
+
+    model = model_pkg.Model(log_dir=args.experiment_path)
+    task = task_pkg.Task()
+
+    print("Training")
+    model.train(task.train)
+
+    print("Saving.")
+    model.save(args.model_save_path)
+
+    print("Evaluating.")
+    test_predictions = model.predict(task.test)
+    results = task.evaluate(test_predictions)
+
+    print("Saving results")
+    # utils.save_results(results, args.experiment_path)
+
+    print("Finished")
+
+
+if __name__ == "__main__":
+    main()
