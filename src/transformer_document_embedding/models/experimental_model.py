@@ -9,10 +9,10 @@ class ExperimentalModel:
         """Returns predictions for given `inputs`."""
         raise NotImplementedError()
 
-    def save(self, dir: str) -> None:
+    def save(self, dir_path: str) -> None:
         """Saves the model's weights into given directory."""
         raise NotImplementedError()
 
-    def load(self, dir: str) -> None:
+    def load(self, dir_path: str) -> None:
         """Loads the model's weights from given directory."""
         raise NotImplementedError()

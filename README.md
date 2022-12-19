@@ -50,7 +50,9 @@ pip install --editable .
 - `notebooks` - jupyter notebooks either showcasing something or containing
   some really experimental code
 - `paper` - latex source code of my thesis paper
-- `log` - documentation logs for me
+- `doc` - my research notes,
+- `log` - development logs (may contain some info but do not expect
+  documentation),
 - `model` - repository of our new model, which resulted from our research
 
 ## Helpful sources

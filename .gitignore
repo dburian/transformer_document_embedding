@@ -1,4 +1,7 @@
-# ------------------LATEX-----------------------------------------
+# --------------------------------- MINE ---------------------------------
+results/**
+
+# --------------------------------- LATEX ---------------------------------
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
@@ -301,7 +304,7 @@ TSWLatexianTemp*
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
 
-# ------- PYTHON --------
+# --------------------------------- PYTHON ---------------------------------
 
 .ipynb_checkpoints
 

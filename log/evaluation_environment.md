@@ -40,8 +40,8 @@ metrics).
 ## Pseudocode of basic experiment
 
 ```python
-model = import(args.model_package).Model
-task = import(args.task_package).Task
+model = import(args.model_package).Model()
+task = import(args.task_package).Task()
 
 model.train(task.train)
 

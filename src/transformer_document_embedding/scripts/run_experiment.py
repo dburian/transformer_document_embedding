@@ -1,5 +1,18 @@
+"""Runs experiment for given model and task.
+
+Both model and tasks are defined as module paths which get automatically
+prefixed with 'transformer_document_embedding.models.' for model and
+'transformer_document_embedding.tasks.' for task.
+
+Experiment results vary and are saved under ./results.
+
+Example usage:
+    run-experiment -m imdb_doc2vec -t imdb
+
+"""
 import argparse
 import importlib
+import logging
 import os
 from datetime import datetime
 
@@ -37,6 +50,23 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--save_model",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to save model after training.",
+    )
+    parser.add_argument(
+        "--load_model",
+        type=boo,
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Whether to load model from `--model_save_path` instead of training new"
+            " one."
+        ),
+    )
+    parser.add_argument(
         "--model_save_path",
         type=str,
         default=None,
@@ -68,17 +98,25 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    logging.basicConfig(
+        format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
+    )
+
     model_pkg = importlib.import_module(MODEL_PACKAGE_PREFIX + "." + args.model)
     task_pkg = importlib.import_module(TASK_PACKAGE_PREFIX + "." + args.task)
 
     model = model_pkg.Model(log_dir=args.experiment_path)
     task = task_pkg.Task()
 
-    print("Training")
-    model.train(task.train)
+    if args.load_model:
+        model.load(args.model_save_path)
+    else:
+        print("Training")
+        model.train(task.train)
 
-    print("Saving.")
-    model.save(args.model_save_path)
+    if args.save_model:
+        print("Saving.")
+        model.save(args.model_save_path)
 
     print("Evaluating.")
     test_predictions = model.predict(task.test)

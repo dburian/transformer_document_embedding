@@ -16,20 +16,21 @@ class IMDBDoc2Vec(ExperimentalModel):
         # Arguments to match the Paragraph Vector paper
         self._doc2vec = Doc2Vec(
             log_dir=log_dir,
+            workers=6,
             vector_size=self._pv_dim,
             window=10,
             shrink_windows=True,
             dm_concat=1,
             hs=1,
         )
-        self._softmax_head = tf.keras.Sequential(
+        self._cls_head = tf.keras.Sequential(
             [
                 tf.keras.layers.Input(self._pv_dim * 2),
                 tf.keras.layers.Dense(50, activation=tf.nn.relu),
                 tf.keras.layers.Dense(1, activation=tf.nn.sigmoid),
             ]
         )
-        self._softmax_head.compile(
+        self._cls_head.compile(
             optimizer=tf.keras.optimizers.Adam(softmax_learning_rate),
             loss=tf.keras.losses.BinaryCrossentropy(),
             metrics=[tf.keras.metrics.BinaryAccuracy()],
@@ -37,33 +38,38 @@ class IMDBDoc2Vec(ExperimentalModel):
         self._log_dir = log_dir
 
     def train(self, training_data: IMDBData) -> None:
-        self._doc2vec.train(training_data)
+        self._doc2vec.train(
+            training_data,
+            min_doc_id=25000,
+            max_doc_id=100000 - 1,
+            epochs=5,
+        )
         tf_ds = self._to_tf_dataset(training_data)
 
-        self._softmax_head.fit(
+        self._cls_head.fit(
             tf_ds,
             callbacks=[tf.keras.callbacks.TensorBoard(self._log_dir)],
         )
 
-    def predict(self, test_data: IMDBData) -> np.ndarray:
-        tf_ds = self._to_tf_dataset(test_data, training=False)
+    def predict(self, inputs: IMDBData) -> np.ndarray:
+        tf_ds = self._to_tf_dataset(inputs, training=False)
 
-        return self._softmax_head.predict(tf_ds).to_numpy()
+        return self._cls_head.predict(tf_ds)
 
-    def save(self, save_dir: str) -> None:
-        self._doc2vec.save(save_dir)
-        self._softmax_head.save(IMDBDoc2Vec._get_softmax_save_dir(save_dir))
+    def save(self, dir_path: str) -> None:
+        self._doc2vec.save(dir_path)
+        self._cls_head.save(IMDBDoc2Vec._get_cls_head_save_dir(dir_path))
 
-    def load(self, save_dir: str) -> None:
-        self._doc2vec.load(save_dir)
-        new_softmax_head = tf.keras.models.load_model(
-            IMDBDoc2Vec._get_softmax_save_dir(save_dir)
+    def load(self, dir_path: str) -> None:
+        self._doc2vec.load(dir_path)
+        new_cls_head = tf.keras.models.load_model(
+            IMDBDoc2Vec._get_cls_head_save_dir(dir_path)
         )
-        if new_softmax_head is not None:
-            self._softmax_head = new_softmax_head
+        if new_cls_head is not None:
+            self._cls_head = new_cls_head
 
     @staticmethod
-    def _get_softmax_save_dir(save_dir: str) -> str:
+    def _get_cls_head_save_dir(save_dir: str) -> str:
         return os.path.join(save_dir, "softmax_head")
 
     def _to_tf_dataset(self, data: IMDBData, training: bool = True) -> tf.data.Dataset:
@@ -74,17 +80,17 @@ class IMDBDoc2Vec(ExperimentalModel):
         tf_ds = data.map(
             lambda _: {"features": next(features_iter)},
             remove_columns=["text", "id"],
+            keep_in_memory=True,
         )
         tf_ds = tf_ds.to_tf_dataset(1).unbatch()
 
-        map_train = lambda doc: (doc["features"], doc["label"])
-        map_test = lambda doc: doc["features"]
-        tf_ds = tf_ds.map(map_train if training else map_test)
-
         if training:
-            tf_ds.shuffle(1000)
+            tf_ds = tf_ds.map(lambda doc: (doc["features"], doc["label"]))
+        else:
+            tf_ds = tf_ds.map(lambda doc: doc["features"])
 
-        tf_ds.batch(2)
+        tf_ds = tf_ds.shuffle(1000) if training else tf_ds
+        tf_ds = tf_ds.batch(2)
 
         return tf_ds
 
