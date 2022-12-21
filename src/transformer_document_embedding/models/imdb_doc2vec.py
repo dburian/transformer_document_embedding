@@ -10,7 +10,13 @@ from transformer_document_embedding.tasks.imdb import IMDBData
 
 
 class IMDBDoc2Vec(ExperimentalModel):
-    def __init__(self, *, log_dir: str, softmax_learning_rate=1e-3) -> None:
+    def __init__(
+        self,
+        *,
+        log_dir: str,
+        load_doc2vec: bool = False,
+        cls_head_learning_rate=1e-3,
+    ) -> None:
         self._pv_dim = 400
 
         # Arguments to match the Paragraph Vector paper
@@ -23,6 +29,7 @@ class IMDBDoc2Vec(ExperimentalModel):
             dm_concat=1,
             hs=1,
         )
+        self._load_doc2vec = load_doc2vec
         self._cls_head = tf.keras.Sequential(
             [
                 tf.keras.layers.Input(self._pv_dim * 2),
@@ -31,23 +38,27 @@ class IMDBDoc2Vec(ExperimentalModel):
             ]
         )
         self._cls_head.compile(
-            optimizer=tf.keras.optimizers.Adam(softmax_learning_rate),
+            optimizer=tf.keras.optimizers.Adam(cls_head_learning_rate),
             loss=tf.keras.losses.BinaryCrossentropy(),
             metrics=[tf.keras.metrics.BinaryAccuracy()],
         )
         self._log_dir = log_dir
 
     def train(self, training_data: IMDBData) -> None:
-        self._doc2vec.train(
-            training_data,
-            min_doc_id=25000,
-            max_doc_id=100000 - 1,
-            epochs=5,
-        )
+        if self._load_doc2vec:
+            self._doc2vec.load(self._log_dir)
+        else:
+            self._doc2vec.train(
+                training_data,
+                min_doc_id=25000,
+                max_doc_id=100000 - 1,
+                epochs=10,
+            )
         tf_ds = self._to_tf_dataset(training_data)
 
         self._cls_head.fit(
             tf_ds,
+            epochs=10,
             callbacks=[tf.keras.callbacks.TensorBoard(self._log_dir)],
         )
 
@@ -74,13 +85,14 @@ class IMDBDoc2Vec(ExperimentalModel):
 
     def _to_tf_dataset(self, data: IMDBData, training: bool = True) -> tf.data.Dataset:
         if training:
-            data = data.filter(lambda doc: "label" in doc)
+            data = data.filter(lambda doc: doc["label"] >= 0)
 
         features_iter = self._doc2vec.predict(data)
         tf_ds = data.map(
             lambda _: {"features": next(features_iter)},
             remove_columns=["text", "id"],
             keep_in_memory=True,
+            load_from_cache_file=False,
         )
         tf_ds = tf_ds.to_tf_dataset(1).unbatch()
 
@@ -89,7 +101,7 @@ class IMDBDoc2Vec(ExperimentalModel):
         else:
             tf_ds = tf_ds.map(lambda doc: doc["features"])
 
-        tf_ds = tf_ds.shuffle(1000) if training else tf_ds
+        tf_ds = tf_ds.shuffle(25000) if training else tf_ds
         tf_ds = tf_ds.batch(2)
 
         return tf_ds

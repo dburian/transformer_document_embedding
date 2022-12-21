@@ -1,3 +1,7 @@
+from typing import Iterable
+
+import numpy as np
+import tensorflow as tf
 from datasets.arrow_dataset import Dataset
 from datasets.combine import concatenate_datasets
 from datasets.load import load_dataset
@@ -63,8 +67,34 @@ class IMDBClassification(ExperimentalTask):
 
         return self._test_inputs
 
-    def evaluate(self, test_predictions) -> dict[str, float]:
-        pass
+    def evaluate(
+        self, test_predictions: Iterable[np.ndarray], batch_size: int = 100
+    ) -> dict[str, float]:
+        metrics = [
+            tf.keras.metrics.BinaryCrossentropy(),
+            tf.keras.metrics.BinaryAccuracy(),
+        ]
+
+        for met in metrics:
+            met.reset_state()
+
+        def update_metrics(y_true, y_pred) -> None:
+            for met in metrics:
+                met.update_state(y_true, y_pred)
+
+        batch_true, batch_pred = [], []
+        for test_doc, y_pred in zip(self._test, test_predictions):
+            batch_true.append(test_doc["label"])
+            batch_pred.append(y_pred)
+
+            if len(batch_true) == batch_size:
+                update_metrics(batch_true, batch_pred)
+                batch_true, batch_pred = [], []
+
+        if len(batch_true) > 0:
+            update_metrics(batch_true, batch_pred)
+
+        return {met.name: met.result().numpy() for met in metrics}
 
     def _get_id_from_index(self, idx: int, split: str) -> int:
         """

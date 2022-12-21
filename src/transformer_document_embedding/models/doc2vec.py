@@ -76,7 +76,6 @@ class Doc2Vec(ExperimentalModel):
 
     def __init__(self, *, log_dir: str, **gensim_kwargs) -> None:
         """Initializes the gensim model with `gensim_kwargs`."""
-        self._tensorboard_cb = EvaluationTensorBoardCallback(log_dir=log_dir)
         self._log_dir = log_dir
         self._dm = doc2vec.Doc2Vec(
             dm_tag_count=1,

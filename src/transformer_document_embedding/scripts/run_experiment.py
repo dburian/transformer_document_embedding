@@ -18,6 +18,8 @@ from datetime import datetime
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")  # Report only TF errors by default
 
+import transformer_document_embedding as tde
+
 MODEL_PACKAGE_PREFIX = "transformer_document_embedding.models"
 TASK_PACKAGE_PREFIX = "transformer_document_embedding.tasks"
 EXPERIMENTS_DIR = "/home/dburian/docs/transformer_document_embedding/results"
@@ -58,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--load_model",
-        type=boo,
+        type=bool,
         action=argparse.BooleanOptionalAction,
         default=False,
         help=(
@@ -123,7 +125,7 @@ def main() -> None:
     results = task.evaluate(test_predictions)
 
     print("Saving results")
-    # utils.save_results(results, args.experiment_path)
+    tde.evaluation.save_results(results, args.experiment_path)
 
     print("Finished")
 
