@@ -16,8 +16,8 @@ class Doc2VecIMDB(ExperimentalModel):
         *,
         log_dir: str,
         cls_head_epochs: int = 10,
-        doc2vec_epochs: int = 10,
         cls_head_learning_rate=1e-3,
+        doc2vec_epochs: int = 10,
         doc2vec_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         self._pv_dim = 400

@@ -24,20 +24,22 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")  # Report only TF errors by d
 
 import transformer_document_embedding as tde
 
-MODEL_PACKAGE_PREFIX = "transformer_document_embedding.models"
-TASK_PACKAGE_PREFIX = "transformer_document_embedding.tasks"
+MODEL_MODULE_PREFIX = "transformer_document_embedding.models"
+TASK_MODULE_PREFIX = "transformer_document_embedding.tasks"
 EXPERIMENTS_DIR = "./results"
-EXP_REQUIRED_FIELDS = [
+CONF_REQUIRED_FIELDS = [
     (["tde_version"], "version of transformer_document_embedding package"),
-    (["model", "module"], "model's module path"),
-    (["task", "module"], "task's module path"),
+    (
+        ["model", "module"],
+        f"model's module path (gets prepended with {MODEL_MODULE_PREFIX})",
+    ),
+    (
+        ["task", "module"],
+        f"task's module path (gets prepended with {TASK_MODULE_PREFIX})",
+    ),
 ]
-DEFAULT_EXP_FIELDS = {
-    "model": {"type": "Model"},
-    "task": {"type": "Task"},
-}
 
-Experiment = dict[str, Any]
+ExpConfig = dict[str, Any]
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,8 +89,8 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def parse_experiment_file(file_path: str) -> Experiment:
-    def check_field_exist(exp: Experiment, field_path: list[str]) -> bool:
+def parse_experiment_file(file_path: str) -> ExpConfig:
+    def check_field_exist(exp: ExpConfig, field_path: list[str]) -> bool:
         field = exp
         for breadcrumb in field_path:
             if breadcrumb not in field:
@@ -99,7 +101,7 @@ def parse_experiment_file(file_path: str) -> Experiment:
     with open(file_path, mode="r", encoding="utf8") as file:
         experiment = yaml.safe_load(file)
 
-        for field_path, desc in EXP_REQUIRED_FIELDS:
+        for field_path, desc in CONF_REQUIRED_FIELDS:
             if not check_field_exist(experiment, field_path):
                 logging.error(
                     "Parsing of experiment file %s failed. Missing required field:"
@@ -125,9 +127,12 @@ def parse_experiment_file(file_path: str) -> Experiment:
         return experiment
 
 
-def create_experiment_dirs(base_path: str, name: str) -> tuple[str, str]:
+def create_experiment_dirs(exp: ExpConfig, base_path: str) -> tuple[str, str]:
     exp_path = os.path.join(
-        base_path, name, f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}'
+        base_path,
+        exp["task"]["module"],
+        exp["model"]["module"],
+        f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}',
     )
     model_path = os.path.join(exp_path, "model")
 
@@ -138,23 +143,24 @@ def create_experiment_dirs(base_path: str, name: str) -> tuple[str, str]:
 
 
 def run_single(
-    name: str,
+    config: ExpConfig,
     output_base_path: str,
-    experiment: Experiment,
     save_model: bool,
     load_model_path: Optional[str],
 ) -> None:
     # pylint: disable=invalid-name
-    Model = importlib.import_module(experiment["model"]["module"]).Model
+    Model = importlib.import_module(
+        MODEL_MODULE_PREFIX + "." + config["model"]["module"]
+    ).Model
     # pylint: disable=invalid-name
-    Task = importlib.import_module(experiment["task"]["module"]).Task
+    Task = importlib.import_module(
+        TASK_MODULE_PREFIX + "." + config["task"]["module"]
+    ).Task
 
-    exp_path, model_path = create_experiment_dirs(output_base_path, name)
+    exp_path, model_path = create_experiment_dirs(config, output_base_path)
 
-    model_kwargs = experiment["model"].get("kwargs", {})
-    model = Model(log_dir=exp_path, **model_kwargs)
-    task_kwargs = experiment["task"].get("kwargs", {})
-    task = Task(**task_kwargs)
+    model = Model(log_dir=exp_path, **config["model"].get("kwargs", {}))
+    task = Task(**config["task"].get("kwargs", {}))
 
     if load_model_path is not None:
         logging.info("Loading model from %s.", load_model_path)
@@ -175,6 +181,11 @@ def run_single(
 
     tde.evaluation.save_results(results, exp_path)
 
+    config_out_file = os.path.join(exp_path, "config.yaml")
+    logging.info("Saving experiment config to %s.", config_out_file)
+    with open(config_out_file, mode="w", encoding="utf8") as config_file:
+        yaml.dump(config, config_file)
+
 
 def main() -> None:
     args = parse_args()
@@ -184,12 +195,10 @@ def main() -> None:
     )
 
     for exp_file in args.experiment:
-        exp_name, _ = os.path.splitext(os.path.basename(exp_file))
         experiment = parse_experiment_file(exp_file)
         run_single(
-            exp_name,
-            args.output_base_path,
             experiment,
+            args.output_base_path,
             args.save_model,
             args.load_model_path,
         )
