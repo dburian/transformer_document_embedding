@@ -11,7 +11,7 @@ It's interesting because conceptually they did what I'm trying to do:
 2. adjust the architecture so it produces nice embeddings.
 
 As them I should focus on matching the performence of the original transformer,
-while making easier to find similar pieces of text.
+while making it easier to find similar pieces of text.
 
 ## Architecture
 
