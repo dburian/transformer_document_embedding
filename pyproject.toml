@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-run-experiment = "transformer_document_embedding.scripts.run_experiment:main"
+run-experiment = "transformer_document_embedding.experiments.run:main"
 
 [project.optional-dependencies]
 dev = [
