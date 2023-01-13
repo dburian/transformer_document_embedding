@@ -4,12 +4,14 @@ import numpy as np
 import tensorflow as tf
 from datasets.arrow_dataset import Dataset
 from datasets.combine import concatenate_datasets
+from datasets.dataset_dict import DatasetDict, IterableDatasetDict
+from datasets.iterable_dataset import IterableDataset
 from datasets.load import load_dataset
 
 from transformer_document_embedding.tasks.experimental_task import \
     ExperimentalTask
 
-IMDBData = Dataset
+IMDBData = Dataset | IterableDataset | DatasetDict | IterableDatasetDict
 
 
 class IMDBClassification(ExperimentalTask):
@@ -19,13 +21,13 @@ class IMDBClassification(ExperimentalTask):
     'unsupervised' splits.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, data_size_limit: int = -1) -> None:
         self._train = None
         self._test = None
         self._unsuper = None
         self._all_train = None
         self._test_inputs = None
-        self._train_test_size = 25000
+        self._data_size_limit = data_size_limit
 
     @property
     def train(self) -> IMDBData:
@@ -37,12 +39,16 @@ class IMDBClassification(ExperimentalTask):
             - 'id' (int) - document id unique among all the documents in the dataset.
         """
         if self._all_train is None:
-            self._train = load_dataset("imdb", split="train").map(
-                lambda _, idx: {"id": self._get_id_from_index(idx, "train")},
+            self._train = load_dataset(
+                "imdb", split=f"train[:{self._data_size_limit}]"
+            ).map(
+                lambda _, idx: {"id": idx},
                 with_indices=True,
             )
-            self._unsuper = load_dataset("imdb", split="unsupervised").map(
-                lambda _, idx: {"id": self._get_id_from_index(idx, "unsuper")},
+            self._unsuper = load_dataset(
+                "imdb", split=f"unsupervised[:{self._data_size_limit}]"
+            ).map(
+                lambda _, idx: {"id": idx + len(self._train)},
                 with_indices=True,
             )
 
@@ -59,8 +65,14 @@ class IMDBClassification(ExperimentalTask):
             - 'id' (int) - document id unique among all the documents in the dataset.
         """
         if self._test_inputs is None:
-            self._test = load_dataset("imdb", split="test").map(
-                lambda _, idx: {"id": self._get_id_from_index(idx, "test")},
+            if self._train is None or self._unsuper is None:
+                self.train
+
+            id_offset = len(self._train) + len(self._unsuper)
+            self._test = load_dataset(
+                "imdb", split=f"test[:{self._data_size_limit}]"
+            ).map(
+                lambda _, idx: {"id": idx + id_offset},
                 with_indices=True,
             )
             self._test_inputs = self._test.remove_columns("label")
@@ -95,13 +107,6 @@ class IMDBClassification(ExperimentalTask):
             update_metrics(batch_true, batch_pred)
 
         return {met.name: met.result().numpy() for met in metrics}
-
-    def _get_id_from_index(self, idx: int, split: str) -> int:
-        """
-        Assings global id from document index based on data split.
-        """
-        split_ind = ["test", "train", "unsuper"].index(split)
-        return split_ind * self._train_test_size + idx
 
 
 Task = IMDBClassification

@@ -1,4 +1,5 @@
 import os
+from typing import Any, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -9,27 +10,34 @@ from transformer_document_embedding.models.experimental_model import \
 from transformer_document_embedding.tasks.imdb import IMDBData
 
 
-class IMDBDoc2Vec(ExperimentalModel):
+class Doc2VecIMDB(ExperimentalModel):
     def __init__(
         self,
         *,
         log_dir: str,
-        load_doc2vec: bool = False,
+        cls_head_epochs: int = 10,
+        doc2vec_epochs: int = 10,
         cls_head_learning_rate=1e-3,
+        doc2vec_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         self._pv_dim = 400
+        if doc2vec_kwargs is None:
+            doc2vec_kwargs = {
+                "workers": 6,
+                "window": 5,
+                "dm_concat": 1,
+                "hs": 1,
+            }
+        self._doc2vec_epochs = doc2vec_epochs
+        self._log_dir = log_dir
+        self._cls_head_epochs = cls_head_epochs
 
         # Arguments to match the Paragraph Vector paper
         self._doc2vec = Doc2Vec(
             log_dir=log_dir,
-            workers=6,
             vector_size=self._pv_dim,
-            window=10,
-            shrink_windows=True,
-            dm_concat=1,
-            hs=1,
+            **doc2vec_kwargs,
         )
-        self._load_doc2vec = load_doc2vec
         self._cls_head = tf.keras.Sequential(
             [
                 tf.keras.layers.Input(self._pv_dim * 2),
@@ -42,23 +50,17 @@ class IMDBDoc2Vec(ExperimentalModel):
             loss=tf.keras.losses.BinaryCrossentropy(),
             metrics=[tf.keras.metrics.BinaryAccuracy()],
         )
-        self._log_dir = log_dir
 
     def train(self, training_data: IMDBData) -> None:
-        if self._load_doc2vec:
-            self._doc2vec.load(self._log_dir)
-        else:
-            self._doc2vec.train(
-                training_data,
-                min_doc_id=25000,
-                max_doc_id=100000 - 1,
-                epochs=10,
-            )
+        self._doc2vec.train(
+            training_data,
+            epochs=self._doc2vec_epochs,
+        )
         tf_ds = self._to_tf_dataset(training_data)
 
         self._cls_head.fit(
             tf_ds,
-            epochs=10,
+            epochs=self._cls_head_epochs,
             callbacks=[tf.keras.callbacks.TensorBoard(self._log_dir)],
         )
 
@@ -69,12 +71,12 @@ class IMDBDoc2Vec(ExperimentalModel):
 
     def save(self, dir_path: str) -> None:
         self._doc2vec.save(dir_path)
-        self._cls_head.save(IMDBDoc2Vec._get_cls_head_save_dir(dir_path))
+        self._cls_head.save(Doc2VecIMDB._get_cls_head_save_dir(dir_path))
 
     def load(self, dir_path: str) -> None:
         self._doc2vec.load(dir_path)
         new_cls_head = tf.keras.models.load_model(
-            IMDBDoc2Vec._get_cls_head_save_dir(dir_path)
+            Doc2VecIMDB._get_cls_head_save_dir(dir_path)
         )
         if new_cls_head is not None:
             self._cls_head = new_cls_head
@@ -85,7 +87,11 @@ class IMDBDoc2Vec(ExperimentalModel):
 
     def _to_tf_dataset(self, data: IMDBData, training: bool = True) -> tf.data.Dataset:
         if training:
-            data = data.filter(lambda doc: doc["label"] >= 0)
+            data = data.filter(
+                lambda doc: doc["label"] >= 0,
+                keep_in_memory=True,
+                load_from_cache_file=False,
+            )
 
         features_iter = self._doc2vec.predict(data)
         tf_ds = data.map(
@@ -107,4 +113,4 @@ class IMDBDoc2Vec(ExperimentalModel):
         return tf_ds
 
 
-Model = IMDBDoc2Vec
+Model = Doc2VecIMDB

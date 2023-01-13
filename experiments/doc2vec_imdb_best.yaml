@@ -1,0 +1,13 @@
+tde_version: 0.0.1
+model:
+  module: transformer_document_embedding.models.doc2vec_imdb
+  kwargs:
+    cls_head_epochs: 10
+    doc2vec_epochs: 15
+    doc2vec_kwargs:
+      hs: 0
+      dm_concat: 0
+      negative: 5
+
+task:
+  module: transformer_document_embedding.tasks.imdb

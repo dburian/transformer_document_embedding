@@ -3,10 +3,11 @@
 
 """
 
+import functools
 import logging
 import os
 import random
-from typing import Any, Iterable, Iterator, Optional
+from typing import Any, Iterable, Iterator, Mapping, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -16,7 +17,7 @@ from gensim.models.callbacks import CallbackAny2Vec
 from transformer_document_embedding.models.experimental_model import \
     ExperimentalModel
 
-DataType = Iterable[dict[str, Any]]
+DataType = Iterable[Mapping[str, Any]]
 
 
 class EmbeddingDifferencesCallback(CallbackAny2Vec):
@@ -89,32 +90,42 @@ class Doc2Vec(ExperimentalModel):
     def train(
         self,
         training_data: DataType,
-        min_doc_id: Optional[int] = None,
-        max_doc_id: Optional[int] = None,
         num_eval_samples: Optional[int] = None,
         **train_kwargs,
     ) -> None:
         dm_callback, dbow_callback = None, None
-        if min_doc_id is not None and max_doc_id is not None:
-            num_samples = (
-                num_eval_samples
-                if num_eval_samples is not None
-                else min(5000, int(0.05 * (max_doc_id - min_doc_id)))
+
+        def reduce_extremes(
+            extremes: tuple[float, float], doc: dict[str, Any]
+        ) -> tuple[float, float]:
+            return (
+                min(extremes[0], doc["id"]),
+                max(extremes[1], doc["id"]),
             )
-            dm_callback = EmbeddingDifferencesCallback(
-                log_dir=self._log_dir,
-                dm=True,
-                min_doc_id=min_doc_id,
-                max_doc_id=max_doc_id,
-                num_samples=num_samples,
-            )
-            dbow_callback = EmbeddingDifferencesCallback(
-                log_dir=self._log_dir,
-                dm=False,
-                min_doc_id=min_doc_id,
-                max_doc_id=max_doc_id,
-                num_samples=num_samples,
-            )
+
+        min_doc_id, max_doc_id = functools.reduce(
+            reduce_extremes, training_data, (float("inf"), float("-inf"))
+        )
+
+        num_samples = (
+            num_eval_samples
+            if num_eval_samples is not None
+            else min(5000, int(0.05 * (max_doc_id - min_doc_id)))
+        )
+        dm_callback = EmbeddingDifferencesCallback(
+            log_dir=self._log_dir,
+            dm=True,
+            min_doc_id=min_doc_id,
+            max_doc_id=max_doc_id,
+            num_samples=num_samples,
+        )
+        dbow_callback = EmbeddingDifferencesCallback(
+            log_dir=self._log_dir,
+            dm=False,
+            min_doc_id=min_doc_id,
+            max_doc_id=max_doc_id,
+            num_samples=num_samples,
+        )
 
         gensim_corpus = Doc2Vec.GensimCorpus(training_data)
         self._dm.build_vocab(gensim_corpus)
@@ -133,8 +144,8 @@ class Doc2Vec(ExperimentalModel):
             **train_kwargs,
         )
 
-    def predict(self, testing_inputs: DataType) -> Iterator[np.ndarray]:
-        for doc in testing_inputs:
+    def predict(self, inputs: DataType) -> Iterator[np.ndarray]:
+        for doc in inputs:
             doc_id = doc["id"]
             dm_vector, dbow_vector = None, None
             if doc_id in self._dm.dv and doc_id in self._dbow.dv:
@@ -146,13 +157,13 @@ class Doc2Vec(ExperimentalModel):
 
             yield np.concatenate([dm_vector, dbow_vector])
 
-    def save(self, save_dir: str) -> None:
-        self._dm.save(Doc2Vec._get_model_path(save_dir))
-        self._dbow.save(Doc2Vec._get_model_path(save_dir, dm=False))
+    def save(self, dir_path: str) -> None:
+        self._dm.save(Doc2Vec._get_model_path(dir_path))
+        self._dbow.save(Doc2Vec._get_model_path(dir_path, dm=False))
 
-    def load(self, save_dir: str) -> None:
-        self._dm.load(Doc2Vec._get_model_path(save_dir))
-        self._dbow.load(Doc2Vec._get_model_path(save_dir, dm=False))
+    def load(self, dir_path: str) -> None:
+        self._dm.load(Doc2Vec._get_model_path(dir_path))
+        self._dbow.load(Doc2Vec._get_model_path(dir_path, dm=False))
 
     @staticmethod
     def _get_model_path(dir_path: str, dm: bool = True) -> str:
