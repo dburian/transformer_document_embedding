@@ -3,8 +3,9 @@ from __future__ import annotations
 import importlib
 import logging
 import os
+from copy import deepcopy
 from datetime import datetime
-from typing import Any
+from typing import Any, Iterable
 
 import pkg_resources
 import yaml
@@ -106,3 +107,50 @@ class ExperimentConfig:
         logging.info("Saving experiment config to %s.", save_path)
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
+
+    def _clone(self) -> ExperimentConfig:
+        return ExperimentConfig(deepcopy(self.values), self.base_results_path)
+
+    def grid_search(self, grid_search_config: str) -> Iterable[ExperimentConfig]:
+        gs_values = None
+        with open(grid_search_config, mode="r", encoding="utf8") as gs_file:
+            gs_values = yaml.safe_load(gs_file)
+
+        def _apply_gs_value(values: dict[str, Any], gs_key: str, gs_value: Any) -> None:
+            field = values
+            path = gs_key.split(".")
+            path, last_field_name = path[:-1], path[-1]
+            for next_field in path:
+                if next_field not in field:
+                    field[next_field] = {}
+                field = field[next_field]
+
+            field[last_field_name] = gs_value
+
+        def _new_exp_config(grid_search_indices: dict[str, int]) -> ExperimentConfig:
+            new_values = deepcopy(self.values)
+            for gs_key in gs_values:
+                gs_value_ind = grid_search_indices[gs_key]
+                gs_value = gs_values[gs_key][gs_value_ind]
+                _apply_gs_value(new_values, gs_key, gs_value)
+
+            return ExperimentConfig(new_values, self.base_results_path)
+
+        def _next_indices(indices: dict[str, int], lengths: dict[str, int]):
+            key_iter = iter(indices.keys())
+            key = next(key_iter, None)
+            carry = 1
+            while carry > 0 and key is not None:
+                indices[key] = (indices[key] + carry) % lengths[key]
+                carry = int(indices[key] == 0)
+                key = next(key_iter, None)
+
+        gs_indices = {key: 0 for key in gs_values}
+        gs_lengths = {key: len(value) for key, value in gs_values.items()}
+
+        yield _new_exp_config(gs_indices)
+        _next_indices(gs_indices, gs_lengths)
+
+        while sum(gs_indices.values()) > 0:
+            yield _new_exp_config(gs_indices)
+            _next_indices(gs_indices, gs_lengths)

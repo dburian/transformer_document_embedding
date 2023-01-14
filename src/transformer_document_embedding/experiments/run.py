@@ -4,6 +4,7 @@
 """
 import argparse
 import logging
+import pprint
 from typing import Optional
 
 import transformer_document_embedding as tde
@@ -15,18 +16,27 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-e",
-        "--experiment",
+        "-c",
+        "--config",
         type=str,
         action="extend",
         help=(
-            "Experiments to be run described by YAML files. Required syntax to be found"
-            " here:"
+            "Experiment configurations to be run described by YAML files. Required"
+            " syntax to be found here:"
             " github.com/dburian/transformer_document_embedding/"
             "blob/master/log/experiment_files.md."
         ),
         nargs="+",
         required=True,
+    )
+    parser.add_argument(
+        "--grid_search_config",
+        type=str,
+        default=None,
+        help=(
+            "Run grid search over all arguments specified in grid search YAML"
+            " file for each experiment. Syntax documented here: TODO."
+        ),
     )
     parser.add_argument(
         "--output_base_path",
@@ -63,6 +73,10 @@ def run_single(
     save_model: bool,
     load_model_path: Optional[str],
 ) -> None:
+    logging.info(
+        "Starting experiment with config:\n%s",
+        pprint.pformat(config.values, indent=1),
+    )
     model = config.get_model_type()(
         log_dir=config.experiment_path,
         **config.values["model"].get("kwargs", {}),
@@ -98,15 +112,23 @@ def main() -> None:
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
-    for exp_file in args.experiment:
-        experiment = tde.experiments.ExperimentConfig.parse(
-            exp_file, args.output_base_path
-        )
-        run_single(
-            experiment,
-            args.save_model,
-            args.load_model_path,
-        )
+    for exp_file in args.config:
+        config = tde.experiments.ExperimentConfig.parse(exp_file, args.output_base_path)
+
+        if args.grid_search_config is None:
+            run_single(
+                config,
+                args.save_model,
+                args.load_model_path,
+            )
+            return
+
+        for experiment_instance in config.grid_search(args.grid_search_config):
+            run_single(
+                experiment_instance,
+                args.save_model,
+                args.load_model_path,
+            )
 
 
 if __name__ == "__main__":
