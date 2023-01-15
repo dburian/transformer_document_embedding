@@ -50,7 +50,8 @@ model.kwargs.learning_rate:
     - 1.0e-4
 ```
 
-The following configurations would be created:
+The following configurations would be merged into the reference experiment
+configs:
 
 ```YAML
 model:

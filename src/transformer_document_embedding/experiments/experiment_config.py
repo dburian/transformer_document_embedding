@@ -108,9 +108,6 @@ class ExperimentConfig:
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
 
-    def _clone(self) -> ExperimentConfig:
-        return ExperimentConfig(deepcopy(self.values), self.base_results_path)
-
     def grid_search(self, grid_search_config: str) -> Iterable[ExperimentConfig]:
         gs_values = None
         with open(grid_search_config, mode="r", encoding="utf8") as gs_file:
@@ -154,3 +151,15 @@ class ExperimentConfig:
         while sum(gs_indices.values()) > 0:
             yield _new_exp_config(gs_indices)
             _next_indices(gs_indices, gs_lengths)
+
+
+def flatten_dict(structure: dict[str, Any]) -> dict[str, Any]:
+    flatten = {}
+    for key, value in structure.items():
+        if isinstance(value, dict):
+            for flatten_key, flatten_value in flatten_dict(value).items():
+                flatten[f"{key}.{flatten_key}"] = flatten_value
+        else:
+            flatten[key] = value
+
+    return flatten
