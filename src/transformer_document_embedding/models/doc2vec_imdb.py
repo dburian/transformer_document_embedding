@@ -17,26 +17,32 @@ class Doc2VecIMDB(ExperimentalModel):
         log_dir: str,
         cls_head_epochs: int = 10,
         cls_head_learning_rate=1e-3,
-        doc2vec_epochs: int = 10,
-        doc2vec_kwargs: Optional[dict[str, Any]] = None,
+        dm_kwargs: Optional[dict[str, Any]] = None,
+        dbow_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         self._pv_dim = 400
-        if doc2vec_kwargs is None:
-            doc2vec_kwargs = {
-                "workers": 6,
-                "window": 5,
-                "dm_concat": 1,
-                "hs": 1,
-            }
-        self._doc2vec_epochs = doc2vec_epochs
         self._log_dir = log_dir
         self._cls_head_epochs = cls_head_epochs
+
+        if dm_kwargs is None:
+            dm_kwargs = {}
+
+        if dbow_kwargs is None:
+            dbow_kwargs = {}
+
+        common_kwargs = {
+            "workers": os.cpu_count(),
+            "vector_size": self._pv_dim,
+        }
+        for key, value in common_kwargs.items():
+            dbow_kwargs.setdefault(key, value)
+            dm_kwargs.setdefault(key, value)
 
         # Arguments to match the Paragraph Vector paper
         self._doc2vec = Doc2Vec(
             log_dir=log_dir,
-            vector_size=self._pv_dim,
-            **doc2vec_kwargs,
+            dm_kwargs=dm_kwargs,
+            dbow_kwargs=dbow_kwargs,
         )
         self._cls_head = tf.keras.Sequential(
             [
@@ -52,10 +58,7 @@ class Doc2VecIMDB(ExperimentalModel):
         )
 
     def train(self, training_data: IMDBData) -> None:
-        self._doc2vec.train(
-            training_data,
-            epochs=self._doc2vec_epochs,
-        )
+        self._doc2vec.train(training_data)
         tf_ds = self._to_tf_dataset(training_data)
 
         self._cls_head.fit(

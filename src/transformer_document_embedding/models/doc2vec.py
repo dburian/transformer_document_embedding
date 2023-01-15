@@ -47,6 +47,8 @@ class EmbeddingDifferencesCallback(CallbackAny2Vec):
         if self._last_embed is not None:
             with self._tb_writer.as_default():
                 distances = 1 - np.sum(new_embed * self._last_embed, axis=1)
+                # Disregarding linearly decreasing learning rate
+                distances /= model.alpha
                 mean_distance = np.mean(distances)
                 std_distance = np.std(distances)
                 logging.info(
@@ -75,56 +77,36 @@ class Doc2Vec(ExperimentalModel):
                     Doc2Vec._preprocess_text(doc["text"]), [doc["id"]]
                 )
 
-    def __init__(self, *, log_dir: str, **gensim_kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        log_dir: str,
+        dm_kwargs: Optional[dict[str, Any]] = None,
+        dbow_kwargs: Optional[dict[str, Any]] = None,
+    ) -> None:
         """Initializes the gensim model with `gensim_kwargs`."""
         self._log_dir = log_dir
+        if dm_kwargs is None:
+            dm_kwargs = {}
+        if dbow_kwargs is None:
+            dbow_kwargs = {}
+
         self._dm = doc2vec.Doc2Vec(
             dm_tag_count=1,
-            **gensim_kwargs,
+            **dm_kwargs,
         )
         self._dbow = doc2vec.Doc2Vec(
             dm=0,
-            **gensim_kwargs,
+            **dbow_kwargs,
         )
 
     def train(
         self,
         training_data: DataType,
         num_eval_samples: Optional[int] = None,
-        **train_kwargs,
     ) -> None:
-        dm_callback, dbow_callback = None, None
-
-        def reduce_extremes(
-            extremes: tuple[float, float], doc: dict[str, Any]
-        ) -> tuple[float, float]:
-            return (
-                min(extremes[0], doc["id"]),
-                max(extremes[1], doc["id"]),
-            )
-
-        min_doc_id, max_doc_id = functools.reduce(
-            reduce_extremes, training_data, (float("inf"), float("-inf"))
-        )
-
-        num_samples = (
-            num_eval_samples
-            if num_eval_samples is not None
-            else min(5000, int(0.05 * (max_doc_id - min_doc_id)))
-        )
-        dm_callback = EmbeddingDifferencesCallback(
-            log_dir=self._log_dir,
-            dm=True,
-            min_doc_id=min_doc_id,
-            max_doc_id=max_doc_id,
-            num_samples=num_samples,
-        )
-        dbow_callback = EmbeddingDifferencesCallback(
-            log_dir=self._log_dir,
-            dm=False,
-            min_doc_id=min_doc_id,
-            max_doc_id=max_doc_id,
-            num_samples=num_samples,
+        dm_callback, dbow_callback = self._create_training_cbs(
+            training_data, num_eval_samples
         )
 
         gensim_corpus = Doc2Vec.GensimCorpus(training_data)
@@ -134,14 +116,14 @@ class Doc2Vec(ExperimentalModel):
         self._dm.train(
             gensim_corpus,
             total_examples=self._dm.corpus_count,
-            callbacks=[dm_callback] if dm_callback is not None else [],
-            **train_kwargs,
+            callbacks=[dm_callback],
+            epochs=self._dbow.epochs,
         )
         self._dbow.train(
             gensim_corpus,
             total_examples=self._dbow.corpus_count,
-            callbacks=[dbow_callback] if dbow_callback is not None else [],
-            **train_kwargs,
+            callbacks=[dbow_callback],
+            epochs=self._dbow.epochs,
         )
 
     def predict(self, inputs: DataType) -> Iterator[np.ndarray]:
@@ -165,8 +147,50 @@ class Doc2Vec(ExperimentalModel):
         self._dm.load(Doc2Vec._get_model_path(dir_path))
         self._dbow.load(Doc2Vec._get_model_path(dir_path, dm=False))
 
+    def _create_training_cbs(
+        self, training_data: DataType, num_eval_samples: Optional[int] = None
+    ) -> list[CallbackAny2Vec]:
+        def reduce_extremes(
+            extremes: tuple[float, float], doc: dict[str, Any]
+        ) -> tuple[float, float]:
+            return (
+                min(extremes[0], doc["id"]),
+                max(extremes[1], doc["id"]),
+            )
+
+        min_doc_id, max_doc_id = functools.reduce(
+            reduce_extremes, training_data, (float("inf"), float("-inf"))
+        )
+        min_doc_id, max_doc_id = int(min_doc_id), int(max_doc_id)
+
+        num_samples = (
+            num_eval_samples
+            if num_eval_samples is not None
+            else min(5000, int(0.05 * (max_doc_id - min_doc_id)))
+        )
+        dm_callback = EmbeddingDifferencesCallback(
+            log_dir=self._log_dir,
+            dm=True,
+            min_doc_id=min_doc_id,
+            max_doc_id=max_doc_id,
+            num_samples=num_samples,
+        )
+        dbow_callback = EmbeddingDifferencesCallback(
+            log_dir=self._log_dir,
+            dm=False,
+            min_doc_id=min_doc_id,
+            max_doc_id=max_doc_id,
+            num_samples=num_samples,
+        )
+
+        return [dm_callback, dbow_callback]
+
     @staticmethod
-    def _get_model_path(dir_path: str, dm: bool = True) -> str:
+    def _get_model_path(
+        dir_path: str,
+        # pylint disable=invalid-name
+        dm: bool = True,
+    ) -> str:
         return os.path.join(dir_path, "dm" if dm else "dbow")
 
     @staticmethod

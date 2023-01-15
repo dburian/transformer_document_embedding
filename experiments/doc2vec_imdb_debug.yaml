@@ -3,14 +3,15 @@ model:
   module: doc2vec_imdb
   kwargs:
     cls_head_epochs: 5
-    dm_kwargs:
-      epochs: 20
-      negative: 5
-      sample: 1.0e-5
-    dbow_kwargs:
-      epochs: 20
+    doc2vec_epochs: 1
+    doc2vec_kwargs:
+      hs: 0
+      dm_concat: 0
       negative: 5
       sample: 1.0e-5
 
 task:
   module: imdb
+  kwargs:
+    data_size_limit: 100
+

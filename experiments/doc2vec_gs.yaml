@@ -1,4 +1,7 @@
 
-model.kwargs.doc2vec_kwargs.window: [7, 10]
-model.kwargs.doc2vec_kwargs.sample: [1.0e-3, 1.0e-6]
-model.kwargs.doc2vec_kwargs.negative: [5, 2, 7]
+model.kwargs.dm_kwargs.epochs: [14]
+model.kwargs.dbow_kwargs.epochs: [2]
+model.kwargs.dm_kwargs.sample: [1.0e-6]
+model.kwargs.dbow_kwargs.sample: [1.0e-5]
+model.kwargs.dm_kwargs.min_count: [1, 5]
+model.kwargs.dbow_kwargs.min_count: [1, 5]
