@@ -9,6 +9,7 @@
 [mullenbach_18]: https://aclanthology.org/N18-1100.pdf
 [codec]: https://github.com/grill-lab/CODEC
 [dai_22]: https://arxiv.org/abs/2204.06683
+[sim_triplets_wiki_arxiv]: http://cs.stanford.edu/~quocle/triplets-data.tar.gz
 
 [msmarco_v1paper]: https://arxiv.org/abs/1611.09268
 [trec-robust04]: https://trec.nist.gov/data/t13_robust.html
@@ -142,7 +143,7 @@ documents close to each other in the feature space.
 
 Sorted according to relevance and good fit. Best are at the top.
 
-- [Document similarity triplets data][sim_triplets_wiki_arxiv] - Dataset of
+- [Document similarity triplets data (download)][sim_triplets_wiki_arxiv] - Dataset of
   arxiv/Wikipedia links triplets, where the first two links are more similar to
   each other than to the third link. The dataset is described in [Paragraph
   vectors][dai_15]. There are:

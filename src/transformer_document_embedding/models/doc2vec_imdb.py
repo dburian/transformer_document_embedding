@@ -17,10 +17,15 @@ class Doc2VecIMDB(ExperimentalModel):
         log_dir: str,
         cls_head_epochs: int = 10,
         cls_head_learning_rate=1e-3,
+        cls_head_activation: str = "relu",
+        cls_head_dropout: float = 0,
+        cls_head_hidden_units: int = 50,
+        cls_head_label_smoothing: float = 0,
+        use_dm: bool = True,
+        use_dbow: bool = True,
         dm_kwargs: Optional[dict[str, Any]] = None,
         dbow_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
-        self._pv_dim = 400
         self._log_dir = log_dir
         self._cls_head_epochs = cls_head_epochs
 
@@ -32,7 +37,7 @@ class Doc2VecIMDB(ExperimentalModel):
 
         common_kwargs = {
             "workers": os.cpu_count(),
-            "vector_size": self._pv_dim,
+            "vector_size": 400,
         }
         for key, value in common_kwargs.items():
             dbow_kwargs.setdefault(key, value)
@@ -41,19 +46,30 @@ class Doc2VecIMDB(ExperimentalModel):
         # Arguments to match the Paragraph Vector paper
         self._doc2vec = Doc2Vec(
             log_dir=log_dir,
+            use_dm=use_dm,
+            use_dbow=use_dbow,
             dm_kwargs=dm_kwargs,
             dbow_kwargs=dbow_kwargs,
         )
         self._cls_head = tf.keras.Sequential(
             [
-                tf.keras.layers.Input(self._pv_dim * 2),
-                tf.keras.layers.Dense(50, activation=tf.nn.relu),
+                tf.keras.layers.Input(
+                    dm_kwargs["vector_size"] * int(use_dm)
+                    + dbow_kwargs["vector_size"] * int(use_dbow)
+                ),
+                tf.keras.layers.Dense(
+                    cls_head_hidden_units,
+                    activation=cls_head_activation,
+                ),
+                tf.keras.layers.Dropout(cls_head_dropout),
                 tf.keras.layers.Dense(1, activation=tf.nn.sigmoid),
             ]
         )
         self._cls_head.compile(
             optimizer=tf.keras.optimizers.Adam(cls_head_learning_rate),
-            loss=tf.keras.losses.BinaryCrossentropy(),
+            loss=tf.keras.losses.BinaryCrossentropy(
+                label_smoothing=cls_head_label_smoothing
+            ),
             metrics=[tf.keras.metrics.BinaryAccuracy()],
         )
 

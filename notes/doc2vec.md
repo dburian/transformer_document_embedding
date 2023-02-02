@@ -42,3 +42,4 @@ The loss is again cross-entropy.
 During training the weights of the hidden layer are learned while in prediction
 are fixed.
 
+

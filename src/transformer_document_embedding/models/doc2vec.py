@@ -52,8 +52,11 @@ class EmbeddingDifferencesCallback(CallbackAny2Vec):
                 mean_distance = np.mean(distances)
                 std_distance = np.std(distances)
                 logging.info(
-                    f"{self._scalar_name}, Epoch {self._epoch}:"
-                    f" {mean_distance:.5f}+-{std_distance:.5f}"
+                    "%s, Epoch %s: %.5f+-%.5f",
+                    self._scalar_name,
+                    self._epoch,
+                    mean_distance,
+                    std_distance,
                 )
                 tf.summary.scalar(
                     f"{self._scalar_name}_mean", mean_distance, self._epoch
@@ -81,6 +84,8 @@ class Doc2Vec(ExperimentalModel):
         self,
         *,
         log_dir: str,
+        use_dm: bool = True,
+        use_dbow: bool = True,
         dm_kwargs: Optional[dict[str, Any]] = None,
         dbow_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
@@ -91,14 +96,24 @@ class Doc2Vec(ExperimentalModel):
         if dbow_kwargs is None:
             dbow_kwargs = {}
 
-        self._dm = doc2vec.Doc2Vec(
-            dm_tag_count=1,
-            **dm_kwargs,
+        self._dm = (
+            doc2vec.Doc2Vec(
+                dm_tag_count=1,
+                **dm_kwargs,
+            )
+            if use_dm
+            else None
         )
-        self._dbow = doc2vec.Doc2Vec(
-            dm=0,
-            **dbow_kwargs,
+        self._dbow = (
+            doc2vec.Doc2Vec(
+                dm=0,
+                **dbow_kwargs,
+            )
+            if use_dbow
+            else None
         )
+        self._with_dm = lambda f: f(self._dm) if use_dm else lambda: None
+        self._with_dbow = lambda f: f(self._dbow) if use_dbow else lambda: None
 
     def train(
         self,
@@ -110,42 +125,59 @@ class Doc2Vec(ExperimentalModel):
         )
 
         gensim_corpus = Doc2Vec.GensimCorpus(training_data)
-        self._dm.build_vocab(gensim_corpus)
-        self._dbow.build_vocab(gensim_corpus)
 
-        self._dm.train(
-            gensim_corpus,
-            total_examples=self._dm.corpus_count,
-            callbacks=[dm_callback],
-            epochs=self._dbow.epochs,
+        self._with_dm(lambda dm: dm.build_vocab(gensim_corpus))
+        self._with_dbow(lambda dbow: dbow.build_vocab(gensim_corpus))
+
+        self._with_dm(
+            lambda dm: dm.train(
+                gensim_corpus,
+                total_examples=dm.corpus_count,
+                callbacks=[dm_callback],
+                epochs=dm.epochs,
+            )
         )
-        self._dbow.train(
-            gensim_corpus,
-            total_examples=self._dbow.corpus_count,
-            callbacks=[dbow_callback],
-            epochs=self._dbow.epochs,
+        self._with_dbow(
+            lambda dbow: dbow.train(
+                gensim_corpus,
+                total_examples=dbow.corpus_count,
+                callbacks=[dbow_callback],
+                epochs=dbow.epochs,
+            )
         )
 
     def predict(self, inputs: DataType) -> Iterator[np.ndarray]:
         for doc in inputs:
             doc_id = doc["id"]
-            dm_vector, dbow_vector = None, None
-            if doc_id in self._dm.dv and doc_id in self._dbow.dv:
-                dm_vector, dbow_vector = self._dm.dv[doc_id], self._dbow.dv[doc_id]
+            embedding = []
+            if (self._dm is None or doc_id in self._dm.dv) and (
+                self._dbow is None or doc_id in self._dbow.dv
+            ):
+                if self._dm is not None:
+                    embedding.append(self._dm.dv[doc_id])
+                if self._dbow is not None:
+                    embedding.append(self._dbow.dv[doc_id])
+
             else:
                 words = Doc2Vec._preprocess_text(doc["text"])
-                dm_vector = self._dm.infer_vector(words)
-                dbow_vector = self._dbow.infer_vector(words)
+                if self._dm is not None:
+                    embedding.append(self._dm.infer_vector(words))
+                if self._dbow is not None:
+                    embedding.append(self._dbow.infer_vector(words))
 
-            yield np.concatenate([dm_vector, dbow_vector])
+            yield np.concatenate(embedding)
 
     def save(self, dir_path: str) -> None:
-        self._dm.save(Doc2Vec._get_model_path(dir_path))
-        self._dbow.save(Doc2Vec._get_model_path(dir_path, dm=False))
+        self._with_dm(lambda dm: dm.save(Doc2Vec._get_model_path(dir_path)))
+        self._with_dbow(
+            lambda dbow: dbow.save(Doc2Vec._get_model_path(dir_path, dm=False))
+        )
 
     def load(self, dir_path: str) -> None:
-        self._dm.load(Doc2Vec._get_model_path(dir_path))
-        self._dbow.load(Doc2Vec._get_model_path(dir_path, dm=False))
+        self._with_dm(lambda dm: dm.load(Doc2Vec._get_model_path(dir_path)))
+        self._with_dbow(
+            lambda dbow: dbow.load(Doc2Vec._get_model_path(dir_path, dm=False))
+        )
 
     def _create_training_cbs(
         self, training_data: DataType, num_eval_samples: Optional[int] = None
@@ -194,9 +226,13 @@ class Doc2Vec(ExperimentalModel):
         return os.path.join(dir_path, "dm" if dm else "dbow")
 
     @staticmethod
-    def _preprocess_text(text: str) -> list[str]:
+    def _preprocess_text(
+        text: str,
+        # window: int,
+    ) -> list[str]:
         words = text.split()
-        while len(words) < 9:
-            words.insert(0, "NULL")
-
         return words
+        # while len(words) < window * 2:
+        #     words.insert(0, "NULL")
+
+        # return words

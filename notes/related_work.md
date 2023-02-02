@@ -1,3 +1,4 @@
+[doc2vec]: doc2vec.md
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
 [d/longformer]: doc/longformer.md
 [d/sbert]: doc/sbert.md
@@ -21,12 +22,22 @@
 
 All the sources in the field to give me some inspiration with my thing.
 
-## Models
+## Document embeddings wo/ Transformers
+
+- [Doc2Vec][doc2vec]
+
+## Document embeddings w/ Transformers
+
+- [Self-Supervised Document Similarity][ginzburg_21]
+
+
+## Backbones
 
 - [SBERT][d/sbert]
 - [Longformer][d/longformer]
 - [BigBird 2021][bigbird] - transformer-like architecture for longer sequences
   developed by Google
+
 - [Multi-document tranformer for personality detection][yang_21]
 
 - [Comparison of transformer-like models in classification][dai_22]
@@ -36,7 +47,6 @@ All the sources in the field to give me some inspiration with my thing.
     words in all sentences"
 - [CDLM][cdlm] - Cross-Document Language Modeling - adaptation of Longformer for
   cross-document tasks
-- [Self-Supervised Document Similarity][ginzburg_21]
 
 ## Learning
 
