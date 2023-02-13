@@ -2,11 +2,12 @@ tde_version: 0.0.1
 model:
   module: doc2vec_imdb
   kwargs:
-    cls_head_epochs: 10
-    cls_head_activation: 'relu'
-    cls_head_dropout: 0.5
-    cls_head_label_smoothing: 0.15
-    cls_head_hidden_units: 25
+    cls_head_kwargs:
+      epochs: 10
+      hidden_activation: 'relu'
+      hidden_dropout: 0.5
+      hidden_dim: 25
+      label_smoothing: 0.15
     use_dm: False
     dbow_kwargs:
       vector_size: 100

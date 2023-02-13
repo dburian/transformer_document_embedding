@@ -3,21 +3,20 @@ class ExperimentalTask:
 
     @property
     def train(self):
-        """
-        Returns all training data.
-        """
+        """Returns all training data."""
         raise NotImplementedError()
 
     @property
     def test(self):
-        """
-        Returns testing inputs.
-        """
+        """Returns testing inputs."""
         raise NotImplementedError()
 
-    def evaluate(self, test_predictions) -> dict[str, float]:
-        """
-        Evaluates given test predictions on task-specific metrics.
+    @property
+    def unsupervised(self):
+        """Returns unsupervised inputs."""
+
+    def evaluate(self, pred_batches) -> dict[str, float]:
+        """Evaluates given test predictions on task-specific metrics.
 
         Returns dictionary mapping metric names to their respecitve score.
         """

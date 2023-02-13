@@ -2,7 +2,6 @@
 
 
 """
-
 import functools
 import logging
 import os
@@ -14,8 +13,8 @@ import tensorflow as tf
 from gensim.models import doc2vec
 from gensim.models.callbacks import CallbackAny2Vec
 
-from transformer_document_embedding.models.experimental_model import \
-    ExperimentalModel
+from transformer_document_embedding.layers.experimental_layer import \
+    ExperimentalLayer
 
 DataType = Iterable[Mapping[str, Any]]
 
@@ -67,7 +66,7 @@ class EmbeddingDifferencesCallback(CallbackAny2Vec):
         self._last_embed = new_embed
 
 
-class Doc2Vec(ExperimentalModel):
+class Doc2Vec(ExperimentalLayer):
     """Implementation of Doc2Vec model using the `gensim` package."""
 
     class GensimCorpus:
@@ -183,7 +182,7 @@ class Doc2Vec(ExperimentalModel):
         self, training_data: DataType, num_eval_samples: Optional[int] = None
     ) -> list[CallbackAny2Vec]:
         def reduce_extremes(
-            extremes: tuple[float, float], doc: dict[str, Any]
+            extremes: tuple[float, float], doc: Mapping[str, Any]
         ) -> tuple[float, float]:
             return (
                 min(extremes[0], doc["id"]),
@@ -220,19 +219,13 @@ class Doc2Vec(ExperimentalModel):
     @staticmethod
     def _get_model_path(
         dir_path: str,
-        # pylint disable=invalid-name
+        # pylint: disable=invalid-name
         dm: bool = True,
     ) -> str:
         return os.path.join(dir_path, "dm" if dm else "dbow")
 
     @staticmethod
-    def _preprocess_text(
-        text: str,
-        # window: int,
-    ) -> list[str]:
+    def _preprocess_text(text: str) -> list[str]:
         words = text.split()
-        return words
-        # while len(words) < window * 2:
-        #     words.insert(0, "NULL")
 
-        # return words
+        return words

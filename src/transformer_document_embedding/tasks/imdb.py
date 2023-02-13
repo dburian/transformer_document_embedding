@@ -1,17 +1,14 @@
-from typing import Iterable
+from typing import Iterable, Optional
 
 import numpy as np
 import tensorflow as tf
 from datasets.arrow_dataset import Dataset
-from datasets.combine import concatenate_datasets
-from datasets.dataset_dict import DatasetDict, IterableDatasetDict
-from datasets.iterable_dataset import IterableDataset
 from datasets.load import load_dataset
 
 from transformer_document_embedding.tasks.experimental_task import \
     ExperimentalTask
 
-IMDBData = Dataset | IterableDataset | DatasetDict | IterableDatasetDict
+IMDBData = Dataset
 
 
 class IMDBClassification(ExperimentalTask):
@@ -22,11 +19,10 @@ class IMDBClassification(ExperimentalTask):
     """
 
     def __init__(self, *, data_size_limit: int = -1) -> None:
-        self._train = None
-        self._test = None
-        self._unsuper = None
-        self._all_train = None
-        self._test_inputs = None
+        self._train: Optional[IMDBData] = None
+        self._test: Optional[IMDBData] = None
+        self._unsupervised: Optional[IMDBData] = None
+        self._test_inputs: Optional[IMDBData] = None
         self._data_size_limit = data_size_limit
 
     @property
@@ -36,25 +32,36 @@ class IMDBClassification(ExperimentalTask):
         documents. Each document is dictionary with keys:
             - 'text' (str) - text of the document,
             - 'label' (int) - 1/0 sentiment class index,
-            - 'id' (int) - document id unique among all the documents in the dataset.
         """
-        if self._all_train is None:
-            self._train = load_dataset(
+        if self._train is None:
+            downloaded = load_dataset(
                 "imdb", split=f"train[:{self._data_size_limit}]"
             ).map(
                 lambda _, idx: {"id": idx},
                 with_indices=True,
             )
-            self._unsuper = load_dataset(
+            assert isinstance(
+                downloaded, IMDBData
+            ), f"{IMDBData.__name__}.train: cannot download train split."
+            self._train = downloaded
+
+        return self._train
+
+    @property
+    def unsupervised(self) -> IMDBData:
+        if self._unsupervised is None:
+            downloaded = load_dataset(
                 "imdb", split=f"unsupervised[:{self._data_size_limit}]"
             ).map(
-                lambda _, idx: {"id": idx + len(self._train)},
+                lambda _, idx: {"id": idx + len(self.train)},
                 with_indices=True,
             )
+            assert isinstance(
+                downloaded, IMDBData
+            ), f"{IMDBData.__name__}.unsupervised: cannot download unsupervised split."
+            self._unsupervised = downloaded
 
-            self._all_train = concatenate_datasets([self._train, self._unsuper])
-
-        return self._all_train
+        return self._unsupervised
 
     @property
     def test(self) -> IMDBData:
@@ -62,26 +69,29 @@ class IMDBClassification(ExperimentalTask):
         Returns datasets.Dataset of testing documents. Each document is
         dictionary with keys:
             - 'text' (str) - text of the document,
-            - 'id' (int) - document id unique among all the documents in the dataset.
         """
         if self._test_inputs is None:
-            if self._train is None or self._unsuper is None:
-                self.train
-
-            id_offset = len(self._train) + len(self._unsuper)
-            self._test = load_dataset(
+            id_offset = len(self.train) + len(self.unsupervised)
+            downloaded = load_dataset(
                 "imdb", split=f"test[:{self._data_size_limit}]"
             ).map(
                 lambda _, idx: {"id": idx + id_offset},
                 with_indices=True,
             )
+            assert isinstance(
+                downloaded, IMDBData
+            ), f"{IMDBData.__name__}.test: cannot download test split"
+            self._test = downloaded
+
             self._test_inputs = self._test.remove_columns("label")
 
         return self._test_inputs
 
-    def evaluate(
-        self, test_predictions: Iterable[np.ndarray], batch_size: int = 100
-    ) -> dict[str, float]:
+    def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
+        assert (
+            self._test is not None
+        ), f"{self.__class__}.evaluate() called before generating test data."
+
         metrics = [
             tf.keras.metrics.BinaryCrossentropy(),
             tf.keras.metrics.BinaryAccuracy(),
@@ -94,17 +104,13 @@ class IMDBClassification(ExperimentalTask):
             for met in metrics:
                 met.update_state(y_true, y_pred)
 
-        batch_true, batch_pred = [], []
-        for test_doc, y_pred in zip(self._test, test_predictions):
-            batch_true.append(test_doc["label"])
-            batch_pred.append(y_pred)
+        true_iter = iter(self._test)
+        for pred_batch in pred_batches:
+            true_batch = []
+            while len(true_batch) < len(pred_batch):
+                true_batch.append(next(true_iter))
 
-            if len(batch_true) == batch_size:
-                update_metrics(batch_true, batch_pred)
-                batch_true, batch_pred = [], []
-
-        if len(batch_true) > 0:
-            update_metrics(batch_true, batch_pred)
+            update_metrics(true_batch, pred_batch)
 
         return {met.name: met.result().numpy() for met in metrics}
 

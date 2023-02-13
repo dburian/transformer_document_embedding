@@ -1,7 +1,5 @@
-
-model.kwargs.dm_kwargs.epochs: [14]
-model.kwargs.dbow_kwargs.epochs: [2]
-model.kwargs.dm_kwargs.sample: [1.0e-6]
-model.kwargs.dbow_kwargs.sample: [1.0e-5]
-model.kwargs.dm_kwargs.min_count: [1, 5]
-model.kwargs.dbow_kwargs.min_count: [1, 5]
+# model.kwargs.cls_head_label_smoothing: [0.1, 0.15, 0.2]
+# model.kwargs.cls_head_dropout: [0.1, 0.2, 0.5]
+# model.kwargs.cls_head_hidden_units: [10, 25, 40]
+model.kwargs.dm_kwargs.epochs: [300, 400, 500]
+model.kwargs.dm_kwargs.vector_size: [400]

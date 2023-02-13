@@ -92,7 +92,7 @@ def run_single(
         model.load(load_model_path)
     else:
         logging.info("Training model...")
-        model.train(task.train)
+        model.train(train=task.train, unsupervised=task.unsupervised, test=task.test)
         logging.info("Training done.")
 
     if save_model:

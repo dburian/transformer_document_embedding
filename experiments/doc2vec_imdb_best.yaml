@@ -6,11 +6,11 @@ model:
     dm_kwargs:
       epochs: 20
       negative: 5
-      sample: 1.0e-5
+      sample: 1.0e-6
     dbow_kwargs:
       epochs: 20
       negative: 5
-      sample: 1.0e-5
+      sample: 1.0e-6
 
 task:
   module: imdb

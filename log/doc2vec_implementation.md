@@ -52,13 +52,6 @@ dbow then focus on dm.
 
 #### DBOW
 
-- linear activation on the hidden layer of the classification head performed
-  much better than relu
-
-I suspect that this is caused by the model with relu to be much stronger than
-needed and overfitting. With linear activations classification head pretty much
-stops learning in second epoch with 80% accuracy on training set.
-
 - frequent word subsampling (discussed in detail in [article following
   word2vec][mikolov_2013]) does hurt the performance -- even as small as 1e-6
 
@@ -96,4 +89,6 @@ stops learning in second epoch with 80% accuracy on training set.
 
 #### DM
 
-
+- benefits from much longer training (at 80 epochs currently)
+- with longer training benefits from increased dimension (400 as originally
+  used)

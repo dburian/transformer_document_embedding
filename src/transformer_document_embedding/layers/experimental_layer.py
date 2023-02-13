@@ -3,21 +3,23 @@ from typing import Iterable
 import numpy as np
 
 
-class ExperimentalModel:
-    """Defines the minimal interface for models."""
+class ExperimentalLayer:
+    """Layer of experimental model."""
 
-    def train(self, *, train, unsupervised, test, **kwargs) -> None:
-        """Trains the model.
+    def train(self, training_data) -> None:
+        """Trains on provided data.
 
         Args:
-            - train: training input-output pairs,
-            - unsupervised: unsupervised inputs,
-            - test: testing inputs,
+            training_data: data to be trained on
         """
         raise NotImplementedError()
 
     def predict(self, inputs) -> Iterable[np.ndarray]:
-        """Returns predictions for given `inputs`."""
+        """Predicts outputs on given inputs.
+
+        Args:
+            inputs: inputs to the layer
+        """
         raise NotImplementedError()
 
     def save(self, dir_path: str) -> None:

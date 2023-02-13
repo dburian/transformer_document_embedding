@@ -1,0 +1,20 @@
+tde_version: 0.0.1
+model:
+  module: doc2vec_imdb
+  kwargs:
+    cls_head_epochs: 10
+    cls_head_activation: 'relu'
+    cls_head_dropout: 0.5
+    cls_head_label_smoothing: 0.15
+    cls_head_hidden_units: 25
+    use_dbow: False
+    use_dm: True
+    dm_kwargs:
+      vector_size: 400
+      min_count: 2
+      epochs: 200
+      negative: 5
+      sample: 0
+
+task:
+  module: imdb

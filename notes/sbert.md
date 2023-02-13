@@ -28,8 +28,8 @@ gold labels:
 
 - regression: computing the cosine similarity of the pooling layers' outputs
   with Mean Squared Error loss,
-- classification: softmax layer from concatenation of the two pooling layers'
-  outputs and their difference with Cross-Entropy loss.
+- classification (of pair of sentences): softmax layer from concatenation of the
+  two pooling layers' outputs and their difference to Cross-Entropy loss.
 
 ![SBert Architecture for pairs of inputs][i/sbert_pairs_architectures]
 
