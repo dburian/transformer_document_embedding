@@ -3,11 +3,8 @@ from typing import Iterable, Optional
 import numpy as np
 import tensorflow as tf
 
-from transformer_document_embedding.layers.experimental_layer import \
-    ExperimentalLayer
 
-
-class TensorflowClsHead(ExperimentalLayer):
+class TensorflowClsHead:
     def __init__(
         self,
         *,
@@ -23,7 +20,6 @@ class TensorflowClsHead(ExperimentalLayer):
         label_smoothing: Optional[float] = None,
         batch_size: int,
     ) -> None:
-        super().__init__()
         self._epochs = epochs
         self._log_dir = log_dir
         self._batch_size = batch_size
@@ -68,10 +64,12 @@ class TensorflowClsHead(ExperimentalLayer):
         )
 
     def predict(self, inputs: tf.data.Dataset) -> Iterable[np.ndarray]:
-        return self._model(inputs).numpy()
+        return self._model.predict(inputs)
 
     def save(self, dir_path: str) -> None:
         self._model.save(dir_path)
 
     def load(self, dir_path: str) -> None:
-        self._model = tf.keras.models.load_model(dir_path)
+        loaded_model = tf.keras.models.load_model(dir_path)
+        assert loaded_model is not None
+        self._model = loaded_model

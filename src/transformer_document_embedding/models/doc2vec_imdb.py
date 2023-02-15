@@ -97,11 +97,15 @@ class Doc2VecIMDB(ExperimentalModel):
 
     @staticmethod
     def _doc2vec_dir_path(dir_path: str) -> str:
-        return os.path.join(dir_path, "doc2vec")
+        doc2vec_path = os.path.join(dir_path, "doc2vec")
+        os.makedirs(doc2vec_path, exist_ok=True)
+        return doc2vec_path
 
     @staticmethod
     def _cls_head_dir_path(dir_path: str) -> str:
-        return os.path.join(dir_path, "cls_head")
+        cls_path = os.path.join(dir_path, "cls_head")
+        os.makedirs(cls_path, exist_ok=True)
+        return cls_path
 
     def _cls_head_dataset(
         self, data: IMDBData, training: bool = True
@@ -112,7 +116,7 @@ class Doc2VecIMDB(ExperimentalModel):
 
         if training:
             labels_ds = data.to_tf_dataset(1, columns=["label"]).unbatch()
-            ds = tf.data.Dataset.zip(ds, labels_ds)
+            ds = tf.data.Dataset.zip((ds, labels_ds), name="some_name")
 
         ds = ds.shuffle(25000) if training else ds
         ds = ds.batch(self._cls_head.batch_size)

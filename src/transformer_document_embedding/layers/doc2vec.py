@@ -13,9 +13,6 @@ import tensorflow as tf
 from gensim.models import doc2vec
 from gensim.models.callbacks import CallbackAny2Vec
 
-from transformer_document_embedding.layers.experimental_layer import \
-    ExperimentalLayer
-
 DataType = Iterable[Mapping[str, Any]]
 
 
@@ -66,7 +63,7 @@ class EmbeddingDifferencesCallback(CallbackAny2Vec):
         self._last_embed = new_embed
 
 
-class Doc2Vec(ExperimentalLayer):
+class Doc2Vec:
     """Implementation of Doc2Vec model using the `gensim` package."""
 
     class GensimCorpus:
@@ -167,15 +164,15 @@ class Doc2Vec(ExperimentalLayer):
             yield np.concatenate(embedding)
 
     def save(self, dir_path: str) -> None:
-        self._with_dm(lambda dm: dm.save(Doc2Vec._get_model_path(dir_path)))
+        self._with_dm(lambda dm: dm.save(Doc2Vec._get_model_path(dir_path, is_dm=True)))
         self._with_dbow(
-            lambda dbow: dbow.save(Doc2Vec._get_model_path(dir_path, dm=False))
+            lambda dbow: dbow.save(Doc2Vec._get_model_path(dir_path, is_dm=False))
         )
 
     def load(self, dir_path: str) -> None:
-        self._with_dm(lambda dm: dm.load(Doc2Vec._get_model_path(dir_path)))
+        self._with_dm(lambda dm: dm.load(Doc2Vec._get_model_path(dir_path, is_dm=True)))
         self._with_dbow(
-            lambda dbow: dbow.load(Doc2Vec._get_model_path(dir_path, dm=False))
+            lambda dbow: dbow.load(Doc2Vec._get_model_path(dir_path, is_dm=False))
         )
 
     def _create_training_cbs(
@@ -217,12 +214,8 @@ class Doc2Vec(ExperimentalLayer):
         return [dm_callback, dbow_callback]
 
     @staticmethod
-    def _get_model_path(
-        dir_path: str,
-        # pylint: disable=invalid-name
-        dm: bool = True,
-    ) -> str:
-        return os.path.join(dir_path, "dm" if dm else "dbow")
+    def _get_model_path(dir_path: str, is_dm: bool) -> str:
+        return os.path.join(dir_path, "dm" if is_dm else "dbow")
 
     @staticmethod
     def _preprocess_text(text: str) -> list[str]:

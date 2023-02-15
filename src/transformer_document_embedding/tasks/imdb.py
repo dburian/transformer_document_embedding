@@ -108,7 +108,7 @@ class IMDBClassification(ExperimentalTask):
         for pred_batch in pred_batches:
             true_batch = []
             while len(true_batch) < len(pred_batch):
-                true_batch.append(next(true_iter))
+                true_batch.append(next(true_iter)["label"])
 
             update_metrics(true_batch, pred_batch)
 

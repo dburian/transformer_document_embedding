@@ -4,6 +4,20 @@ We will regularly add new *tasks* and new *models*. We want easy, reliable,
 streamlined way how to test given model on given task. Something lean, flexible,
 yet powerful.
 
+## TLDR;
+
+We'll have model classes per each (task, model) pair. Code duplication will be
+resolved by using layers with their specific format.
+
+The interface to the layers is left ununified because why not. The idea is to
+leave layers as bare bones as possible.
+
+The model's responsibility is to transform data and direct training and provide
+`experiments/run` with nice high level interface.
+
+Tasks data will be left in its natural state, though, hf `datasets` seems like a
+very good choice.
+
 ### Dataset and model problems
 
 In order to design the interfaces for model and task we need to solve two

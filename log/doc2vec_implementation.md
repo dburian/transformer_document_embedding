@@ -87,6 +87,9 @@ dbow then focus on dm.
     | 'relu'              |  0.5            | 0.20                    | 25                   | 0.87071              |
 
 
+- finally adding also the `test` split for doc2vec training achieved 0.8959,
+  which is even better than gensim's recreation of the experiment.
+
 #### DM
 
 - benefits from much longer training (at 80 epochs currently)
