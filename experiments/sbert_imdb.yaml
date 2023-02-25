@@ -1,0 +1,8 @@
+tde_version: 0.0.1
+model:
+  module: sbert_imdb
+  kwargs:
+    epochs: 10
+
+task:
+  module: imdb

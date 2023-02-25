@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Iterable, Sequence
 
 import numpy as np
 import tensorflow as tf
@@ -6,23 +6,21 @@ import torch
 from sentence_transformers import InputExample, SentenceTransformer, models
 from torch.utils.data import DataLoader
 
-from transformer_document_embedding.models.experimental_model import \
-    ExperimentalModel
+from transformer_document_embedding.models.experimental_model import ExperimentalModel
 from transformer_document_embedding.tasks.imdb import IMDBData
 
 
 class SBertIMDB(ExperimentalModel):
-def __init__(
-    self,
-    log_dir: str,
-    transformer_model: str = "bert-base-uncased",
-    import numpy as np
-    max_seq_length: int = 512,
-    batch_size: int = 64,
-    epochs: int = 10,
-    warmup_steps: int = 10000,
-) -> None:
-    self._batch_size = batch_size
+    def __init__(
+        self,
+        log_dir: str,
+        transformer_model: str = "bert-base-uncased",
+        max_seq_length: int = 512,
+        batch_size: int = 64,
+        epochs: int = 10,
+        warmup_steps: int = 10000,
+    ) -> None:
+        self._batch_size = batch_size
         self._epochs = epochs
         self._warmup_steps = warmup_steps
 
@@ -43,8 +41,8 @@ def __init__(
         self._loss = SentTransformerBCELoss(self._sent_transformer)
         self._train_logger = SentLogger(log_dir, "loss")
 
-    def train(self, *, train: IMDBData, unsupervised: IMDBData, test: IMDBData) -> None:
-        training_data = self._to_sent_transformer_inputs(train, training=True)
+    def train(self, *, train: IMDBData, **_) -> None:
+        training_data = self._to_sent_transformer_inputs(train)
 
         self._sent_transformer.fit(
             train_objectives=[(training_data, self._loss)],
@@ -53,10 +51,19 @@ def __init__(
             callback=self._train_logger,
         )
 
-    def predict(self, inputs: IMDBData) -> np.ndarray:
-        pass
+    def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:
+        for input_batch in inputs.iter(self._batch_size):
+            yield self._sent_transformer.encode(
+                input_batch["text"], convert_to_numpy=True
+            )
 
-    def _to_sent_transformer_inputs(self, data: IMDBData, training: bool) -> DataLoader:
+    def save(self, dir_path: str) -> None:
+        self._sent_transformer.save(dir_path)
+
+    def load(self, dir_path: str) -> None:
+        self._sent_transformer = SentenceTransformer(dir_path)
+
+    def _to_sent_transformer_inputs(self, data: IMDBData) -> DataLoader:
         inputs = [InputExample(texts=[doc["text"]], label=doc["label"]) for doc in data]
         return DataLoader(inputs, batch_size=self._batch_size, shuffle=True)
 
@@ -83,3 +90,6 @@ class SentTransformerBCELoss(torch.nn.Module):
         pred_labels = self._sent_transformer(inputs[0])["sentence_embedding"]
         pred_labels = pred_labels[:, 0]
         return self._loss_fn(pred_labels, labels.float())
+
+
+Model = SBertIMDB
