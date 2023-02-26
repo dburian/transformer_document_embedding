@@ -13,7 +13,7 @@ model:
     dm_kwargs:
       vector_size: 400
       min_count: 2
-      epochs: 200
+      epochs: 800
       negative: 5
       sample: 0
 

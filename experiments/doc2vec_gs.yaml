@@ -1,5 +1,5 @@
 # model.kwargs.cls_head_label_smoothing: [0.1, 0.15, 0.2]
 # model.kwargs.cls_head_dropout: [0.1, 0.2, 0.5]
 # model.kwargs.cls_head_hidden_units: [10, 25, 40]
-model.kwargs.dm_kwargs.epochs: [600, 800, 1000]
-# model.kwargs.dm_kwargs.vector_size: [400]
+# model.kwargs.dm_kwargs.epochs: [600, 800, 1000]
+model.kwargs.dm_kwargs.vector_size: [400, 100]

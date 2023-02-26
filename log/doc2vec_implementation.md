@@ -55,26 +55,26 @@ dbow then focus on dm.
 - frequent word subsampling (discussed in detail in [article following
   word2vec][mikolov_2013]) does hurt the performance -- even as small as 1e-6
 
-    dbow_kwargs.sample = 0
+    - dbow_kwargs.sample = 0
 
 - decreasing vector size to 100 does not hurt the performance (performed
   slightly better than original 400)
 
-    dbow_kwargs.vector_size = 100
+    - dbow_kwargs.vector_size = 100
 
 - using min_count = 2 (throwing away any words appearing only in a single
   document) saves memory and does not hurt performance
 
-    dbow_kwargs.min_count = 2
+    - dbow_kwargs.min_count = 2
 
 - from 20 to 30 epochs only a slight improvement (1% in accuracy) suggesting
   that we've reached the maximal potential of DBOW
 
-    dbow_kwargs.epochs = 30
+    - dbow_kwargs.epochs = 30
 
 - 10 epochs for classification head is plenty, 15 worsen the score a bit
 
-    cls_head_epochs = 10
+    - cls_head_epochs = 10
 
 - the model overfits on its own -- classification activation, number of hidden
   units, dropout and label smoothing needs to be balanced
@@ -92,6 +92,36 @@ dbow then focus on dm.
 
 #### DM
 
-- benefits from much longer training (at 80 epochs currently)
-- with longer training benefits from increased dimension (400 as originally
-  used)
+- only tested with the best arguments for dbow, for which it was reasonable to
+  assume same values would be beneficial as well:
+
+    - dm_kwargs.sample = 0
+    - dm_kwargs.min_count = 2
+    - dm_kwargs.negative = 5.0
+    - cls_head_kwargs.epochs = 10
+    - cls_head_kwargs.label_smoothing = 0.15
+    - cls_head_kwargs.hidden_dim = 25
+    - cls_head_kwargs.hidden_activation = 'relu'
+    - cls_head_kwargs.hidden_dropout = 0.5
+
+- benefits from much longer training, which may not be as long if we tried also
+  100 vector size. Initially I decided larger embed. dim is beneficial, but
+  looking at the results, I now realize it is not entirely convincing.
+
+    | dm_kwargs.vector_size | dm_kwargs.epochs | test_binary_accuracy |
+    | --------------------- | ---------------- | -------------------- |
+    | 400                   | 60               | 0.66391              |
+    | 100                   | 80               | 0.66163              |
+    | 400                   | 600              | 0.85831              |
+    | 400                   | 800              | 0.86507              |
+    | 400                   | 1000             | 0.86187              |
+
+- This was before I introduced test set to training:
+
+    | dm_kwargs.vector_size | dm_kwargs.epochs | test_binary_accuracy |
+    | --------------------- | ---------------- | -------------------- |
+    | 100                   | 800              | 0.85895              |
+    | 400                   | 800              | 0.8606               |
+
+So clearly benefits of larger vector size are marginal. Disappointedly test
+split did not do much.
