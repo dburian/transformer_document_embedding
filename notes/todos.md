@@ -1,8 +1,5 @@
-
 # TODOs
 
-- [ ] Baseline research
-- [ ] Define baselines
-- [ ] Write tasks' descriptions
-- [ ] Code IMDB task
+- [ ] STS and Spearman's correlation
+- [ ] Split pyproject installations to optional dependencies based on framework
 
