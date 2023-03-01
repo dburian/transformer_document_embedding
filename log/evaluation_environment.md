@@ -1,3 +1,5 @@
+[experiment_config]: experiment_config.md
+
 # Evaluation environment
 
 We will regularly add new *tasks* and new *models*. We want easy, reliable,
@@ -6,17 +8,33 @@ yet powerful.
 
 ## TLDR;
 
-We'll have model classes per each (task, model) pair. Code duplication will be
-resolved by using layers with their specific format.
+I keep coming back to this, as I write more code I realize that it is really not
+that important.
 
-The interface to the layers is left ununified because why not. The idea is to
-leave layers as bare bones as possible.
+We have 3 types of entities:
 
-The model's responsibility is to transform data and direct training and provide
-`experiments/run` with nice high level interface.
+- `task` -- defines the data, splits, evaluation metrics
+- `model` -- the catch-all of code, trains, predicts and is able to be saved and
+  loaded
+- `layer` -- layer for particular framework, with minimal logic, only there to
+  reuse code
 
-Tasks data will be left in its natural state, though, hf `datasets` seems like a
-very good choice.
+`task` has unified API defined by `ExperimentalTask` and returns data as HF
+dataset.
+
+`model` has unified API defined by `ExperimentalModel` and should be able to
+process HF dataset on the input.
+
+`layer` is a layer created by subclassing (e.g. inheriting from `tf.keras.Model`
+or `torch.nn.Module`) and therefore has all the nice methods we could ever ask
+for.
+
+
+Each `model` will have configuration options, that can be set by using
+[experiment configuration][experiment_config]. Combining tasks and models should
+not therefore be too hard, but we'll see.
+
+## How did I get to TLDR?
 
 ### Dataset and model problems
 
@@ -29,15 +47,23 @@ problems: dataset and model problem.
 - **Model problem**: Each model will most probably have to be adapted for each
   task. From hyperparameters to different heads.
 
-The model problem seems unsolvable. We can get around code duplication with
-sub-classing and using submodules. If we accept this, suddenly we solve the
-dataset problem as well. Each task will have the natural format and the models
-tailored for the particular task will accept the given data format.
+So both are technically true, though I think I inflate both problems.
 
-Obviously there are more ways how to design the interfaces but this to me seems
-intuitive. I should be on the lookout for sub-classing just for the purpose of
-data transformation. Then I need to think of another solution. Perhaps creating
-transformation pipelines.
+#### Dataset problem
+
+Datasets are either prepared or not. If yes we can easily load them to single
+format and we are done. The format chosen is HF datasets (why? in later
+section). If a dataset is not prepared, we should probably prepare it beforehand
+and save it.
+
+#### Model problem
+
+Typically a particular model will be different for each type of task, but the
+versions will share a common backbone. Usually the models I will use will come
+from third parties, which means I will be able to easily add layers, train them
+and predict with them with little code. Ergo I will create models as I go, but
+with the help of [experiment configuration][experiment_config] there shouldn't
+be so many.
 
 ### Result of evaluation
 
@@ -47,6 +73,7 @@ There is the question what should I remember from the given experiment.
   tool, which is that easy to use and helpful.
 - dict of final scores for each metric: this is obvious. I need some numbers in
   my latex tables.
+- saved models: only sometimes
 
 Maybe there will be other things I need (like graphs train size to evaluation
 metrics).
@@ -115,3 +142,13 @@ predictions, which would have to be in every model.
 
 This is from experience. Some models do unsupervised training on all inputs.
 
+- in defence of HF dataset format
+
+HF dataset is great because:
+    - it has all kinds of useful transformations,
+    - it can be loaded from all kinds of files,
+    - it is sharable (so if some dataset is not in this format I can create it and
+    publish it)
+    - it should work with all transformers in HF out of the box
+    - it has documentation (though hard to navigate)
+    - caching

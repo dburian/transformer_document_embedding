@@ -10,14 +10,13 @@ loss is applied above.
 
 ## Classification
 
-For classification of individual texts exist several options:
+For classification I use single layer with 1 output with Sigmoid activation. I
+should rewrite it to a network with hidden layer.
 
-- using softmax classification head on top of pooling
 
-Probably the easiest option, though I would need to delve into pytorch.
+## Hardware requirements
 
-- using `ContrastiveLoss` or `OnlineContrastiveLoss`
+As far as I know we are hitting the max performence of the GPUs in AIC.
 
-- using some kind of triplet loss
-
-Requires tuning the `margin` parameter. Also I should read into it more.
+- 64 batches were OOM
+- 2 batches used around 25% memory

@@ -12,7 +12,6 @@
 [medic_22]: https://arxiv.org/pdf/2209.05452.pdf
 [xiong_20]: https://arxiv.org/abs/2007.00808
 [ir_datasets]: https://ir-datasets.com/index.html
-[reimers_20]: https://aclanthology.org/2020.emnlp-main.365.pdf
 [hammerl_22]: https://aclanthology.org/2022.findings-acl.182.pdf
 [timekey_21]: https://vansky.github.io/assets/pdf/timkey_vanschijndel-2021-emnlp.pdf
 [rajaee_22]: https://aclanthology.org/2022.findings-acl.103.pdf
@@ -85,8 +84,6 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
 ## To read
 
 - distillation learning:
-    - do something like this [Making Monolingual Sentence Embeddings
-      Multilingual using Knowledge Distillation][reimers_20].
     - read about DCCA loss [Combining Static and Contextualised Multilingual
       Embeddings][hammerl_22].
     - be aware of cosine distance as a metric [All Bark and No Bite: Rogue

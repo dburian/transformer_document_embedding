@@ -68,10 +68,38 @@ too long the work prolongs like crazy.
 # Paper TOC
 
 1. Introduction
+
+- what we are aiming to do
+- why is it useful
+
 2. Related work
-3. Tasks
+
+- what has been done
+- approaches to our problem
+- mention models we will use
+
+3. Benchmarks
+    1. Tasks
+
+        - define tasks
+        - why I've chosen this task?
+
+    2. Models
+
+        - describe models
+
 4. My model
+
+- explain the architecture and reasons behind it
+- learning and pitfalls
+
 5. Evaluation
+
+- overview of the experiments and results
+- why my model scored low or high?
+
 6. Conclusion
+
+- what is the result of my work
 
 

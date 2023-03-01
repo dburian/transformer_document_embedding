@@ -16,6 +16,7 @@
 [cdlm]: https://aclanthology.org/2021.findings-emnlp.225
 [ginzburg_21]: https://arxiv.org/pdf/2106.01186.pdf
 [shroff_15]: https://arxiv.org/abs/1503.03832
+[child_19]: https://arxiv.org/abs/1904.10509
 
 
 # Related work
@@ -35,8 +36,7 @@ All the sources in the field to give me some inspiration with my thing.
 
 - [SBERT][d/sbert]
 - [Longformer][d/longformer]
-- [BigBird 2021][bigbird] - transformer-like architecture for longer sequences
-  developed by Google
+- [BigBird 2021][bigbird] 
 
 - [Multi-document tranformer for personality detection][yang_21]
 
@@ -47,6 +47,11 @@ All the sources in the field to give me some inspiration with my thing.
     words in all sentences"
 - [CDLM][cdlm] - Cross-Document Language Modeling - adaptation of Longformer for
   cross-document tasks
+
+## Theory
+
+- [BigBird 2021][bigbird]
+- [Sparse transformers by OpenAI][child_19]
 
 ## Learning
 

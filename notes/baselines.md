@@ -37,6 +37,8 @@ possible.
 > (Pennington et al., 2014).
 > (for example: May et al. (2019); Zhang et al. (2019); Qiao et al. (2019)).
 
+TODO: LASER
+
 ## SOTAs
 
 - [Longformer][d/longformer]
