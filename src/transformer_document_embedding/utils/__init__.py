@@ -1,1 +1,1 @@
-from . import sentence_transformers
+from . import sentence_transformers, torch

@@ -4,6 +4,7 @@ import tensorflow as tf
 import torch
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.evaluation import SentenceEvaluator
+import pynvml
 
 
 class LossEvaluator(SentenceEvaluator):
@@ -101,3 +102,26 @@ class AccuracyEvaluator(SentenceEvaluator):
             tf.summary.scalar("accuracy", accuracy, step=epoch)
 
         return accuracy
+
+
+class VMemEvaluator(SentenceEvaluator):
+    def __init__(
+        self, log_dir: str, *, gpu_index: int = 0, name: str = "used_vmem_MB"
+    ) -> None:
+        pynvml.nvmlInit()
+        self._writer = tf.summary.create_file_writer(log_dir)
+        self._name = name
+        self._handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_index)
+
+    def __call__(
+        self,
+        model: SentenceTransformer,
+        output_path: Optional[str] = None,
+        epoch: int = -1,
+        step: int = -1,
+    ) -> float:
+        info = pynvml.nvmlDeviceGetMemoryInfo(self._handle)
+        used_MB = info.used // 1024**2
+        with self._writer.as_default():
+            tf.summary.scalar(self._name, used_MB, epoch)
+        return 0
