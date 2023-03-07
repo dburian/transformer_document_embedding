@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable
+from typing import Iterable, Optional, Any
 
 import numpy as np
 import torch
@@ -7,18 +7,20 @@ from sentence_transformers import (
     InputExample,
     SentenceTransformer,
     datasets,
-    models,
     evaluation,
+    models,
 )
 
 from torch.utils.data import DataLoader
 
 from transformer_document_embedding.models.experimental_model import ExperimentalModel
 from transformer_document_embedding.tasks.imdb import IMDBData
-from transformer_document_embedding.utils import sentence_transformers as tde_st_utils
+import transformer_document_embedding.utils.sentence_transformers as tde_st_utils
+import transformer_document_embedding.utils.torch as torch_utils
 
 
 class SBertIMDB(ExperimentalModel):
+    # When I need this again, lets put it in some utils module
     class STDataset(torch.utils.data.Dataset):
         def __init__(self, hf_dataset: datasets.Dataset) -> None:
             self._hf_dataset = hf_dataset
@@ -37,25 +39,61 @@ class SBertIMDB(ExperimentalModel):
         batch_size: int = 64,
         epochs: int = 10,
         warmup_steps: int = 10000,
+        cls_head_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
-
         self._batch_size = batch_size
         self._epochs = epochs
         self._warmup_steps = warmup_steps
 
-        sent_transformer = SentenceTransformer(transformer_model)
-        embed_dim = sent_transformer.get_sentence_embedding_dimension()
-        # TODO: What is this??
-        cls_head = models.Dense(
-            in_features=embed_dim,
-            out_features=1,
-            activation_function=torch.nn.Sigmoid(),
+        modules = []
+
+        transformer = SentenceTransformer(transformer_model)
+        embed_dim = transformer.get_sentence_embedding_dimension()
+        modules.append(transformer)
+
+        if cls_head_kwargs is None:
+            cls_head_kwargs = {}
+
+        cls_head_config = {
+            "hidden_features": 25,
+            "hidden_dropout": 0.5,
+            "hidden_activation": "relu",
+        }
+        cls_head_config.update(cls_head_kwargs)
+
+        # We cannot use torch module because of complications with
+        # saving/loading. It definitely could be done -- create a wrapper
+        # capable of wrapping every torch.nn.Module, but it would have to be
+        # capable of reinitializing the wrapped module inside its static class
+        # -- but is is easier this way.
+        if cls_head_config["hidden_features"] > 0:
+            modules.append(
+                models.Dense(
+                    in_features=embed_dim,
+                    out_features=cls_head_config["hidden_features"],
+                    activation_function=torch_utils.get_activation(
+                        cls_head_config["hidden_activation"]
+                    )(),
+                )
+            )
+            if cls_head_config["hidden_dropout"] > 0:
+                modules.append(models.Dropout(cls_head_config["hidden_dropout"]))
+
+        last_in_features = (
+            cls_head_config["hidden_features"]
+            if cls_head_config["hidden_features"] > 0
+            else embed_dim
         )
-        self._model = SentenceTransformer(
-            modules=[sent_transformer, cls_head],
-            device=self._device,
+        modules.append(
+            models.Dense(
+                in_features=last_in_features,
+                out_features=1,
+                activation_function=torch.nn.Sigmoid(),
+            )
         )
+
+        self._model = SentenceTransformer(modules=modules, device=self._device)
 
         self._log_dir = log_dir
         self._loss = tde_st_utils.losses.BCELoss(self._model)
@@ -73,7 +111,10 @@ class SBertIMDB(ExperimentalModel):
         accuracy_evaluator = tde_st_utils.evaluation.AccuracyEvaluator(
             train, self._log_dir, batch_size=self._batch_size
         )
-        evaluator = evaluation.SequentialEvaluator([loss_evaluator, accuracy_evaluator])
+        vmem_evaluator = tde_st_utils.evaluation.VMemEvaluator(self._log_dir)
+        evaluator = evaluation.SequentialEvaluator(
+            [loss_evaluator, vmem_evaluator, accuracy_evaluator]
+        )
 
         self._model.fit(
             train_objectives=[(training_data, self._loss)],
