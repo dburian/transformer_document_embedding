@@ -1,2 +1,4 @@
 # Ignoring IMDB dataset
 aclImdb
+logs
+model
