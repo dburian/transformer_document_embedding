@@ -21,12 +21,6 @@ dependencies = [
 [project.scripts]
 run-experiment = "transformer_document_embedding.experiments.run:main"
 
-[project.optional-dependencies]
-dev = [
-  "jupyter>=1.0",
-  "jupyter-ascending>=0.1",
-]
-
 [project.urls]
 homepage = "https://github.com/dburian/transformer_document_embedding"
 repository = "https://github.com/dburian/transformer_document_embedding"
