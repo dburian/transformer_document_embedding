@@ -92,7 +92,7 @@ class AccuracyEvaluator(SentenceEvaluator):
             true = batch["label"].to(pred.device)
 
             correct += torch.sum(pred == true)
-            total += len(batch)
+            total += true.size(dim=0)
 
         correct = correct.numpy(force=True)
 

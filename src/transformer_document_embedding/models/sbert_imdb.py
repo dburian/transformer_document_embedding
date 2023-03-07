@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Iterable, Optional, Any
 
 import numpy as np
+from tensorflow.python.ops.math_ops import to_double
 import torch
 from sentence_transformers import (
     InputExample,
@@ -102,9 +103,6 @@ class SBertIMDB(ExperimentalModel):
         )
 
     def train(self, *, train: IMDBData, **_) -> None:
-        train_size = len(train)
-        training_data = self._to_st_dataset(train)
-
         # TODO: Could be done more efficiently, not to have the network encode
         # the same set of text twice.
         loss_evaluator = tde_st_utils.evaluation.LossEvaluator(
@@ -123,6 +121,8 @@ class SBertIMDB(ExperimentalModel):
             [loss_evaluator, vmem_evaluator, accuracy_evaluator]
         )
 
+        train_size = len(train)
+        training_data = self._to_st_dataset(train)
         self._model.fit(
             train_objectives=[(training_data, self._loss)],
             epochs=self._epochs,
@@ -138,6 +138,7 @@ class SBertIMDB(ExperimentalModel):
                 batch["text"],
                 batch_size=self._batch_size,
                 convert_to_numpy=True,
+                show_progress_bar=False,
             )
 
     def save(self, dir_path: str) -> None:
