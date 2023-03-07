@@ -36,9 +36,10 @@ class SBertIMDB(ExperimentalModel):
         self,
         log_dir: str,
         transformer_model: str = "all-distilroberta-v1",
-        batch_size: int = 64,
+        batch_size: int = 37,
         epochs: int = 10,
         warmup_steps: int = 10000,
+        label_smoothing: float = 0.15,
         cls_head_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -96,15 +97,21 @@ class SBertIMDB(ExperimentalModel):
         self._model = SentenceTransformer(modules=modules, device=self._device)
 
         self._log_dir = log_dir
-        self._loss = tde_st_utils.losses.BCELoss(self._model)
+        self._loss = tde_st_utils.losses.BCELoss(
+            self._model, label_smoothing=label_smoothing
+        )
 
     def train(self, *, train: IMDBData, **_) -> None:
         train_size = len(train)
         training_data = self._to_st_dataset(train)
 
+        # TODO: Could be done more efficiently, not to have the network encode
+        # the same set of text twice.
         loss_evaluator = tde_st_utils.evaluation.LossEvaluator(
             train,
             self._log_dir,
+            # TODO: Not the same loss as is used during training, due to
+            # label_smoothing
             torch.nn.BCELoss(),
             batch_size=self._batch_size,
         )
