@@ -3,13 +3,16 @@
 
 # Training transformers manually
 
+## Observations
+
 From deep learning course:
 - when training from scratch:
     - Adam with $\beta_2 = 0.98$
     - learning rate $\alpha = \frac{1}{\sqrt{d_{model}}} min \Big(\frac{1}{\sqrt{step\_num}}, \frac{step\_num}{warmup\_steps} \frac{1}{\sqrt{warmup\_steps}} \Big)$
         - Linear warmup until $warmup\_steps$ to 1, then decay
-- for finetuning freeze the base model for first few iterations
-    - in pytorch with `torch.nn.Module.requires_grad_(False)`
+- finetuning models is usually done with learning rate wramup to avoid diverging
+  with random classifier weights. The alternative is to freeze the base model
+  for first few iterations (in PyTorch `torch.nn.Module.requires_grad_(False)`).
 
 My hunch that I will forget to:
 - call `model.train(True)` before starting training and `model.train(False)` or
@@ -49,6 +52,14 @@ From Trainer:
 
 From Torch documentation on mixed precision -- gradient scaling and autocast:
 - typical training step:
+    ```python
+    output = net(input)
+    loss = loss_fn(output, target)
+    loss.backward()
+    opt.step()
+    opt.zero_grad()
+    ```
+- typical training step w/ mixed precision:
     ```python
     optimizer.zero_grad()
 

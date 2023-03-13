@@ -79,7 +79,9 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
 
 
 - [Testing article encoders for recommendation][medic_22]
-- [Contrative learning for Dense Representations][xiong_20]
+- [Contrative learning for Dense Representations][xiong_20] -- learning dense
+  representations for document retrieval using contrastive loss (i.e. choosing
+  hard negatives effectively).
 
 ## To read
 
@@ -91,6 +93,7 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
       Quality][timekey_21] and [An Isotropy Analysis in the Multilingual BERT
       Embedding Space][rajaee_22].
 - XLM-R
+- 
 
 ## Ideas
 
