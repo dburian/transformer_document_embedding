@@ -4,6 +4,7 @@
 [reformer]: https://arxiv.org/pdf/2001.04451.pdf
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
 [reimers_20]: https://aclanthology.org/2020.emnlp-main.365.pdf
+[distilbert]: https://arxiv.org/pdf/1910.01108.pdf
 
 # Approach
 
@@ -31,7 +32,12 @@ to tell us something about the long document, while also adding some interesting
 information about small texts (with the data we have). Training to mimic the
 outputs of another model is called *knowledge distillation*.
 
-This was already done by [Reimers 2020][reimers_20]
+This was already done by [Reimers 2020][reimers_20], where the authors used
+distillation to make monolingual embeddings multilingual using parallel data.
+
+Also see the [DistilBert][distilbert], where the authors used loss which
+combined LM, distillation and cosine-distance losses.
+
 
 ### Contrastive learning
 

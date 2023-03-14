@@ -1,8 +1,8 @@
+[bigbird]: bigbird.md
 [doc2vec]: doc2vec.md
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
-[d/longformer]: doc/longformer.md
+[longformer]: longformer.md
 [d/sbert]: doc/sbert.md
-[bigbird]: https://arxiv.org/abs/2007.14062
 [dai_22]: https://arxiv.org/abs/2204.06683
 [tian_20]: https://proceedings.neurips.cc/paper/2020/hash/4c2e5eaae9152079b9e95845750bb9ab-Abstract.html
 [yang_21]: https://ojs.aaai.org/index.php/AAAI/article/view/17673
@@ -23,6 +23,7 @@
 [pappagari_19]: https://ieeexplore.ieee.org/abstract/document/9003958
 [zhou_20]: https://aclanthology.org/2020.emnlp-main.407.pdf
 [gururangan_20]: https://aclanthology.org/2020.acl-main.740.pdf
+[transformer_xl]: https://arxiv.org/abs/1901.02860
 
 # Related work
 
@@ -44,7 +45,17 @@ All the sources in the field to give me some inspiration with my thing.
       positive and negative pairs of sentences are picked (positive are from the
       same document).
     - TODO: there are links to other useful papers in here
-- [SPECTER - scientific article embedding based on SciBert][cohan_20]
+- [SPECTER - scientific article embedding based on SciBert][cohan_20] -- SciBert
+  (Bert trained on scientific documents) further trained using triplet loss and
+  examples generated using citations (positives are papers sharing a citation).
+  The embedding of an abstract is used as the document embedding.
+- [CDLM -- Cross-Document language modeling][cdlm] --- adaptation of Longformer
+  for cross-document tasks. Interesting use of global attention and new masked
+  LM objective forcing the longformer to query information (to predict the
+  masked word) from other "similar" document. Evaluation done on cross-document
+  tasks. Only comparable task is the one introduced by [Multilingual text
+  alignment with CDA][zhou_20], where CDLM achieves SOTA performance on 3 out of
+  4 tasks.
 - [Transformer based Multilingual document embedding model][li_20] - transformer
   version of LASER with a special distant constraint loss
 - [Hierarchical Attention Network (HAN)][yang_16] -- built on the
@@ -57,14 +68,19 @@ All the sources in the field to give me some inspiration with my thing.
       conversation transcripts from audio. I cannot tell if the findings were
       anything to write home about.
     - HANs were augmented using a cross-document attention in [Multilingual text
-      alignment with cross document attention][zhou_20]
+      alignment with cross document attention (CDA)][zhou_20]
 
 
 ## Backbones
 
 - [SBERT][d/sbert]
-- [Longformer][d/longformer]
-- [BigBird 2021][bigbird] 
+
+TODO: Learn about these more - how are global attentions trained, initialized in
+inference, what makes them different
+- [Longformer (2020)][longformer]
+- [BigBird (2021)][bigbird]
+- [Transformer XL (2019)][transformer_xl] -- example of left-to-right transfomer
+  (rather than with sparse attention)
 
 - [Multi-document tranformer for personality detection][yang_21]
 
@@ -72,8 +88,6 @@ All the sources in the field to give me some inspiration with my thing.
 - [Pretrained Language Models for Sequential Sentence Classification][cohan_19]
   - Transformer layers that "directly utilize contextual information from all
     words in all sentences"
-- [CDLM][cdlm] - Cross-Document Language Modeling - adaptation of Longformer for
-  cross-document tasks
 
 ## Theory
 
