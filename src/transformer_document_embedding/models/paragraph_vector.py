@@ -1,4 +1,4 @@
-"""Doc2Vec's implementation from the `gensim` package.
+"""Paragraph Vector's implementation using the `gensim` package.
 
 
 """
@@ -26,7 +26,7 @@ class EmbeddingDifferencesCallback(CallbackAny2Vec):
     ) -> None:
         self._tb_writer = tf.summary.create_file_writer(log_dir)
         self._epoch = 0
-        self._scalar_name = f"doc2vec_{'dm' if dm else 'dbow'}_embed_diff"
+        self._scalar_name = f"pv_{'dm' if dm else 'dbow'}_embed_diff"
         if seed:
             random.seed(seed)
         self._sample_doc_ids = [

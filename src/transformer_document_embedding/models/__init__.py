@@ -1,2 +1,2 @@
-from .paragraph_vector import Doc2Vec, ParagraphVector
+from .paragraph_vector import ParagraphVector
 from . import torch, tf

@@ -1,7 +1,7 @@
+[paragraph_vector]: paragraph_vector.md
 [d/bigbird]: ./bigbird.md
 [d/longformer]: ./longformer.md
 [d/sbert]: ./sbert.md
-[d/doc2vec]: ./doc2vec.md
 [d/datasets]: ./datasets.md
 
 # Baselines
@@ -18,7 +18,7 @@ possible.
 ## BOW models
 
 - (TF-IDF -- just for reference)
-- [Doc2vec][d/doc2vec]
+- [Paragraph vector][paragraph_vector]
 
 ## Short document embeddings
 

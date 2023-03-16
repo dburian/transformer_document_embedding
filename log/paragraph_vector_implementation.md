@@ -1,14 +1,14 @@
 [gensim_tut]: https://radimrehurek.com/gensim/auto_examples/howtos/run_doc2vec_imdb.html#sphx-glr-auto-examples-howtos-run-doc2vec-imdb-py
 [mikolov_2013]: https://proceedings.neurips.cc/paper/2013/hash/9aa42b31882ec039965f3c4923ce901b-Abstract.html
 
-# Doc2Vec implementation
+# Paragraph Vector implementation
 
-I chose to implement Doc2Vec using the `gensim` package. It seemed like
+I chose to implement PV using the `gensim` package. It seemed like
 polished-enough code which copied the initial implementation.
 
 ## Convergence
 
-Out-of-the-box gensim's Doc2Vec does not return loss. It seems abnormal and
+Out-of-the-box gensim's PV does not return loss. It seems abnormal and
 there have been lots of discussions around this. But the status is that there is
 a PR, no ones working on it for some time now. This means that there is no
 built-in way of telling how many epochs should one do.
@@ -87,7 +87,7 @@ dbow then focus on dm.
     | 'relu'              |  0.5            | 0.20                    | 25                   | 0.87071              |
 
 
-- finally adding also the `test` split for doc2vec training achieved 0.8959,
+- finally adding also the `test` split for DBOW training achieved 0.8959,
   which is even better than gensim's recreation of the experiment.
 
 #### DM

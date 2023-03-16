@@ -2,7 +2,7 @@
 [imgs/pv-dm]: ./imgs/pv-dm.png
 [imgs/pv-dbow]: ./imgs/pv-dbow.png
 
-# Doc2Vec
+# Paragraph vector
 
 Brief description of PV-DM and PV-DBOW models introduced by [Mikolov, Le in
 2014][paper].
@@ -10,7 +10,7 @@ Brief description of PV-DM and PV-DBOW models introduced by [Mikolov, Le in
 Each of the two models creates a dense vector representation of an arbitrarly
 long piece of text. The two representations are usually concatenated, and thus
 form a one single model. This model is often regarded as doc2vec or simply
-paragraph vector (as suggested by the authors).
+Paragraph vector (as suggested by the authors).
 
 ## Distributed Memory model of Paragraph Vectors: PV-DM
 
