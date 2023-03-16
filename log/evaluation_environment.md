@@ -2,141 +2,76 @@
 
 # Evaluation environment
 
-We will regularly add new *tasks* and new *models*. We want easy, reliable,
-streamlined way how to test given model on given task. Something lean, flexible,
-yet powerful.
+The initial though behind an evaluation environment was to unify models and
+tasks so we can easily evaluate particular task with particular model. As the
+work went on I learned:
 
-## TLDR;
+1. I would have to write more code to achieve that.
+2. Most models come with a somewhat user-friendly framework already, so the
+   amount of code required to run each model is fairly small. This means there
+   is small need for unification for the purposes of avoiding code duplication.
 
-I keep coming back to this, as I write more code I realize that it is really not
-that important.
+The result is we have some unification, but not much since we are trying to have
+lots of experiments, not a really though-out framework for evaluating models.
+The unification is there to have scripts that can operate on multiple model-task
+pairs. There is still plenty of value in that:
 
-We have 3 types of entities:
+1. we can move from a model implementation to trying it out really quickly,
+2. easy arguments loading, which are also automatically saved (see [experiment
+   configuration][experiment_config])
+3. easily defined grid search (see [grid search config][experiment_config])
+4. avoiding *some* code repetition (though not as much as initially planed)
+5. automatic and systematic saving of experiment results and logging
 
-- `task` -- defines the data, splits, evaluation metrics
-- `model` -- the catch-all of code, trains, predicts and is able to be saved and
-  loaded
-- `layer` -- layer for particular framework, with minimal logic, only there to
-  reuse code
+## Implementation
 
-`task` has unified API defined by `ExperimentalTask` and returns data as HF
-dataset.
+There are three types of entities:
 
-`model` has unified API defined by `ExperimentalModel` and should be able to
-process HF dataset on the input.
+- `task` -- defines data, splits, evaluation metrics
+- `model` -- takes care of building the model, minimal as can be (pure
+  `torch.nn.Module` or `tf.keras.Model`)
+- `baseline` -- takes care of getting the best out of given `model` and `task`,
+  so mainly training
 
-`layer` is a layer created by subclassing (e.g. inheriting from `tf.keras.Model`
-or `torch.nn.Module`) and therefore has all the nice methods we could ever ask
-for.
+## Scripts
 
+The above entities are used in multiple types of scripts. Each script should be
+used for the purpose it was designed.
 
-Each `model` will have configuration options, that can be set by using
-[experiment configuration][experiment_config]. Combining tasks and models should
-not therefore be too hard, but we'll see.
-
-## How did I get to TLDR?
-
-### Dataset and model problems
-
-In order to design the interfaces for model and task we need to solve two
-problems: dataset and model problem.
-
-- **Dataset problem**: Each dataset will come from another source, meaning it
-  will naturally be in different format. Models on the other hand need unified
-  interface so we can use different tasks for the same model.
-- **Model problem**: Each model will most probably have to be adapted for each
-  task. From hyperparameters to different heads.
-
-So both are technically true, though I think I inflate both problems.
-
-#### Dataset problem
-
-Datasets are either prepared or not. If yes we can easily load them to single
-format and we are done. The format chosen is HF datasets (why? in later
-section). If a dataset is not prepared, we should probably prepare it beforehand
-and save it.
-
-#### Model problem
-
-Typically a particular model will be different for each type of task, but the
-versions will share a common backbone. Usually the models I will use will come
-from third parties, which means I will be able to easily add layers, train them
-and predict with them with little code. Ergo I will create models as I go, but
-with the help of [experiment configuration][experiment_config] there shouldn't
-be so many.
-
-### Result of evaluation
-
-There is the question what should I remember from the given experiment.
-
-- tensorboard logs: this is a must have for debugging. I do not know any other
-  tool, which is that easy to use and helpful.
-- dict of final scores for each metric: this is obvious. I need some numbers in
-  my latex tables.
-- saved models: only sometimes
-
-Maybe there will be other things I need (like graphs train size to evaluation
-metrics).
-
-## The Model
-
-Responsible for putting together the model for given task. I imagine this will
-usually include:
-
-- loading submodules
-- defining data transformations for all submodules
-- coordinating training and prediction
-
-Interface:
-
-- `train(task)` -- trains the model using given task's data
-- `save(dir_path)` -- saves the model into given directory
-- `load(dir_path)` -- loads the saved model from the given directory,
-- `predict(inputs)` -- returns predictions for given inputs, format specific to
-  given task
-
-## The Task
-
-Responsible for defining the data for the task and the evaluation technique.
-
-- `train` -- property returning training data
-- `unsupervised` -- property returning unsupervised data
-- `test` -- property returning testing inputs
-- `evaluate(test_predictions)` -- evaluates test predictions, format of
-  test_predictions specific to given task
+- `evaluate_best` -- simple evaluation model
+    - saves best/trained model
+    - evaluates the model on test data
+    - saves results of the evaluation
+- `grid_search` -- finds the best hyperparameters
+    - loads grid search configuration and tries out each configuration
+    - does not save models
+    - logs hyperparameters
+    - does not evaluate the model on test data
 
 
-## Pseudocode of basic experiment
+## The Why-s
 
-```python
-model = import(args.model_package).Model()
-task = import(args.task_package).Task()
+- **Why this does not matter that much.**
 
-# Giving model all the data it might need for the training (unsupervised, even
-# testing inputs)
-model.train(train=task.train, unsupervised=task.unsupervised, test=task.test)
+The main goal is to write experiments, not code. Do not over-optimize for stuff
+that you'll never need.
 
-model.save(args.model_path)
+- Separating pure models and baselines
 
-test_predictions = model.predict(task.test)
-results = task.evaluate(test_predictions)
-
-utils.save_results(results)
-```
-
-### The because-s
+Pure models are easily portable. Baselines are not. This is the main reason why
+the code is separated as so.
 
 - importing models and tasks by package path
 
 Can be done differently (e.g. w/ dictionary), but this requires the least amount
-of extra code. Just define a model in separate file and assign it to `Model`
-variable.
+of extra code. This is more flexible at the cost of being more error-prone.
 
 - evaluation in model vs evaluation in task
 
 I decided against evaluation in model, mainly because I want each model to be
 evaluated equally. This also minimizes the code which should evaluate
-predictions, which would have to be in every model.
+predictions, which would have to be in every model. Also there could be problems
+with getting the evaluations out of the models.
 
 - all data given to model when training
 
