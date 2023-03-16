@@ -58,7 +58,7 @@ class ExperimentConfig:
                 "Experiment designed for different version of"
                 " transformer_document_embedding, results might differ."
                 " Experiment's version: %s, current version: %s",
-                config_values["version"],
+                config_values["tde_version"],
                 tde_version,
             )
 
@@ -90,22 +90,32 @@ class ExperimentConfig:
         return self._model_path
 
     def get_model_type(self) -> type:
-        # TODO: Implement module:class_name notation
-        return importlib.import_module(
+        return self._import_type(
             MODEL_MODULE_PREFIX + "." + self.values["model"]["module"]
-        ).Model
+        )
 
     def get_task_type(self) -> type:
-        # TODO: Implement module:class_name notation
-        return importlib.import_module(
+        return self._import_type(
             TASK_MODULE_PREFIX + "." + self.values["task"]["module"]
-        ).Task
+        )
 
     def save(self) -> None:
         save_path = os.path.join(self.experiment_path, "config.yaml")
         logging.info("Saving experiment config to %s.", save_path)
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
+
+    @classmethod
+    def _import_type(cls, type_path: str) -> type:
+        try:
+            module_path, type_name = type_path.split(":")
+            module = importlib.import_module(module_path)
+            return getattr(module, type_name)
+        except:
+            raise ValueError(
+                f"{ExperimentConfig._import_type.__name__}: invalid type path"
+                f" '{type_path}'."
+            )
 
 
 def flatten_dict(structure: dict[str, Any]) -> dict[str, Any]:
