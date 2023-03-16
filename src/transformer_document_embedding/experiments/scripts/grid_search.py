@@ -6,12 +6,12 @@ import argparse
 import logging
 import os
 import pprint
-from typing import Optional
 
 import tensorflow as tf
 from tensorboard.plugins.hparams import api as hp
 
 import transformer_document_embedding as tde
+from transformer_document_embedding.experiments.grid_search import GridSearch
 
 EXPERIMENTS_DIR = "./results"
 
@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--grid_search_config",
+        "--gsc",
         type=str,
         default=None,
         help=(
@@ -52,20 +53,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--save_model",
+        "--early_stop",
         type=bool,
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to save model after training.",
-    )
-    parser.add_argument(
-        "--load_model_path",
-        type=str,
-        default=None,
-        help=(
-            "Path from which to load the fitted model instead of fitting it (which is"
-            " the default behaviour)."
-        ),
+        default=False,
+        help="Whether to stop training when the validation loss stops decreasing.",
     )
 
     args = parser.parse_args()
@@ -74,47 +66,31 @@ def parse_args() -> argparse.Namespace:
 
 def run_single(
     config: tde.experiments.ExperimentConfig,
-    save_model: bool,
-    load_model_path: Optional[str],
+    early_stopping: bool,
 ) -> None:
     logging.info(
         "Starting experiment with config:\n%s",
         pprint.pformat(config.values, indent=1),
     )
-    model = config.get_model_type()(
-        log_dir=config.experiment_path,
-        **config.values["model"].get("kwargs", {}),
-    )
+    model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
-    if load_model_path is not None:
-        logging.info("Loading model from %s.", load_model_path)
-        model.load(load_model_path)
-    else:
-        logging.info("Training model...")
-        model.train(train=task.train, unsupervised=task.unsupervised, test=task.test)
-        logging.info("Training done.")
+    logging.info("Training model...")
 
-    if save_model:
-        logging.info("Saving trained model to %s", config.model_path)
-        model.save(config.model_path)
+    model.train(
+        task,
+        log_dir=config.experiment_path,
+        early_stopping=early_stopping,
+    )
+    logging.info("Training done.")
 
-    logging.info("Evaluating on test data...")
-    test_predictions = model.predict(task.test)
-    results = task.evaluate(test_predictions)
-    logging.info("Evaluation done. Results:\n%s", results)
-
-    tde.evaluation.save_results(results, config.experiment_path)
-
+    # TODO: Transfer to config method?
     with tf.summary.create_file_writer(
         os.path.join(config.experiment_path, "hparams")
     ).as_default():
         hp.hparams(tde.experiments.flatten_dict(config.values))
-        for metric, res in results.items():
-            tf.summary.scalar(f"test_{metric}", res, step=1)
 
     config.save()
-    return results
 
 
 def main() -> None:
@@ -124,23 +100,15 @@ def main() -> None:
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
+    grid_search = GridSearch.from_yaml(args.grid_search_config)
+
     for exp_file in args.config:
-        config = tde.experiments.ExperimentConfig.parse(exp_file, args.output_base_path)
+        config = tde.experiments.ExperimentConfig.from_yaml(
+            exp_file, args.output_base_path
+        )
 
-        if args.grid_search_config is None:
-            run_single(
-                config,
-                args.save_model,
-                args.load_model_path,
-            )
-            return
-
-        for experiment_instance in config.grid_search(args.grid_search_config):
-            run_single(
-                experiment_instance,
-                args.save_model,
-                args.load_model_path,
-            )
+        for experiment_instance in grid_search.based_on(config):
+            run_single(experiment_instance, args.early_stop)
 
 
 if __name__ == "__main__":

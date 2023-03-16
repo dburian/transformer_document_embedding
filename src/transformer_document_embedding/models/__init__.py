@@ -1,3 +1,2 @@
-from .doc2vec_imdb import Doc2VecIMDB
-from .experimental_model import ExperimentalModel
-from .sbert_imdb import SBertIMDB
+from .paragraph_vector import Doc2Vec, ParagraphVector
+from . import torch, tf

@@ -73,3 +73,23 @@ class TensorflowClsHead:
         loaded_model = tf.keras.models.load_model(dir_path)
         assert loaded_model is not None
         self._model = loaded_model
+
+
+class ClsHead(tf.keras.Sequential):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        hidden_activation: str | tf.keras.layers.Layer,
+        hidden_dropout: float,
+        output_activation: str | tf.keras.layers.Layer,
+    ) -> None:
+        super().__init__(
+            [
+                tf.keras.layers.Input(input_dim),
+                tf.keras.layers.Dense(hidden_dim, activation=hidden_activation),
+                tf.keras.layers.Dropout(hidden_dropout),
+                tf.keras.layers.Dense(output_dim, activation=output_activation),
+            ]
+        )

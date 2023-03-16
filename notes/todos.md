@@ -7,7 +7,7 @@ torch lightning and similar solutions
 
 ## Implementation
 
-- [ ] Validation loss, early stopping, save best model
+- [x] Validation loss, early stopping, save best model
 
 ## Experiments
 
@@ -29,5 +29,5 @@ torch lightning and similar solutions
 ## Cleanup
 
 - [ ] Split pyproject installations to optional dependencies based on framework
-- [ ] Transform `TFClassificationHead` into `tf.keras.Model`
+- [x] Transform `TFClassificationHead` into `tf.keras.Model`
 

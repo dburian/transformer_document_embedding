@@ -2,20 +2,21 @@ from __future__ import annotations
 from typing import Iterable, Optional, Any
 
 import numpy as np
-from tensorflow.python.ops.math_ops import to_double
 import torch
 from sentence_transformers import (
     InputExample,
     SentenceTransformer,
-    datasets,
     evaluation,
     models,
 )
 
 from torch.utils.data import DataLoader
+from datasets.arrow_dataset import Dataset
 
-from transformer_document_embedding.models.experimental_model import ExperimentalModel
-from transformer_document_embedding.tasks.imdb import IMDBData
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
+from transformer_document_embedding.tasks.imdb import IMDBClassification, IMDBData
 import transformer_document_embedding.utils.sentence_transformers as tde_st_utils
 import transformer_document_embedding.utils.torch as torch_utils
 
@@ -23,7 +24,7 @@ import transformer_document_embedding.utils.torch as torch_utils
 class SBertIMDB(ExperimentalModel):
     # When I need this again, lets put it in some utils module
     class STDataset(torch.utils.data.Dataset):
-        def __init__(self, hf_dataset: datasets.Dataset) -> None:
+        def __init__(self, hf_dataset: Dataset) -> None:
             self._hf_dataset = hf_dataset
 
         def __len__(self) -> int:
@@ -35,7 +36,6 @@ class SBertIMDB(ExperimentalModel):
 
     def __init__(
         self,
-        log_dir: str,
         transformer_model: str = "all-distilroberta-v1",
         batch_size: int = 37,
         epochs: int = 10,
@@ -64,7 +64,9 @@ class SBertIMDB(ExperimentalModel):
         }
         cls_head_config.update(cls_head_kwargs)
 
-        # We cannot use torch module because of complications with
+        # TODO: Move sentence transformer cls head elsewhere
+
+        # We cannot use torch.nn.Module because of complications with
         # saving/loading. It definitely could be done -- create a wrapper
         # capable of wrapping every torch.nn.Module, but it would have to be
         # capable of reinitializing the wrapped module inside its static class
@@ -97,38 +99,52 @@ class SBertIMDB(ExperimentalModel):
 
         self._model = SentenceTransformer(modules=modules, device=self._device)
 
-        self._log_dir = log_dir
         self._loss = tde_st_utils.losses.BCELoss(
             self._model, label_smoothing=label_smoothing
         )
 
-    def train(self, *, train: IMDBData, **_) -> None:
-        # TODO: Could be done more efficiently, not to have the network encode
-        # the same set of text twice.
-        loss_evaluator = tde_st_utils.evaluation.LossEvaluator(
-            train,
-            self._log_dir,
-            # TODO: Not the same loss as is used during training, due to
-            # label_smoothing
-            torch.nn.BCELoss(),
-            batch_size=self._batch_size,
-        )
-        accuracy_evaluator = tde_st_utils.evaluation.AccuracyEvaluator(
-            train, self._log_dir, batch_size=self._batch_size
-        )
-        vmem_evaluator = tde_st_utils.evaluation.VMemEvaluator(self._log_dir)
-        evaluator = evaluation.SequentialEvaluator(
-            [loss_evaluator, vmem_evaluator, accuracy_evaluator]
-        )
+    def train(
+        self,
+        task: IMDBClassification,
+        *,
+        log_dir: Optional[str] = None,
+        save_best_path: Optional[str] = None,
+        early_stopping: bool = False,  # Not supported by sentence_transformers
+    ) -> None:
+        # TODO: Why use sentence_transformers? Lets first test longformer
+        # before doing large rewriting here.
+        evaluator = None
+        if log_dir is not None:
+            # TODO: Could be done more efficiently, not to have the network encode
+            # the same set of text twice.
+            loss_evaluator = tde_st_utils.evaluation.LossEvaluator(
+                task.train,
+                log_dir,
+                # TODO: Not the same loss as is used during training, due to
+                # label_smoothing
+                torch.nn.BCELoss(),
+                batch_size=self._batch_size,
+            )
+            accuracy_evaluator = tde_st_utils.evaluation.AccuracyEvaluator(
+                task.train, log_dir, batch_size=self._batch_size
+            )
+            vmem_evaluator = tde_st_utils.evaluation.VMemEvaluator(log_dir)
+            evaluator = evaluation.SequentialEvaluator(
+                [loss_evaluator, vmem_evaluator, accuracy_evaluator]
+            )
+            # TODO: Evaluator on validation data
 
-        train_size = len(train)
-        training_data = self._to_st_dataset(train)
+        train_size = len(task.train)
+        training_data = self._to_st_dataset(task.train)
         self._model.fit(
             train_objectives=[(training_data, self._loss)],
             epochs=self._epochs,
             warmup_steps=self._warmup_steps,
             evaluator=evaluator,
             evaluation_steps=train_size,
+            save_best_model=save_best_path is not None,
+            output_path=save_best_path,
+            use_amp=True,
         )
 
     def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "transformer_document_embedding"
-version = "0.0.1"
+version = "0.0.2"
 authors = [{name = "David Burian", email = "david.burian@me.com"}]
 dependencies = [
   "tokenizers>=0.13",
@@ -19,7 +19,8 @@ dependencies = [
 ]
 
 [project.scripts]
-run-experiment = "transformer_document_embedding.experiments.run:main"
+evaluate_best = "transformer_document_embedding.experiments.scripts.evaluate_best:main"
+grid_search = "transformer_document_embedding.experiments.scripts.grid_search:main"
 
 [project.urls]
 homepage = "https://github.com/dburian/transformer_document_embedding"

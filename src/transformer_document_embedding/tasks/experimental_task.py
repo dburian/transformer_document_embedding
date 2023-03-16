@@ -11,10 +11,6 @@ class ExperimentalTask:
         """Returns testing inputs."""
         raise NotImplementedError()
 
-    @property
-    def unsupervised(self):
-        """Returns unsupervised inputs."""
-
     def evaluate(self, pred_batches) -> dict[str, float]:
         """Evaluates given test predictions on task-specific metrics.
 
