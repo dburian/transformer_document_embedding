@@ -173,6 +173,3 @@ class ParagraphVectorIMDB(ExperimentalModel):
         ds = ds.batch(self._batch_size)
 
         return ds
-
-
-Model = ParagraphVectorIMDB

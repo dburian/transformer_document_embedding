@@ -1,2 +1,2 @@
 from .experimental_model import ExperimentalModel
-from . import imdb
+from . import sbert, paragraph_vector

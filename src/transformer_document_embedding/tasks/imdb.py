@@ -5,8 +5,7 @@ import tensorflow as tf
 from datasets.arrow_dataset import Dataset
 from datasets.load import load_dataset
 
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 IMDBData = Dataset
 
@@ -113,6 +112,3 @@ class IMDBClassification(ExperimentalTask):
             update_metrics(true_batch, pred_batch)
 
         return {met.name: met.result().numpy() for met in metrics}
-
-
-Task = IMDBClassification

@@ -166,6 +166,3 @@ class SBertIMDB(ExperimentalModel):
     def _to_st_dataset(self, data: IMDBData) -> DataLoader:
         ex_inputs = SBertIMDB.STDataset(data.with_format("torch"))
         return DataLoader(ex_inputs, batch_size=self._batch_size, shuffle=True)
-
-
-Model = SBertIMDB
