@@ -1,6 +1,6 @@
 tde_version: 0.0.1
 model:
-  module: doc2vec_imdb
+  module: paragraph_vector:ParagraphVectorIMDB
   kwargs:
     cls_head_kwargs:
       epochs: 10
@@ -8,14 +8,12 @@ model:
       hidden_dropout: 0.5
       hidden_dim: 25
       label_smoothing: 0.15
-    use_dbow: False
-    use_dm: True
-    dm_kwargs:
-      vector_size: 400
+    dbow_kwargs:
+      vector_size: 100
       min_count: 2
-      epochs: 800
+      epochs: 30
       negative: 5
       sample: 0
 
 task:
-  module: imdb
+  module: imdb:IMDBClassification

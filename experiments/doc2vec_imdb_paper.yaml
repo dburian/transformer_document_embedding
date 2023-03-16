@@ -1,6 +1,0 @@
-tde_version: 0.0.1
-model:
-  module: transformer_document_embedding.models.doc2vec_imdb
-task:
-  module: transformer_document_embedding.tasks.imdb
-
