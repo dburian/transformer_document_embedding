@@ -6,6 +6,7 @@ import argparse
 import logging
 import pprint
 from typing import Optional
+import tensorflow as tf
 
 import transformer_document_embedding as tde
 
@@ -113,6 +114,10 @@ def evaluate_best(
     logging.info("Evaluation done. Results:\n%s", results)
 
     tde.experiments.save_csv_results(results, config.experiment_path)
+
+    with tf.summary.create_file_writer(config.experiment_path).as_default():
+        for metric, res in results.items():
+            tf.summary.scalar(f"test_{metric}", res, step=1)
 
     config.save()
     return results
