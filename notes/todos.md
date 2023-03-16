@@ -7,7 +7,11 @@ torch lightning and similar solutions
 
 ## Implementation
 
-- [x] Validation loss, early stopping, save best model
+- `SBERT`
+    - [ ] add sentence-transformers classification head
+    - [ ] rewrite metrics using `torcheval`
+    - [ ] maybe use different activation to use same loss in logging as in training
+    - [ ] try to implement validation split
 
 ## Experiments
 
@@ -29,5 +33,4 @@ torch lightning and similar solutions
 ## Cleanup
 
 - [ ] Split pyproject installations to optional dependencies based on framework
-- [x] Transform `TFClassificationHead` into `tf.keras.Model`
 
