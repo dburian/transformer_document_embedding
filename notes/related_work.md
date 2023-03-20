@@ -1,5 +1,5 @@
 [bigbird]: bigbird.md
-[doc2vec]: doc2vec.md
+[paragraph_vector]: paragraph_vector.md
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
 [longformer]: longformer.md
 [d/sbert]: doc/sbert.md
@@ -24,6 +24,9 @@
 [zhou_20]: https://aclanthology.org/2020.emnlp-main.407.pdf
 [gururangan_20]: https://aclanthology.org/2020.acl-main.740.pdf
 [transformer_xl]: https://arxiv.org/abs/1901.02860
+[yang_20]: https://dl.acm.org/doi/pdf/10.1145/3340531.3411908
+[jiang_19]: https://dl.acm.org/doi/pdf/10.1145/3308558.3313707
+[radev_13]: https://link.springer.com/article/10.1007/s10579-012-9211-2
 
 # Related work
 
@@ -31,7 +34,7 @@ All the sources in the field to give me some inspiration with my thing.
 
 ## Document embeddings wo/ Transformers
 
-- [Doc2Vec][doc2vec]
+- [Paragraph vector][paragraph_vector]
 - [LASER][laser] -- learning sentence embeddings using parallel texts and
   forcing the multilingual representations to be close to each other, while also
   describing the content of the sentence.
@@ -54,8 +57,22 @@ All the sources in the field to give me some inspiration with my thing.
   LM objective forcing the longformer to query information (to predict the
   masked word) from other "similar" document. Evaluation done on cross-document
   tasks. Only comparable task is the one introduced by [Multilingual text
-  alignment with CDA][zhou_20], where CDLM achieves SOTA performance on 3 out of
-  4 tasks.
+  alignment with Cross Document Attention (CDA)][zhou_20], where CDLM achieves
+  SOTA performance on 3 out of 4 tasks.
+- [Siamese Multi-depth Transformer-based Hierarchical (SMITH) Encoder for
+  Long-Form Document Matching][yang_20] 
+    - another hierarchical aproach using Transformers. Sentences are greadily
+      fed into transformer towers. Whose [CLS] tokens are then fed to another
+      transformer whose first token will be used as the document representation.
+    - uses similarity datasets Wiki65K (introduced in [Semantic Text Matching
+      for Long-Form Documents][jiang_19]) and AAN104K. AAN104K uses citations as
+      proxies for assuming similarity.
+    - There is section on competing models, so look into that for more related
+      work.
+- [Semantic Text Matching for Long-Form Documents][jiang_19]
+    - Hierarchical RNN with attention
+    - introduces similarity Wikipedia dataset which uses links as proxi for
+      assuming similarity
 - [Transformer based Multilingual document embedding model][li_20] - transformer
   version of LASER with a special distant constraint loss
 - [Hierarchical Attention Network (HAN)][yang_16] -- built on the
@@ -74,6 +91,9 @@ All the sources in the field to give me some inspiration with my thing.
 ## Backbones
 
 - [SBERT][d/sbert]
+
+- [Efficient transformes: A survey][tay_22] -- Summarization of efficient
+  transformer models in recent years
 
 TODO: Learn about these more - how are global attentions trained, initialized in
 inference, what makes them different
@@ -134,6 +154,13 @@ $$,
 - Pre-training is important as documented in [Don’t Stop Pretraining: Adapt
   Language Models to Domains and Tasks][gururangan_20].
 
+## Evaluation
+
+- [Long Range Arena][tay_20] -- systematic evaluation of transformers for long
+  sequences
+  - hard to say which is better, so here is a benchmark
+  - there is task to see how well models compress information, testing on [AAN
+    dataset][radev_13].
 
 ## Practical information
 
