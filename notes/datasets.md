@@ -50,6 +50,7 @@
 [baa_kagle]: https://www.kaggle.com/datasets/rtatman/blog-authorship-corpus
 [zhou_gitio]: https://xuhuizhou.github.io/Multilevel-Text-Alignment
 [zhou_20]: https://aclanthology.org/2020.emnlp-main.407/
+[wine_game_github_gt]: https://github.com/microsoft/SDR/tree/main/data/datasets
 
 # Datasets
 
@@ -137,6 +138,14 @@ documents close to each other in the feature space.
   annotated by experts, 3K/2K seed articles in total/eval set, each seed article
   compared to 60 other articles. I may need to send an email to get the data.
   **Only abstracts provided.**
+
+#### Chosen
+
+- There is [wine dataset][lds_wine] and [video game dataset][lds_game] with
+  ground truths on [Github][wine_game_github_gt] that were introduced by
+  [Self-Supervised Document Similarity][ginzburg_21]. The datasets are parsed
+  Wikipedia articles. Both datasets are pretty small with ~90 source articles,
+  each with ~10 similar articles.
 
 
 #### Alternatives
@@ -260,11 +269,6 @@ forms would be stored?
 - [TREC Robust 04][trec-robust04] - 250 keyword-queries over 520K news articles
 - [TREC Robust 05][trec-robust05] - 50 hard queries from Robust 04 over 1M docs
   from AQUAINT - license is needed and data must be paid for
-- There is [wine dataset][lds_wine] and [video game dataset][lds_game] that were
-  introduced by [Self-Supervised Document Similarity][ginzburg_21]. The datasets
-  are parsed Wikipedia articles. However I could not find the annotations, the
-  ground truth. Both datasets are pretty small with ~90 source articles, each
-  with ~10 similar articles.
 - [SciDocs][scidocs] - scientific article similarity benchmark based on
   citations, "may be overly optimistic", not from a single domain although 70%
   are Comp. Science, tasks include citations prediction, classification by
@@ -277,7 +281,7 @@ forms would be stored?
   classified to 663 classes. The dataset was introduced by [DeepPatent
   model][deeppatent], [PatentBert][patentbert] and finally by
   [BigBird][bigbird]. Unfortunately it seems the dataset is no longer
-  available. Was at [](http://mleg.cse.sc.edu/DeepPatent/).
+  available. Was at [http://mleg.cse.sc.edu/DeepPatent/](http://mleg.cse.sc.edu/DeepPatent/).
 - [TREC CAR][trec-car] - mainly paragraph ordering task to explain query, short
   paragraphs
 - [CISI][cisi] - short documents, questions as queries
