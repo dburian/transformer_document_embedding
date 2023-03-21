@@ -88,6 +88,8 @@ class LongformerIMBD(ExperimentalModel):
                 self._warmup_steps,
                 self._epochs * len(train),
             ),
+            patience=3 if early_stopping else None,
+            checkpoint_path=save_best_path,
         )
 
     def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:
@@ -121,9 +123,14 @@ class LongformerIMBD(ExperimentalModel):
         steps_in_epoch: Optional[int] = None,
         lr_scheduler=None,
         progress_bar: bool = True,
+        validate_every: int = 1,
+        checkpoint_path: Optional[str] = None,
+        patience: Optional[int] = None,
     ) -> None:
         model = self._model
         device = model.device
+        min_val_loss = float("inf")
+        epochs_without_improvement = 0
 
         steps_in_epoch = steps_in_epoch if steps_in_epoch is not None else len(train)
 
@@ -192,6 +199,50 @@ class LongformerIMBD(ExperimentalModel):
                 for name, metric in metrics.items():
                     summary_writer.add_scalar(name, metric.compute(), epoch)
                     metric.reset()
+
+            if val is not None and (1 + epoch) % validate_every == 0:
+                model.eval()
+
+                for batch in val:
+                    batch_to_device(batch, device)
+
+                    with torch.autocast(
+                        device_type=device.type, dtype=torch.float16, enabled=fp16
+                    ):
+                        with torch.no_grad():
+                            outputs = model(
+                                input_ids=batch["input_ids"],
+                                attention_mask=batch["attention_mask"],
+                            )
+                            loss = loss_fn(outputs["logits"], batch["labels"])
+                    loss_metric.update(loss * grad_accumulation_steps)
+
+                    for metric in metrics.values():
+                        metric.update(outputs["logits"], batch["labels"])
+
+                val_loss = loss_metric.compute()
+                if val_loss < min_val_loss:
+                    if checkpoint_path is not None:
+                        model.save_pretrained(checkpoint_path)
+                        min_val_loss = val_loss
+
+                    epochs_without_improvement = 0
+                else:
+                    epochs_without_improvement += 1
+
+                if patience is not None and epochs_without_improvement == patience:
+                    break
+
+                if summary_writer is not None:
+                    summary_writer.add_scalar("val_loss", val_loss, epoch)
+                    loss_metric.reset()
+                    for name, metric in metrics.items():
+                        summary_writer.add_scalar(
+                            f"val_{name}", metric.compute(), epoch
+                        )
+                        metric.reset()
+
+                model.train()
 
     def _prepare_data(self, data: IMDBData, training: bool = True) -> DataLoader:
         def _tokenize(doc: dict[str, Any]) -> dict[str, Any]:
