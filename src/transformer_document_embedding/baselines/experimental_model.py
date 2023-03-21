@@ -12,7 +12,6 @@ class ExperimentalModel:
         self,
         task: ExperimentalTask,
         *,
-        validation_data: Optional,
         early_stopping: Optional[bool],
         save_best_path: Optional[str],
         log_dir: Optional[str],
@@ -20,8 +19,7 @@ class ExperimentalModel:
         """Trains the model.
 
         Args:
-            - task: task to train on,
-            - validation_data: validation data to use for determining best checkpoint,
+            - task: task to train on with optional validation data,
             - early_stopping: whether to stop when validation loss stops decreasing,
             - save_best_path: path to save (and then restore from) the
               checkpoint with the lowest validation loss,
