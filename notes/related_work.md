@@ -27,6 +27,7 @@
 [yang_20]: https://dl.acm.org/doi/pdf/10.1145/3340531.3411908
 [jiang_19]: https://dl.acm.org/doi/pdf/10.1145/3308558.3313707
 [radev_13]: https://link.springer.com/article/10.1007/s10579-012-9211-2
+[howard_18]: https://arxiv.org/pdf/1801.06146.pdf
 
 # Related work
 
@@ -60,7 +61,7 @@ All the sources in the field to give me some inspiration with my thing.
   alignment with Cross Document Attention (CDA)][zhou_20], where CDLM achieves
   SOTA performance on 3 out of 4 tasks.
 - [Siamese Multi-depth Transformer-based Hierarchical (SMITH) Encoder for
-  Long-Form Document Matching][yang_20] 
+  Long-Form Document Matching][yang_20]
     - another hierarchical aproach using Transformers. Sentences are greadily
       fed into transformer towers. Whose [CLS] tokens are then fed to another
       transformer whose first token will be used as the document representation.
@@ -153,6 +154,9 @@ $$,
 
 - Pre-training is important as documented in [Don’t Stop Pretraining: Adapt
   Language Models to Domains and Tasks][gururangan_20].
+
+- [Universal Language Model fine-tuning][howard_18] - SOTA NLP classification
+  finetuning approach
 
 ## Evaluation
 

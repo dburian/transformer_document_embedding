@@ -1,3 +1,4 @@
+[datasets]: datasets.md
 [goal]: goal.md
 # Document embedding
 
@@ -5,14 +6,8 @@ The central point of my thesis is developing *good* document embeddings.
 Therefore let's define the characteristics of a *good* document embedding. These
 should agree with the [thesis's goal][goal].
 
-Focus more on **how** the embedding is computed rather than **what** is the
-result. The 'how' we can test -- just look at the model and we know what it
-cannot do, the 'what' is harder -- we have no ways of assuring this is exactly
-what the model does (we have some benchmarks but that is not conclusive).
-
-## Definition of good document embedding
-
-#### Formal definition: Function from continuous piece of text to real vector of given dimension
+## Formal definition of embedding
+#### Function from continuous piece of text to real vector of given dimension
 
 - To reason about a document we need a *set of numbers* describing it.
 - The numbers should have implicit meaning attached -- they need to be in a
@@ -21,7 +16,24 @@ what the model does (we have some benchmarks but that is not conclusive).
   numbers*.
 - Our focus is on *continuous pieces of text* rather than unconnected sentences.
 
+## Definition of good document embedding
+
 ### The 'how'
+
+How the embedding is computed. We look into how the model should work and
+compare it against other models.
+
+Models to consider:
+
+- SBERT
+- Longformer
+- PV
+- SDR
+- SMASH-RNN
+- SMITH
+- CDLM
+- SPECTER
+- HANs with RNN/Bert
 
 #### The embedding should capture the whole document
 
@@ -44,24 +56,39 @@ what the model does (we have some benchmarks but that is not conclusive).
 
 ### The 'what'
 
-#### The embeddings of related documents should be close
+What information the embedding contains. We observe performence of the
+embeddings on various benchmarks. The way of thinking about this is if the model
+would capture this and that it would have good scores in this benchmark.
 
-- The meaning of a document is hard to define (it is subjective). Therefore we
-  focus on *relatedness* as a looser term, without further specifying what
-  characteristics related documents share.
-- Tested by benchmarks on relatedness:
-    - similarity:  wine, game, PAN plagiarism detection, Wiki65, (similarity
-      wikipedia triplets)
-    - sharing topic: AAN citation recommendation
+Benchmarks were picked from [dataset index][datasets].
 
-#### The embeddings should capture content
+#### Similarity
 
-- Texts have usually something to say. They talk about a single of a group of
+This is the category of tasks SBERT excells at. This is where we'll see if our
+model is any good.
+
+- Documents similar (in terms of words, structure, meaning) to each other should
+  be the same.
+- Benchmarks:
+    - wine,
+    - game,
+    - (similarity wikipedia triplets)
+    - PAN plagiarism detection
+
+#### Topic
+
+- Texts have usually something to say. They talk about a single or a group of
   topics. The embeddings should capture the topic.
-- Tested by benchmarks: IMDb, Hyperpartisian News, Long document dataset
+- Tested by benchmarks on relatedness:
+    - topic classification: Long document dataset
+    - sharing topic: AAN citation recommendation,
+    - related topic: Wiki65K, (AAN104K)
 
-#### The embeddings should capture the author's characteristics
+#### The author
 
 - Every text tells us something about its author. The embeddings should include
-  this information and *distinguish texts written by different authors*.
-- Tested by a benchmark: Blog Authorship corpus
+  this information.
+- Tested by benchmarks:
+    - author's sentiment: IMDb
+    - author's polarity: Hyperpartisian News
+    - all author's characteristics: Blog Authorship corpus

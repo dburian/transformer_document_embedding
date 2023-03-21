@@ -15,6 +15,7 @@
 [hammerl_22]: https://aclanthology.org/2022.findings-acl.182.pdf
 [timekey_21]: https://vansky.github.io/assets/pdf/timkey_vanschijndel-2021-emnlp.pdf
 [rajaee_22]: https://aclanthology.org/2022.findings-acl.103.pdf
+[openai_19]: https://arxiv.org/abs/1904.10509
 
 # Transformer document embedding
 
@@ -62,7 +63,6 @@ pip install --editable .
 
 - [Reformer][reformer]
 
-
 - current state-of-the-art sentence embeddings:
 
 Tianyu Gao, Xingcheng Yao, and Danqi Chen. SimCSE: Simple contrastive learning
@@ -93,20 +93,9 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
       Quality][timekey_21] and [An Isotropy Analysis in the Multilingual BERT
       Embedding Space][rajaee_22].
 - XLM-R
-- 
+- [Sparse transformers from OpenAI][openai_19]
 
 ## Ideas
 
 - probing - what is represented by the document embedding
 
-## Interesting snippets
-
-
-- [CSDCube][mysore_21]:
-
-> The dominant paradigm of information retrieval is to treat queries and
-> documents as different kinds of objects, e.g., in keyword search. This
-> paradigm, however, does not lend itself to exploratory search tasks. On the
-> other hand, paradigms of search such Query by Example (QBE) which treat
-> queries and documents as similar kinds of objects have been considered more
-> suited to exploratory search tasks [41, 17, 45].
