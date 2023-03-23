@@ -51,9 +51,9 @@ class LongformerIMBD(ExperimentalModel):
         self,
         task: IMDBClassification,
         *,
-        early_stopping: Optional[bool],
-        save_best_path: Optional[str],
-        log_dir: Optional[str],
+        early_stopping: bool = False,
+        save_best_path: Optional[str] = None,
+        log_dir: Optional[str] = None,
     ) -> None:
         assert (
             torch.cuda.is_available()
