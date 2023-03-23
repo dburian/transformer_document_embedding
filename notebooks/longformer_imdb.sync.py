@@ -14,36 +14,35 @@
 # %%
 import os
 
+import numpy as np
+
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-from typing import Any
-
-import tensorflow as tf
-import transformers
+from datetime import datetime
 
 import transformer_document_embedding as tde
 
 # %%
 
-tokenizer = transformers.AutoTokenizer.from_pretrained("allenai/longformer-base-4096")
-model = transformers.TFAutoModelForSequenceClassification.from_pretrained(
-    "allenai/longformer-base-4096"
+task = tde.tasks.IMDBClassification()
+model = tde.baselines.longformer.LongformerIMBD(epochs=1)
+# %%
+log_dir = os.path.join("logs", "longformer", datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+# %%
+model.train(
+    task,
+    log_dir=log_dir,
 )
 # %%
-imdb_task = tde.tasks.IMDBClassification()
+before_save_predictions = model.predict(task.test)
 # %%
-def tokenize(doc: dict[str, Any]) -> dict[str, Any]:
-    return tokenizer(doc["text"])
-
-
-train = imdb_task.train.map(tokenize)
+model_path = os.path.join(log_dir, "model")
+os.makedirs(model_path, exist_ok=True)
+model.save(model_path)
 # %%
-train = model.prepare_tf_dataset(
-    train, batch_size=64, shuffle=True, tokenizer=tokenizer
-)
+model.load(model_path)
 # %%
-dir(model)
+after_load_predictions = model.predict(task.test)
 # %%
-model.compile(optimizer=tf.keras.optimizers.Adam())
-# %%
-model.fit(train)
+for before, after in zip(before_save_predictions, after_load_predictions):
+    np.testing.assert_almost_equal(before, after)
