@@ -5,7 +5,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from transformer_document_embedding.baselines import ExperimentalModel
 from transformers import (
     AutoTokenizer,
-    LongformerConfig,
+    AutoConfig,
     LongformerForSequenceClassification,
 )
 
@@ -14,7 +14,7 @@ from transformers.data.data_collator import DataCollatorWithPadding
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
-from troch.cuda.amp import GradScaler
+from torch.cuda.amp import GradScaler
 from torcheval.metrics import Metric, MulticlassAccuracy, Mean
 from tqdm import tqdm
 
@@ -34,15 +34,14 @@ class LongformerIMBD(ExperimentalModel):
         self._warmup_steps = warmup_steps
         self._batch_size = batch_size
 
-        config = LongformerConfig(
-            num_labels=2,
-            max_position_embeddings=4096,
-            classifier_dropout=classifier_dropout,
-        )
+        config = AutoConfig.from_pretrained("allenai/longformer-base-4096")
+        config.num_labels = 2
+        config.classifier_dropout = classifier_dropout
+                
         self._model = cast(
             LongformerForSequenceClassification,
             LongformerForSequenceClassification.from_pretrained(
-                "allenai/longformer-base-4096", config
+                "allenai/longformer-base-4096", config=config,
             ),
         )
         self._tokenizer = AutoTokenizer.from_pretrained("allenai/longformer-base-4096")
