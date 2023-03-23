@@ -21,7 +21,7 @@ from torcheval.metrics import Metric, MulticlassAccuracy, Mean
 from tqdm import tqdm
 
 
-class LongformerIMBD(ExperimentalModel):
+class LongformerIMDB(ExperimentalModel):
     def __init__(
         self,
         *,
