@@ -5,23 +5,23 @@ torch lightning and similar solutions
 
 # TODOs
 
-## Implementation
-
-- `SBERT`
-    - [ ] add sentence-transformers classification head
-    - [ ] rewrite metrics using `torcheval`
-    - [ ] maybe use different activation to use same loss in logging as in training
-    - [ ] try to implement validation split
 
 ## Experiments
 
 - [ ] Properly finetune SBERT on IMDB -- have best SBERT checkpoint
-    - pull from repo
     - try training 3 variations until 10 epochs
         - best -- 25/0.1/0.5
         - no hidden -- 0/0.1/0
         - no label smoothing -- 25/0/0.5
 - [ ] Finetune Longformer on IMDB -- have best Longformer checkpoint
+
+## Implementation
+
+- `SBERT`
+    - [ ] add sentence-transformers classification head
+    - [x] rewrite metrics using `torcheval`
+    - [x] maybe use different activation to use same loss in logging as in training
+    - [x] try to implement validation split
 
 ## Research
 

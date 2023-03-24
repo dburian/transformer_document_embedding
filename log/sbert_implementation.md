@@ -11,6 +11,15 @@ Architectures:
 - **for classification**: MLP on top of pooled hidden states (i.e. on top of
   embedding)
 
+## Notes on implementation
+
+Using `sentence-transformers` is possible via the package itself or just using
+HF and pytorch Module.
+
+There is a helper function `SentenceTransformer.smart_batching_collate` which
+can prepare the correct features for the pytorch Module. Use `DataLoader` with
+`InputExample`s and `SentenceTransformer.smart_batching_collate` as
+`collate_fn`.
 
 
 ## Hardware requirements
