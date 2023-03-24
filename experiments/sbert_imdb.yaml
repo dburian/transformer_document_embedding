@@ -1,8 +1,19 @@
-tde_version: 0.0.1
+tde_version: 0.0.2
 model:
-  module: sbert_imdb
+  module: sbert:SBertIMDB
   kwargs:
     epochs: 10
+    batch_size: 6
+    label_smoothing: 0.15
+    cls_head_kwargs:
+      hidden_features: 25
+      hidden_dropout: 0.5
+      hidden_activation: 'relu'
+
+
+
 
 task:
-  module: imdb
+  module: imdb:IMDBClassification
+  kwargs:
+    validation_train_fraction: 0.2
