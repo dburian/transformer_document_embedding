@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Iterable, Optional, Any
+from typing import Iterable, Optional, Any, cast
 
+import os
 import numpy as np
 import torch
 from sentence_transformers import (
@@ -12,13 +13,16 @@ from sentence_transformers import (
 
 from torch.utils.data import DataLoader
 from datasets.arrow_dataset import Dataset
+from torch.utils.tensorboard.writer import SummaryWriter
 
 from transformer_document_embedding.baselines.experimental_model import (
     ExperimentalModel,
 )
 from transformer_document_embedding.tasks.imdb import IMDBClassification, IMDBData
+from transformer_document_embedding.utils.metrics import LossMetric
 import transformer_document_embedding.utils.sentence_transformers as tde_st_utils
 import transformer_document_embedding.utils.torch as torch_utils
+from torcheval.metrics.classification import MulticlassAccuracy
 
 
 class SBertIMDB(ExperimentalModel):
@@ -92,16 +96,15 @@ class SBertIMDB(ExperimentalModel):
         modules.append(
             models.Dense(
                 in_features=last_in_features,
-                out_features=1,
-                activation_function=torch.nn.Sigmoid(),
+                out_features=2,
+                activation_function=torch.nn.Identity(),
             )
         )
 
         self._model = SentenceTransformer(modules=modules, device=self._device)
 
-        self._loss = tde_st_utils.losses.BCELoss(
-            self._model, label_smoothing=label_smoothing
-        )
+        self._loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+        self._loss = tde_st_utils.losses.STLoss(self._model, self._loss_fn)
 
     def train(
         self,
@@ -111,41 +114,72 @@ class SBertIMDB(ExperimentalModel):
         save_best_path: Optional[str] = None,
         early_stopping: bool = False,  # Not supported by sentence_transformers
     ) -> None:
-        # TODO: Why use sentence_transformers? Lets first test longformer
-        # before doing large rewriting here.
+        train_data = self._to_st_dataset(task.train)
+
+        steps_in_epoch = len(train_data)
+
         evaluator = None
         if log_dir is not None:
-            # TODO: Could be done more efficiently, not to have the network encode
-            # the same set of text twice.
-            loss_evaluator = tde_st_utils.evaluation.LossEvaluator(
-                task.train,
-                log_dir,
-                # TODO: Not the same loss as is used during training, due to
-                # label_smoothing
-                torch.nn.BCELoss(),
-                batch_size=self._batch_size,
+            evaluators = cast(
+                list[evaluation.SentenceEvaluator],
+                [tde_st_utils.evaluation.VMemEvaluator(log_dir)],
             )
-            accuracy_evaluator = tde_st_utils.evaluation.AccuracyEvaluator(
-                task.train, log_dir, batch_size=self._batch_size
-            )
-            vmem_evaluator = tde_st_utils.evaluation.VMemEvaluator(log_dir)
-            evaluator = evaluation.SequentialEvaluator(
-                [loss_evaluator, vmem_evaluator, accuracy_evaluator]
-            )
-            # TODO: Evaluator on validation data
 
-        train_size = len(task.train)
-        training_data = self._to_st_dataset(task.train)
+            take_first_tower = lambda outputs: outputs[0]
+
+            train_writer = SummaryWriter(os.path.join(log_dir, "train"))
+            evaluators.append(
+                tde_st_utils.evaluation.TBMetricsEvaluator(
+                    summary_writer=train_writer,
+                    data_loader=train_data,
+                    metrics={
+                        "accuracy": MulticlassAccuracy(),
+                        "loss": LossMetric(self._loss_fn),
+                    },
+                    metric_transforms={
+                        "accuracy": take_first_tower,
+                        "loss": take_first_tower,
+                    },
+                    steps_in_epoch=steps_in_epoch,
+                )
+            )
+
+            if hasattr(task, "validation"):
+                val_data = self._to_st_dataset(task.validation)
+                val_writer = SummaryWriter(os.path.join(log_dir, "val"))
+
+                evaluators.append(
+                    tde_st_utils.evaluation.TBMetricsEvaluator(
+                        summary_writer=val_writer,
+                        data_loader=val_data,
+                        metrics={
+                            "accuracy": MulticlassAccuracy(),
+                            "loss": LossMetric(self._loss_fn),
+                        },
+                        metric_transforms={
+                            "accuracy": take_first_tower,
+                            "loss": take_first_tower,
+                        },
+                        steps_in_epoch=steps_in_epoch,
+                        decisive_metric="accuracy",
+                        decisive_metric_higher_is_better=True,
+                    )
+                )
+
+            evaluator = evaluation.SequentialEvaluator(evaluators)
+
         self._model.fit(
-            train_objectives=[(training_data, self._loss)],
+            train_objectives=[(train_data, self._loss)],
             epochs=self._epochs,
             warmup_steps=self._warmup_steps,
             evaluator=evaluator,
-            evaluation_steps=train_size,
             save_best_model=save_best_path is not None,
             output_path=save_best_path,
             use_amp=True,
         )
+
+        if save_best_path is not None:
+            self._model.load(save_best_path)
 
     def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:
         for i in range(0, len(inputs), self._batch_size):

@@ -22,3 +22,17 @@ class BCELoss(torch.nn.Module):
         labels += self._alpha
         labels += -labels * 2 * self._alpha
         return self._loss_fn(pred_labels, labels)
+
+
+class STLoss(torch.nn.Module):
+    def __init__(self, model: SentenceTransformer, loss_fn: torch.nn.Module) -> None:
+        super().__init__()
+        self._model = model
+        self._loss_fn = loss_fn
+
+    def forward(
+        self, inputs: Sequence[dict[str, torch.Tensor]], labels: torch.Tensor
+    ) -> torch.Tensor:
+        preds = self._model(inputs[0])["sentence_embedding"]
+
+        return self._loss_fn(preds, labels)

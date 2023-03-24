@@ -1,73 +1,43 @@
-from typing import Optional
-import datasets
+from typing import Callable, Optional, Any
 import tensorflow as tf
 import torch
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.evaluation import SentenceEvaluator
 import pynvml
+from torch.utils.tensorboard.writer import SummaryWriter
+from sentence_transformers.util import batch_to_device
+from torch.utils.data import DataLoader
+from torcheval.metrics import Metric
 
 
-class LossEvaluator(SentenceEvaluator):
+class TBMetricsEvaluator(SentenceEvaluator):
     def __init__(
         self,
-        labeled_texts: datasets.Dataset,
-        log_dir: str,
-        loss: torch.nn.Module,
         *,
-        beta: float = 0.9,
-        name: str = "loss",
-        batch_size: int = 32,
+        summary_writer: SummaryWriter,
+        data_loader: DataLoader,
+        metrics: dict[str, Metric],
+        steps_in_epoch: int,
+        metric_transforms: Optional[
+            dict[str, Callable[[list[torch.Tensor]], Any]]
+        ] = None,
+        decisive_metric: Optional[str] = None,
+        decisive_metric_higher_is_better: bool = True,
     ) -> None:
-        self._writer = tf.summary.create_file_writer(log_dir)
-        self._loss = loss
-        self._labeled_texts = labeled_texts.with_format("torch")
-        self._beta = beta
-        self._batch_size = batch_size
-        self._last_step = 0
-        self._name = name
+        self._writer = summary_writer
+        self._data_loader = data_loader
+        self._metrics = metrics
+        self._steps_in_epoch = steps_in_epoch
+        self._decisive_metric = decisive_metric
+        self._decisive_metric_hib = decisive_metric_higher_is_better
 
-    def __call__(
-        self,
-        model: SentenceTransformer,
-        output_path: Optional[str] = None,
-        epoch: int = -1,
-        steps: int = -1,
-    ) -> float:
-        norm = 1
-        running_avg = torch.tensor(0, device=model.device)
-        for i in range(0, len(self._labeled_texts), self._batch_size):
-            batch = self._labeled_texts[i : i + self._batch_size]
-            pred_labels = model.encode(
-                batch["text"],
-                batch_size=self._batch_size,
-                convert_to_tensor=True,
-                show_progress_bar=False,
-            )
-            pred_labels = pred_labels[:, 0]
+        if metric_transforms is None:
+            metric_transforms = {}
 
-            loss = self._loss(
-                pred_labels, batch["label"].float().to(device=model.device)
-            )
-            running_avg = self._beta * running_avg + (1 - self._beta) * loss
-            norm *= self._beta
-
-        avg_loss = running_avg / (1 - norm)
-        avg_loss = avg_loss.numpy(force=True)
-
-        with self._writer.as_default():
-            tf.summary.scalar(self._name, avg_loss, step=epoch)
-
-        return -avg_loss
-
-
-# Only tested for binary loss
-class AccuracyEvaluator(SentenceEvaluator):
-    def __init__(
-        self, labeled_texts: datasets.Dataset, log_dir: str, *, batch_size: int = 32
-    ) -> None:
-        self._labeled_texts = labeled_texts.with_format("torch")
-        self._writer = tf.summary.create_file_writer(log_dir)
-        self._batch_size = batch_size
+        for name in metrics:
+            if name not in metric_transforms:
+                metric_transforms[name] = lambda x: x
+        self._metric_transforms = metric_transforms
 
     def __call__(
         self,
@@ -76,32 +46,67 @@ class AccuracyEvaluator(SentenceEvaluator):
         epoch: int = -1,
         step: int = -1,
     ) -> float:
-        total = 0
-        correct = 0
+        dev = model.device
 
-        for i in range(0, len(self._labeled_texts), self._batch_size):
-            batch = self._labeled_texts[i : i + self._batch_size]
+        for name, metric in self._metrics.items():
+            metric.reset()
+            self._metrics[name] = metric.to(dev)
 
-            pred = model.encode(
-                batch["text"],
-                batch_size=self._batch_size,
-                convert_to_tensor=True,
-                show_progress_bar=False,
-            )
-            pred = torch.round(pred[:, 0])
-            true = batch["label"].to(pred.device)
+        self._data_loader.collate_fn = model.smart_batching_collate
+        for batch in self._data_loader:
+            siam_features, labels = batch
+            for i, _ in enumerate(siam_features):
+                siam_features[i] = batch_to_device(siam_features[i], dev)
+            labels = labels.to(dev)
+            with torch.no_grad():
+                outputs = [
+                    model(features)["sentence_embedding"] for features in siam_features
+                ]
 
-            correct += torch.sum(pred == true)
-            total += true.size(dim=0)
+            for name, metric in self._metrics.items():
+                transform = self._metric_transforms[name]
+                metric.update(transform(outputs), labels)
 
-        correct = correct.numpy(force=True)
+        results = {name: metric.compute() for name, metric in self._metrics.items()}
 
-        accuracy = correct / total
+        epoch, step, _ = _parse_epoch_step(epoch, step, self._steps_in_epoch)
+        for name, res in results.items():
+            self._writer.add_scalar(name, res, epoch * self._steps_in_epoch + step)
+            self._metrics[name].reset()
 
-        with self._writer.as_default():
-            tf.summary.scalar("accuracy", accuracy, step=epoch)
+        if self._decisive_metric is None:
+            return float("-inf")
 
-        return accuracy
+        decisive_result = results[self._decisive_metric]
+
+        if not self._decisive_metric_hib:
+            decisive_result *= -1
+
+        decisive_result = float("-inf")
+        return decisive_result
+
+
+def _parse_epoch_step(
+    epoch: int, step: int, steps_in_epoch: int
+) -> tuple[int, int, bool]:
+    """Parses arguments given to `SentenceEvaluator.__call__` into meanigful values.
+
+    Args:
+        epoch: Number of epoch; -1 if evaluating on test data.
+        step: Number of step in epoch; -1 if last step in epoch.
+        steps_in_epoch: Number of steps in each epoch.
+    Returns:
+        A tuple [epoch, step, test_data], where:
+            - epoch is number of epoch; 0 if evaluating test data,
+            - step is number of steps in epoch; 0 if evaluating on test data,
+            - test_data is True if evaluating test data.
+    """
+    if epoch == -1:
+        return (0, 0, True)
+    if step == -1:
+        return (epoch, steps_in_epoch, False)
+
+    return (epoch, step, False)
 
 
 class VMemEvaluator(SentenceEvaluator):
@@ -124,4 +129,4 @@ class VMemEvaluator(SentenceEvaluator):
         used_MB = info.used // 1024**2
         with self._writer.as_default():
             tf.summary.scalar(self._name, used_MB, epoch)
-        return 0
+        return float("-inf")
