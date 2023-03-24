@@ -4,8 +4,10 @@
 """
 import argparse
 import logging
+import os
 import pprint
 from typing import Optional
+
 import tensorflow as tf
 
 import transformer_document_embedding as tde
@@ -115,9 +117,10 @@ def evaluate_best(
 
     tde.experiments.save_csv_results(results, config.experiment_path)
 
-    with tf.summary.create_file_writer(config.experiment_path).as_default():
-        for metric, res in results.items():
-            tf.summary.scalar(f"test_{metric}", res, step=1)
+    test_log_path = os.path.join(config.experiment_path, "test")
+    with tf.summary.create_file_writer(test_log_path).as_default():
+        for name, res in results.items():
+            tf.summary.scalar(name, res, step=1)
 
     config.save()
     return results
