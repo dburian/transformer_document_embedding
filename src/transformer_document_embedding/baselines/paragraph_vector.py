@@ -4,13 +4,14 @@ from typing import Any, Iterable, Optional
 import datasets
 import numpy as np
 import tensorflow as tf
+from datasets.arrow_dataset import Dataset
 
-from transformer_document_embedding.models.paragraph_vector import ParagraphVector
-from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
-)
+from transformer_document_embedding.baselines.experimental_model import \
+    ExperimentalModel
+from transformer_document_embedding.models.paragraph_vector import \
+    ParagraphVector
 from transformer_document_embedding.models.tf.cls_head import ClsHead
-from transformer_document_embedding.tasks.imdb import IMDBClassification, IMDBData
+from transformer_document_embedding.tasks.imdb import IMDBClassification
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
 
 
@@ -131,7 +132,7 @@ class ParagraphVectorIMDB(ExperimentalModel):
             callbacks=callbacks,
         )
 
-    def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:
+    def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         tf_ds = self._feature_dataset(inputs, training=False)
 
         return self._cls_head.predict(tf_ds)
@@ -160,7 +161,7 @@ class ParagraphVectorIMDB(ExperimentalModel):
         os.makedirs(new_dir, exist_ok=True)
         return new_dir
 
-    def _feature_dataset(self, data: IMDBData, *, training: bool) -> tf.data.Dataset:
+    def _feature_dataset(self, data: Dataset, *, training: bool) -> tf.data.Dataset:
         ds = tf.data.Dataset.from_tensor_slices(
             [tf.convert_to_tensor(self._pv.get_vector(doc["id"])) for doc in data]
         )

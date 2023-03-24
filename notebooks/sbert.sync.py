@@ -14,16 +14,16 @@
 # %% [markdown]
 # # Sentence transformers
 # %%
-import os
 import logging
-from sentence_transformers.util import batch_to_device
+import os
+from datetime import datetime
+
 import torch
 from datasets.arrow_dataset import Dataset
 from sentence_transformers import InputExample
-from datetime import datetime
-from torcheval import metrics
-
+from sentence_transformers.util import batch_to_device
 from torch.utils.data import DataLoader
+from torcheval import metrics
 
 import transformer_document_embedding as tde
 
@@ -35,7 +35,15 @@ model = tde.baselines.sbert.SBertIMDB(
     batch_size=8,
     epochs=10,
 )
-task = tde.tasks.IMDBClassification(data_size_limit=500)
+task = tde.tasks.IMDBClassification(data_size_limit=500, validation_train_fraction=0.01)
+# %%
+
+print({key: len(split) for key, split in task.dataset.items()})
+# %%
+train_ids = set((doc["id"] for doc in task.train))
+val_ids = set((doc["id"] for doc in task.validation))
+
+print(val_ids.isdisjoint(train_ids))
 # %%
 class STDataset(torch.utils.data.Dataset):
     def __init__(self, hf_dataset: Dataset) -> None:

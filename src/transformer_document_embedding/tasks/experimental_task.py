@@ -4,12 +4,21 @@ class ExperimentalTask:
     @property
     def train(self):
         """Returns all training data."""
-        raise NotImplementedError()
+        return None
 
     @property
     def test(self):
         """Returns testing inputs."""
-        raise NotImplementedError()
+        return None
+
+    @property
+    def validation(self):
+        """Returns validation data."""
+        return None
+
+    @property
+    def has_validation(self) -> bool:
+        return self.validation is not None
 
     def evaluate(self, pred_batches) -> dict[str, float]:
         """Evaluates given test predictions on task-specific metrics.

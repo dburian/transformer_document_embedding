@@ -1,28 +1,23 @@
 from __future__ import annotations
-from typing import Iterable, Optional, Any, cast
 
 import os
+from typing import Any, Iterable, Optional, cast
+
 import numpy as np
 import torch
-from sentence_transformers import (
-    InputExample,
-    SentenceTransformer,
-    evaluation,
-    models,
-)
-
-from torch.utils.data import DataLoader
 from datasets.arrow_dataset import Dataset
+from sentence_transformers import (InputExample, SentenceTransformer,
+                                   evaluation, models)
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
+from torcheval.metrics.classification import MulticlassAccuracy
 
-from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
-)
-from transformer_document_embedding.tasks.imdb import IMDBClassification, IMDBData
-from transformer_document_embedding.utils.metrics import LossMetric
 import transformer_document_embedding.utils.sentence_transformers as tde_st_utils
 import transformer_document_embedding.utils.torch as torch_utils
-from torcheval.metrics.classification import MulticlassAccuracy
+from transformer_document_embedding.baselines.experimental_model import \
+    ExperimentalModel
+from transformer_document_embedding.tasks.imdb import IMDBClassification
+from transformer_document_embedding.utils.metrics import LossMetric
 
 
 class SBertIMDB(ExperimentalModel):
@@ -40,6 +35,7 @@ class SBertIMDB(ExperimentalModel):
 
     def __init__(
         self,
+        *,
         transformer_model: str = "all-distilroberta-v1",
         batch_size: int = 37,
         epochs: int = 10,
@@ -181,7 +177,7 @@ class SBertIMDB(ExperimentalModel):
         if save_best_path is not None:
             self._model.load(save_best_path)
 
-    def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:
+    def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         for i in range(0, len(inputs), self._batch_size):
             batch = inputs[i : i + self._batch_size]
             yield self._model.encode(
@@ -197,6 +193,6 @@ class SBertIMDB(ExperimentalModel):
     def load(self, dir_path: str) -> None:
         self._model = SentenceTransformer(dir_path, device=self._device)
 
-    def _to_st_dataset(self, data: IMDBData) -> DataLoader:
+    def _to_st_dataset(self, data: Dataset) -> DataLoader:
         ex_inputs = SBertIMDB.STDataset(data.with_format("torch"))
         return DataLoader(ex_inputs, batch_size=self._batch_size, shuffle=True)

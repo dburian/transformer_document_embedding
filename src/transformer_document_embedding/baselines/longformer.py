@@ -1,24 +1,22 @@
 import math
 import os
-import numpy as np
-from typing import Optional, Any, Iterable, cast
-from torch.optim.lr_scheduler import LambdaLR
-from transformer_document_embedding.baselines import ExperimentalModel
-from transformers import (
-    AutoTokenizer,
-    AutoConfig,
-    LongformerForSequenceClassification,
-    PreTrainedModel,
-)
+from typing import Any, Iterable, Optional, cast
 
-from transformer_document_embedding.tasks.imdb import IMDBClassification, IMDBData
-from transformers.data.data_collator import DataCollatorWithPadding
+import numpy as np
 import torch
+from datasets.arrow_dataset import Dataset
+from torch.cuda.amp.grad_scaler import GradScaler
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
-from torch.cuda.amp.grad_scaler import GradScaler
-from torcheval.metrics import Metric, MulticlassAccuracy, Mean
+from torcheval.metrics import Mean, Metric, MulticlassAccuracy
 from tqdm import tqdm
+from transformers import (AutoConfig, AutoTokenizer,
+                          LongformerForSequenceClassification, PreTrainedModel)
+from transformers.data.data_collator import DataCollatorWithPadding
+
+from transformer_document_embedding.baselines import ExperimentalModel
+from transformer_document_embedding.tasks.imdb import IMDBClassification
 
 
 class LongformerIMDB(ExperimentalModel):
@@ -77,6 +75,7 @@ class LongformerIMDB(ExperimentalModel):
             if log_dir is not None
             else None
         )
+        # TODO: Create only when we have validation data
         val_summary_writer = (
             SummaryWriter(os.path.join(log_dir, "val")) if log_dir is not None else None
         )
@@ -105,11 +104,14 @@ class LongformerIMDB(ExperimentalModel):
             checkpoint_path=save_best_path,
         )
 
-    def predict(self, inputs: IMDBData) -> Iterable[np.ndarray]:
+    def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
 
         data = self._prepare_data(inputs, training=False)
-        return self._model(data)
+        for batch in data:
+            logits = self._model(batch)["logits"]
+            # TODO: Try this if it works
+            yield np.argmax(logits, axis=1)
 
     def save(self, dir_path: str) -> None:
         self._model.save_pretrained(dir_path)
@@ -120,7 +122,7 @@ class LongformerIMDB(ExperimentalModel):
             LongformerForSequenceClassification.from_pretrained(dir_path),
         )
 
-    def _prepare_data(self, data: IMDBData, training: bool = True) -> DataLoader:
+    def _prepare_data(self, data: Dataset, training: bool = True) -> DataLoader:
         def _tokenize(doc: dict[str, Any]) -> dict[str, Any]:
             return self._tokenizer(doc["text"], padding=False, truncation=True)
 
