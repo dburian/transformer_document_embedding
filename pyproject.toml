@@ -20,7 +20,7 @@ dependencies = [
 
 [project.scripts]
 evaluate_best = "transformer_document_embedding.experiments.scripts.evaluate_best:main"
-grid_search = "transformer_document_embedding.experiments.scripts.grid_search:main"
+hp_search = "transformer_document_embedding.experiments.scripts.hp_search:main"
 
 [project.urls]
 homepage = "https://github.com/dburian/transformer_document_embedding"

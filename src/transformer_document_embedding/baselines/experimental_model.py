@@ -2,9 +2,11 @@ from typing import Iterable, Optional
 
 import numpy as np
 
-from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+from transformer_document_embedding.tasks.experimental_task import \
+    ExperimentalTask
 
 
+# TODO: Rename just to baseline?
 class ExperimentalModel:
     """Defines the minimal interface for models."""
 

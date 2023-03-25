@@ -11,7 +11,8 @@ import tensorflow as tf
 from tensorboard.plugins.hparams import api as hp
 
 import transformer_document_embedding as tde
-from transformer_document_embedding.experiments.grid_search import GridSearch
+from transformer_document_embedding.experiments.search import (GridSearch,
+                                                               OneSearch)
 
 EXPERIMENTS_DIR = "./results"
 
@@ -34,13 +35,23 @@ def parse_args() -> argparse.Namespace:
         required=True,
     )
     parser.add_argument(
-        "--grid_search_config",
-        "--gsc",
+        "--grid_config",
+        "--gc",
         type=str,
         default=None,
         help=(
             "Run grid search over all arguments specified in grid search YAML"
             " file for each experiment. Syntax documented here: TODO."
+        ),
+    )
+    parser.add_argument(
+        "--one_config",
+        "--oc",
+        type=str,
+        default=None,
+        help=(
+            "Run one-search by trying all values sequentially together with all"
+            " experiment configs."
         ),
     )
     parser.add_argument(
@@ -100,15 +111,22 @@ def main() -> None:
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
-    grid_search = GridSearch.from_yaml(args.grid_search_config)
+    for search_type, config_path in [
+        (GridSearch, args.grid_config),
+        (OneSearch, args.one_config),
+    ]:
+        if config_path is None:
+            continue
 
-    for exp_file in args.config:
-        config = tde.experiments.ExperimentConfig.from_yaml(
-            exp_file, args.output_base_path
-        )
+        search = search_type.from_yaml(config_path)
 
-        for experiment_instance in grid_search.based_on(config):
-            run_single(experiment_instance, args.early_stop)
+        for exp_file in args.config:
+            config_path = tde.experiments.ExperimentConfig.from_yaml(
+                exp_file, args.output_base_path
+            )
+
+            for experiment_instance in search.based_on(config_path):
+                run_single(experiment_instance, args.early_stop)
 
 
 if __name__ == "__main__":
