@@ -76,7 +76,7 @@ class ParagraphVectorIMDB(ExperimentalModel):
         early_stopping: bool = False,
     ) -> None:
         all_datasets = [task.test, task.train]
-        if hasattr(task, "unsupervised"):
+        if task.unsupervised is not None:
             all_datasets.append(task.unsupervised)
 
         pv_train = datasets.combine.concatenate_datasets(all_datasets).shuffle()
@@ -91,39 +91,37 @@ class ParagraphVectorIMDB(ExperimentalModel):
             )
         cls_train = self._feature_dataset(task.train, training=True)
 
-        val_data_available = hasattr(task, "validation")
-        cls_val = (
-            self._feature_dataset(task.validation, training=True)
-            if val_data_available
-            else None
-        )
         callbacks = []
         if log_dir is not None:
             callbacks.append(tf.keras.callbacks.TensorBoard(log_dir))
 
-        if early_stopping and val_data_available:
-            callbacks.append(
-                tf.keras.callbacks.EarlyStopping(
-                    monitor="val_loss",
-                    min_delta=0,
-                    patience=3,
-                    verbose=0,
-                    mode="min",
-                    restore_best_weights=True,
-                )
-            )
+        cls_val = None
+        if task.validation is not None:
+            cls_val = self._feature_dataset(task.validation, training=True)
 
-        if save_best_path is not None and val_data_available:
-            callbacks.append(
-                tf.keras.callbacks.ModelCheckpoint(
-                    save_best_path,
-                    monitor="val_loss",
-                    save_best_only=True,
-                    save_weights_only=False,
-                    mode="min",
-                    save_freq="epoch",
+            if early_stopping:
+                callbacks.append(
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor="val_loss",
+                        min_delta=0,
+                        patience=3,
+                        verbose=0,
+                        mode="min",
+                        restore_best_weights=True,
+                    )
                 )
-            )
+
+            if save_best_path is not None:
+                callbacks.append(
+                    tf.keras.callbacks.ModelCheckpoint(
+                        self._cls_head_dirpath(save_best_path),
+                        monitor="val_loss",
+                        save_best_only=True,
+                        save_weights_only=False,
+                        mode="min",
+                        save_freq="epoch",
+                    )
+                )
 
         self._cls_head.fit(
             cls_train,
@@ -131,6 +129,11 @@ class ParagraphVectorIMDB(ExperimentalModel):
             validation_data=cls_val,
             callbacks=callbacks,
         )
+
+        if save_best_path is not None:
+            self._pv.save(self._pv_dirpath(save_best_path))
+            if task.validation is None:
+                self._cls_head.save(self._cls_head_dirpath(save_best_path))
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         tf_ds = self._feature_dataset(inputs, training=False)

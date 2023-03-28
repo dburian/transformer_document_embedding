@@ -85,8 +85,6 @@ def evaluate_best(
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
-    validation_data_available = hasattr(task, "validation")
-
     if load_model_path is not None:
         logging.info("Loading model from %s.", load_model_path)
         model.load(load_model_path)
@@ -94,7 +92,7 @@ def evaluate_best(
         logging.info("Training model...")
 
         save_best_path = None
-        if save_best and validation_data_available:
+        if save_best:
             logging.info("Saving best checkpoint of model to %s", config.model_path)
             save_best_path = config.model_path
 
@@ -102,11 +100,11 @@ def evaluate_best(
             task,
             log_dir=config.experiment_path,
             save_best_path=save_best_path,
-            early_stopping=early_stopping and validation_data_available,
+            early_stopping=early_stopping,
         )
         logging.info("Training done.")
 
-    if not validation_data_available:
+    if not save_best:
         logging.info("Saving trained model to %s.", config.model_path)
         model.save(config.model_path)
 

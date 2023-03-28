@@ -23,9 +23,10 @@ class ExperimentalModel:
         Args:
             - task: task to train on with optional validation data,
             - early_stopping: whether to stop when validation loss stops decreasing,
-            - save_best_path: path to save (and then restore from) the
-              checkpoint with the lowest validation loss,
-            - log_dir: directory where to save logs
+            - save_best_path: Path to save (and then restore from) the
+              best checkpoint, i.e. with the lowest validation loss or at the
+              end of a training.
+            - log_dir: directory where to save logs,
         """
         raise NotImplementedError()
 

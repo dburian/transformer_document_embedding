@@ -57,29 +57,26 @@ class LongformerIMDB(ExperimentalModel):
     ) -> None:
         assert (
             torch.cuda.is_available()
-        ), f"Training {LongformerIMBD.__name__} is available only with gpu."
+        ), f"Training {LongformerIMDB.__name__} is available only with gpu."
 
         train_data = self._prepare_data(task.train)
+
         val_data = None
-        if hasattr(task, "validation"):
-            # TODO: Better implementation of this
-            #   - property on `ExperimentalTask`
-            #   - default implementation of validation returning None
+        val_summary_writer = None
+        summary_writer = None
+
+        if task.validation is not None:
             val_data = self._prepare_data(task.validation)
+
+            if log_dir is not None:
+                val_summary_writer = SummaryWriter(os.path.join(log_dir, "val"))
+
+        if log_dir is not None:
+            summary_writer = SummaryWriter(os.path.join(log_dir, "train"))
 
         optimizer = torch.optim.Adam(self._model.parameters(), lr=3e-5)
 
         self._model.gradient_checkpointing_enable()
-        summary_writer = (
-            SummaryWriter(os.path.join(log_dir, "train"))
-            if log_dir is not None
-            else None
-        )
-        # TODO: Create only when we have validation data
-        val_summary_writer = (
-            SummaryWriter(os.path.join(log_dir, "val")) if log_dir is not None else None
-        )
-
         train(
             model=self._model,
             train_data=train_data,
@@ -103,6 +100,14 @@ class LongformerIMDB(ExperimentalModel):
             patience=3 if early_stopping else None,
             checkpoint_path=save_best_path,
         )
+
+        if save_best_path is not None:
+            if val_data is None:
+                # We have not saved anything
+                self.save(save_best_path)
+            else:
+                # We have saved at least something, lets restore it
+                self.load(save_best_path)
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
@@ -221,7 +226,43 @@ def training_step(
         optimizer.zero_grad()
 
 
-def log(
+def validation_step(
+    *,
+    model: PreTrainedModel,
+    batch: dict[str, torch.Tensor],
+    device: torch.device,
+    fp16: bool,
+    loss_fn: torch.nn.Module,
+    metrics: dict[str, Metric],
+    mean_val_loss: Metric,
+) -> None:
+    batch_to_device(batch, device)
+
+    with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=fp16):
+        with torch.no_grad():
+            outputs = model(
+                input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"],
+            )
+            loss = loss_fn(outputs["logits"], batch["labels"])
+
+    mean_val_loss.update(loss)
+    for metric in metrics.values():
+        metric.update(outputs["logits"], batch["labels"])
+
+
+def compute_optimizer_step(
+    *,
+    epoch: int,
+    step: int,
+    steps_in_epoch: int,
+    grad_accumulation_steps: int,
+) -> int:
+    batch_steps = (epoch + 1) * steps_in_epoch + step
+    return math.floor(batch_steps / grad_accumulation_steps)
+
+
+def log_and_reset_metrics(
     *,
     metrics: dict[str, Metric],
     summary_writer: SummaryWriter,
@@ -293,10 +334,15 @@ def train(
             )
 
         if summary_writer is not None:
-            log(
+            log_and_reset_metrics(
                 metrics=metrics,
                 summary_writer=summary_writer,
-                step=epoch * steps_in_epoch,
+                step=compute_optimizer_step(
+                    epoch=epoch,
+                    step=0,
+                    steps_in_epoch=steps_in_epoch,
+                    grad_accumulation_steps=grad_accumulation_steps,
+                ),
                 loss_metric=loss_metric,
             )
 
@@ -305,31 +351,30 @@ def train(
             mean_val_loss = Mean(device=device)
 
             for batch in val_data:
-                batch_to_device(batch, device)
-
-                with torch.autocast(
-                    device_type=device.type, dtype=torch.float16, enabled=fp16
-                ):
-                    with torch.no_grad():
-                        outputs = model(
-                            input_ids=batch["input_ids"],
-                            attention_mask=batch["attention_mask"],
-                        )
-                        loss = loss_fn(outputs["logits"], batch["labels"])
-
-                mean_val_loss.update(loss)
-                for metric in metrics.values():
-                    metric.update(outputs["logits"], batch["labels"])
-
-            if val_summary_writer is not None:
-                log(
+                validation_step(
+                    model=model,
+                    batch=batch,
+                    device=device,
+                    fp16=fp16,
+                    loss_fn=loss_fn,
                     metrics=metrics,
-                    summary_writer=val_summary_writer,
-                    step=epoch * steps_in_epoch,
-                    loss_metric=mean_val_loss,
+                    mean_val_loss=mean_val_loss,
                 )
 
             val_loss = mean_val_loss.compute()
+            if val_summary_writer is not None:
+                log_and_reset_metrics(
+                    metrics=metrics,
+                    summary_writer=val_summary_writer,
+                    step=compute_optimizer_step(
+                        epoch=epoch,
+                        step=0,
+                        steps_in_epoch=steps_in_epoch,
+                        grad_accumulation_steps=grad_accumulation_steps,
+                    ),
+                    loss_metric=mean_val_loss,
+                )
+
             if val_loss < min_val_loss:
                 if checkpoint_path is not None:
                     model.save_pretrained(checkpoint_path)

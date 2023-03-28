@@ -143,7 +143,7 @@ class SBertIMDB(ExperimentalModel):
                 )
             )
 
-            if hasattr(task, "validation"):
+            if task.validation is not None:
                 val_data = self._to_st_dataset(task.validation)
                 val_writer = SummaryWriter(os.path.join(log_dir, "val"))
 
