@@ -114,9 +114,10 @@ class LongformerIMDB(ExperimentalModel):
 
         data = self._prepare_data(inputs, training=False)
         for batch in data:
-            logits = self._model(batch)["logits"]
-            # TODO: Try this if it works
-            yield np.argmax(logits, axis=1)
+            batch_to_device(batch, self._model.device)
+            logits = self._model(**batch)["logits"]
+            preds = torch.argmax(logits, 1)
+            yield preds.numpy(force=True)
 
     def save(self, dir_path: str) -> None:
         self._model.save_pretrained(dir_path)
