@@ -7,13 +7,10 @@ model:
     label_smoothing: 0.15
     cls_head_kwargs:
       hidden_features: 25
-      hidden_dropout: 0.5
+      hidden_dropout: 0.1
       hidden_activation: 'relu'
-
-
-
 
 task:
   module: imdb:IMDBClassification
-  kwargs:
-    validation_train_fraction: 0.2
+  # kwargs:
+    # validation_train_fraction: 0.2

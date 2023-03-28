@@ -34,23 +34,21 @@ As far as I know we are hitting the max performence of the GPUs in AIC.
 ## IMBD
 
 The results of various configurations of the classification head were really
-close and chaotic. I am suspicious that all configurations are more-or-less
-equal and the difference is caused by different shuffling of the input dataset.
-For example the following are the best results after 4 epochs and with
-`batch_size = 6`:
+close.
 
-| hidden_features | label_smoothing | hidden_dropout | binary_accuracy |
-| --------------- | --------------- | -------------- | --------------- |
-| 25.000          | 0.10000         | 0.50000        | 0.94212         |
-| 0.0000          | 0.20000         | 0.25000        | 0.94212         |
-| 75.000          | 0.10000         | 0.50000        | 0.94196         |
-| 75.000          | 0.20000         | 0.50000        | 0.94176         |
-| 25.000          | 0.10000         | 0.0000         | 0.94132         |
-| 0.0000          | 0.15000         | 0.0000         | 0.94128         |
-| 75.000          | 0.10000         | 0.0000         | 0.94124         |
-| 75.000          | 0.20000         | 0.25000        | 0.94088         |
+| val accuracy | hidden dropout | hidden features | label smoothing |
+| ------------ | -------------- | --------------- | --------------- |
+| 0.9348       | 0.1            | 25              | 0.15            |
+| 0.9344       | 0.5            | 50              | 0.15            |
+| 0.9334       | 0.5            | 25              | 0.2             |
+| 0.9324       | 0.5            | 25              | 0.15            |
+| 0.932        | 0.5            | 0               | 0.15            |
+| 0.93         | 0.5            | 25              | 0.1             |
+| 0.929        | 0              | 25              | 0.15            |
+| 0.9282       | 0.5            | 150             | 0.15            |
 
-Nevertheless here are some observations:
-
-- label smoothing helps (0, 0.1)
-- dropout helps (0.5)
+Observations:
+- too many hidden features hurts the performence
+- best results seem to have around 25 - 50 hidden features with .15 label
+  smoothing and at least 0.1 dropout (though 0.5 does not hurt that much)
+- after 10 epochs validation accuracy seem to have stabilized

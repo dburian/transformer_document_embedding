@@ -37,7 +37,7 @@ class SBertIMDB(ExperimentalModel):
         self,
         *,
         transformer_model: str = "all-distilroberta-v1",
-        batch_size: int = 37,
+        batch_size: int = 6,
         epochs: int = 10,
         warmup_steps: int = 10000,
         label_smoothing: float = 0.15,
@@ -51,7 +51,7 @@ class SBertIMDB(ExperimentalModel):
         modules = []
 
         transformer = SentenceTransformer(transformer_model)
-        embed_dim = transformer.get_sentence_embedding_dimension()
+        embed_dim = cast(int, transformer.get_sentence_embedding_dimension())
         modules.append(transformer)
 
         if cls_head_kwargs is None:
@@ -59,7 +59,7 @@ class SBertIMDB(ExperimentalModel):
 
         cls_head_config = {
             "hidden_features": 25,
-            "hidden_dropout": 0.5,
+            "hidden_dropout": 0.1,
             "hidden_activation": "relu",
         }
         cls_head_config.update(cls_head_kwargs)
@@ -89,6 +89,8 @@ class SBertIMDB(ExperimentalModel):
             if cls_head_config["hidden_features"] > 0
             else embed_dim
         )
+        assert isinstance(last_in_features, int)
+
         modules.append(
             models.Dense(
                 in_features=last_in_features,
@@ -121,7 +123,8 @@ class SBertIMDB(ExperimentalModel):
                 [tde_st_utils.evaluation.VMemEvaluator(log_dir)],
             )
 
-            take_first_tower = lambda outputs: outputs[0]
+            def take_first_tower(outputs: list):
+                return outputs[0]
 
             train_writer = SummaryWriter(os.path.join(log_dir, "train"))
             evaluators.append(
