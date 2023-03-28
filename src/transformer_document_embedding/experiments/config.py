@@ -3,12 +3,15 @@ from __future__ import annotations
 import importlib
 import logging
 import os
-from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable
+from typing import Any
 
 import pkg_resources
+import tensorflow as tf
 import yaml
+from tensorboard.plugins.hparams import api as hp
+
+import transformer_document_embedding as tde
 
 MODEL_MODULE_PREFIX = "transformer_document_embedding.baselines"
 TASK_MODULE_PREFIX = "transformer_document_embedding.tasks"
@@ -105,17 +108,25 @@ class ExperimentConfig:
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
 
+    def log_hparams(self) -> None:
+        with tf.summary.create_file_writer(
+            os.path.join(self.experiment_path, "hparams")
+        ).as_default():
+            hp_params = tde.experiments.flatten_dict(self.values)
+            hp_params["identifier"] = os.path.basename(self.experiment_path)
+            hp.hparams(hp_params)
+
     @classmethod
     def _import_type(cls, type_path: str) -> type:
         try:
             module_path, type_name = type_path.split(":")
             module = importlib.import_module(module_path)
             return getattr(module, type_name)
-        except:
+        except Exception as exc:
             raise ValueError(
                 f"{ExperimentConfig._import_type.__name__}: invalid type path"
                 f" '{type_path}'."
-            )
+            ) from exc
 
 
 def flatten_dict(structure: dict[str, Any]) -> dict[str, Any]:

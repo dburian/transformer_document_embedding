@@ -4,11 +4,7 @@
 """
 import argparse
 import logging
-import os
 import pprint
-
-import tensorflow as tf
-from tensorboard.plugins.hparams import api as hp
 
 import transformer_document_embedding as tde
 from transformer_document_embedding.experiments.search import (GridSearch,
@@ -95,12 +91,7 @@ def run_single(
     )
     logging.info("Training done.")
 
-    # TODO: Transfer to config method?
-    with tf.summary.create_file_writer(
-        os.path.join(config.experiment_path, "hparams")
-    ).as_default():
-        hp.hparams(tde.experiments.flatten_dict(config.values))
-
+    config.log_hparams()
     config.save()
 
 
