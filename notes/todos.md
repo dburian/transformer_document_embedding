@@ -29,6 +29,8 @@ torch lightning and similar solutions
 - [ ] Based on the definition of good document embedding find other benchmarks
   and models
 - [ ] STS and Spearman's correlation
+- [ ] Cleanup baselines/related work notes --- move significant models into
+  their own note
 
 ## Cleanup
 

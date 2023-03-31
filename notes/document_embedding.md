@@ -23,17 +23,6 @@ should agree with the [thesis's goal][goal].
 How the embedding is computed. We look into how the model should work and
 compare it against other models.
 
-Models to consider:
-
-- SBERT
-- Longformer
-- PV
-- SDR
-- SMASH-RNN
-- SMITH
-- CDLM
-- SPECTER
-- HANs with RNN/Bert
 
 #### The embedding should capture the whole document
 

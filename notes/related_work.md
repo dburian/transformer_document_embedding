@@ -179,3 +179,9 @@ embeddings..Ran across this list of tools:
 
 I should dedicate some pages to efficency. Checkout this [benchmark for efficent
 transformers by Tay, Dehghani et al. in 2020][tay_20]
+
+## TODO
+
+- Attempts to make with the 512 tokens BERT has to offer, instead of creating a
+  model without quadratic complexity in the input length -- could probably be a
+  baseline. E.g. SpanBERT, ORQA, REALM, RAG (BigBird's related work).
