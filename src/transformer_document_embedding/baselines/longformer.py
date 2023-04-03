@@ -11,11 +11,12 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import Mean, Metric, MulticlassAccuracy
 from tqdm import tqdm
-from transformers import (AutoConfig, AutoTokenizer,
-                          LongformerForSequenceClassification, PreTrainedModel)
+from transformers import AutoTokenizer, PreTrainedModel
 from transformers.data.data_collator import DataCollatorWithPadding
 
 from transformer_document_embedding.baselines import ExperimentalModel
+from transformer_document_embedding.models.longformer import (
+    TDELongformerConfig, TDELongformerForSequenceClassification)
 from transformer_document_embedding.tasks.imdb import IMDBClassification
 
 
@@ -23,29 +24,35 @@ class LongformerIMDB(ExperimentalModel):
     def __init__(
         self,
         *,
+        large: bool = False,
         epochs: int = 10,
         label_smoothing: float = 0.1,
         warmup_steps: int = math.floor(0.1 * 25000),
         batch_size: int = 1,
         classifier_dropout: float = 0.1,
+        classifier_activation: str = "gelu",
     ) -> None:
+        model_path = f"allenai/longformer-{'large' if large else 'base'}-4096"
         self._epochs = epochs
         self._label_smoothing = label_smoothing
         self._warmup_steps = warmup_steps
         self._batch_size = batch_size
 
-        config = AutoConfig.from_pretrained("allenai/longformer-base-4096")
+        config = TDELongformerConfig.from_pretrained(
+            model_path,
+            cls_head_activation=classifier_activation,
+        )
         config.num_labels = 2
         config.classifier_dropout = classifier_dropout
 
         self._model = cast(
-            LongformerForSequenceClassification,
-            LongformerForSequenceClassification.from_pretrained(
-                "allenai/longformer-base-4096",
+            TDELongformerForSequenceClassification,
+            TDELongformerForSequenceClassification.from_pretrained(
+                model_path,
                 config=config,
             ),
         )
-        self._tokenizer = AutoTokenizer.from_pretrained("allenai/longformer-base-4096")
+        self._tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def train(
         self,
@@ -124,8 +131,8 @@ class LongformerIMDB(ExperimentalModel):
 
     def load(self, dir_path: str) -> None:
         self._model = cast(
-            LongformerForSequenceClassification,
-            LongformerForSequenceClassification.from_pretrained(dir_path),
+            TDELongformerForSequenceClassification,
+            TDELongformerForSequenceClassification.from_pretrained(dir_path),
         )
 
     def _prepare_data(self, data: Dataset, training: bool = True) -> DataLoader:
