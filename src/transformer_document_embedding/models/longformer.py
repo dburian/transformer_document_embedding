@@ -15,11 +15,23 @@ class TDELongformerConfig(LongformerConfig):
     def __init__(
         self,
         *,
-        cls_head_activation: str = "gelu",
+        cls_head_activation: Optional[str] = None,
+        cls_head_hidden_size: Optional[int] = None,
+        cls_head_hidden_dropout_prob: Optional[float] = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+        if cls_head_hidden_size is None:
+            cls_head_hidden_size = self.hidden_size
+        self.cls_head_hidden_size = cls_head_hidden_size
+
+        if cls_head_activation is None:
+            cls_head_activation = self.hidden_act
         self.cls_head_activation = cls_head_activation
+
+        if cls_head_hidden_dropout_prob is None:
+            cls_head_hidden_dropout_prob = self.hidden_dropout_prob
+        self.cls_head_dropout_prob = cls_head_hidden_dropout_prob
 
 
 class TDELongformerClassificationHead(torch.nn.Module):
@@ -27,9 +39,9 @@ class TDELongformerClassificationHead(torch.nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.dense = torch.nn.Linear(config.hidden_size, config.hidden_size)
-        self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
-        self.out_proj = torch.nn.Linear(config.hidden_size, config.num_labels)
+        self.dense = torch.nn.Linear(config.hidden_size, config.cls_head_hidden_size)
+        self.dropout = torch.nn.Dropout(config.cls_head_hidden_dropout_prob)
+        self.out_proj = torch.nn.Linear(config.cls_head_hidden_size, config.num_labels)
         self.activation_fn = get_activation(config.cls_head_activation)
 
     def forward(self, hidden_states, **_):

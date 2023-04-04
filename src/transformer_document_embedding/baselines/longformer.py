@@ -31,6 +31,7 @@ class LongformerIMDB(ExperimentalModel):
         batch_size: int = 1,
         classifier_dropout: float = 0.1,
         classifier_activation: str = "gelu",
+        classifier_dim: Optional[float] = None,
     ) -> None:
         model_path = f"allenai/longformer-{'large' if large else 'base'}-4096"
         self._epochs = epochs
@@ -41,6 +42,8 @@ class LongformerIMDB(ExperimentalModel):
         config = TDELongformerConfig.from_pretrained(
             model_path,
             cls_head_activation=classifier_activation,
+            cls_head_hidden_dropout_prob=classifier_dropout,
+            cls_head_hidden_size=classifier_dim,
         )
         config.num_labels = 2
         config.classifier_dropout = classifier_dropout
