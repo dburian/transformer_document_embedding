@@ -1,12 +1,13 @@
 [paragraph_vector]: paragraph_vector.md
-[d/bigbird]: ./bigbird.md
-[d/longformer]: ./longformer.md
-[d/sbert]: ./sbert.md
-[d/datasets]: ./datasets.md
+[bigbird]: ./bigbird.md
+[longformer]: ./longformer.md
+[sbert]: ./sbert.md
+[datasets]: ./datasets.md
+[ginzburg_21]: https://arxiv.org/abs/2106.01186
 
 # Baselines
 
-We'd like to test how our model does in the given [tasks][d/datasets] compare to
+We'd like to test how our model does in the given [tasks][datasets] compare to
 other older models. The idea is to asses whether our model brings something new
 to the table regarding long document embeddings.
 
@@ -22,7 +23,7 @@ possible.
 
 ## Short document embeddings
 
-- [SBert][d/sbert]
+- [SBert][sbert]
 
 ## Long document embeddings
 
@@ -37,9 +38,26 @@ possible.
 > (Pennington et al., 2014).
 > (for example: May et al. (2019); Zhang et al. (2019); Qiao et al. (2019)).
 
-TODO: LASER
+- SMITH
+- CDLM
 
-## SOTAs
+- [Longformer][longformer]
+- [BigBird][bigbird]
 
-- [Longformer][d/longformer]
-- [BigBird][d/bigbird]
+# Unfit
+
+TODO: move notes of the following paper into one note
+- [Self-supervised Document Similarity Ranking (SDR)][ginzburg_21] -- RoBERTa
+  backbone further trained with MLM and contrastive loss of positive and
+  negative pairs drawn from the same and different document respectively. Also
+  introduces special (and complex) inference technique of matching paragraphs.
+  The model is only useful for similarities -- does not output embedding. **Good
+  for comparisons in Wine and Game datasets, but I do not think it is a good
+  baseline.**
+
+
+TODO:
+- SMASH-RNN
+- LASER
+- SPECTER
+- HANs with RNN/Bert
