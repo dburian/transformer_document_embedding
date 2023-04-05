@@ -46,9 +46,6 @@ class LongformerIMDB(ExperimentalModel):
             config.classifier_dropout_prob = classifier_dropout
         if classifier_dim is not None:
             config.classifier_hidden_size = classifier_dim
-
-        print(config.to_dict())
-
         config.num_labels = 2
 
         self._model = cast(
