@@ -16,7 +16,7 @@ from transformers.data.data_collator import DataCollatorWithPadding
 
 from transformer_document_embedding.baselines import ExperimentalModel
 from transformer_document_embedding.models.longformer import (
-    TDELongformerConfig, TDELongformerForSequenceClassification)
+    ClsLongformerConfig, TDELongformerForSequenceClassification)
 from transformer_document_embedding.tasks.imdb import IMDBClassification
 
 
@@ -29,8 +29,8 @@ class LongformerIMDB(ExperimentalModel):
         label_smoothing: float = 0.1,
         warmup_steps: int = math.floor(0.1 * 25000),
         batch_size: int = 1,
-        classifier_dropout: float = 0.1,
-        classifier_activation: str = "gelu",
+        classifier_dropout: Optional[float] = None,
+        classifier_activation: Optional[str] = None,
         classifier_dim: Optional[float] = None,
     ) -> None:
         model_path = f"allenai/longformer-{'large' if large else 'base'}-4096"
@@ -39,14 +39,17 @@ class LongformerIMDB(ExperimentalModel):
         self._warmup_steps = warmup_steps
         self._batch_size = batch_size
 
-        config = TDELongformerConfig.from_pretrained(
-            model_path,
-            cls_head_activation=classifier_activation,
-            cls_head_hidden_dropout_prob=classifier_dropout,
-            cls_head_hidden_size=classifier_dim,
-        )
+        config = ClsLongformerConfig.from_pretrained(model_path)
+        if classifier_activation is not None:
+            config.classifier_activation = classifier_activation
+        if classifier_dropout is not None:
+            config.classifier_dropout_prob = classifier_dropout
+        if classifier_dim is not None:
+            config.classifier_hidden_size = classifier_dim
+
+        print(config.to_dict())
+
         config.num_labels = 2
-        config.classifier_dropout = classifier_dropout
 
         self._model = cast(
             TDELongformerForSequenceClassification,
