@@ -1,190 +1,114 @@
-import ast
-import csv
-import os
-import pickle
-import sys
-import urllib.request
 from typing import Any
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 from datasets.load import load_dataset
 
+sns.set_theme()
 # %%
+articles = load_dataset("../data/wikipedia_wines.py", "wine_articles", split="train")
+# %%
+sims = load_dataset("../data/wikipedia_wines.py", "wine_sims", split="train")
+# %%
+print(sims[0])
+# %%
+print(articles[123])
+# %%
+def compare_articles(articles) -> None:
+    print("Titles:")
+    for a in articles:
+        print(f"{a['id']}:{a['title']}")
+        print("---")
 
-articles = load_dataset("../data/wikipedia_wines.py", "articles")
-# %%
-print(articles)
-# %%
-sims = load_dataset("../data/wikipedia_wines.py", "sims")
-# %%
-print(sims)
-# %%
-print(sims["train"][:10])
-# %%
-wines_articles_path = os.path.join("/", "home", "dburian", "downloads", "wines.txt")
-wines_gt_path = os.path.join("/", "home", "dburian", "downloads", "gt")
+    print()
+    max_sections = max((len(a["section_titles"]) for a in articles))
+    print("Sections:")
+    for section_idx in range(max_sections):
+        for a in articles:
+            sec_titles = a["section_titles"]
+            sec_texts = a["section_texts"]
+            title = ""
+            text = ""
+            if len(sec_titles) > section_idx:
+                title = sec_titles[section_idx]
+                text = sec_texts[section_idx]
 
-# %%
-csv.field_size_limit(sys.maxsize)
-with open(wines_articles_path, newline="", encoding="utf-8") as f:
-    reader = csv.reader(f)
-    all_articles = list(reader)[1:]
-
-article = all_articles[0]
-print(article)
-# %%
-title, sections = article[0], ast.literal_eval(article[1])
-print(title)
-# %%
-print(sections)
-# %%
-for article in all_articles:
-    title, sections = article[0], ast.literal_eval(article[1])
-    for sec_ind, section in enumerate(sections):
-        if section[1] == "":
-            print(f"{title}: {sec_ind}/{len(sections)}; {section}")
-
-# %%
-loaded_gt = pickle.load(open(wines_gt_path, "rb"))
-print(type(loaded_gt))
-# %%
-print(loaded_gt.default_factory)
-# %%
-print(loaded_gt.keys())
-print(len(loaded_gt.keys()))
-# %%
-for key, item in loaded_gt.items():
-    # print(f"{key}[{len(item.keys())}]: {item}")
-    # print()
-    for sim in item.values():
-        assert sim == 1, f"{item}"
-# %%
-def get_gt_seeds_titles(titles=None):
-    popular_titles = list(pickle.load(open(wines_gt_path, "rb")).keys())
-    idxs = None
-    if titles is not None:
-        idxs = [
-            titles.index(pop_title)
-            for pop_title in popular_titles
-            if pop_title in titles
-        ]
-    return popular_titles, idxs
+            print(f"{a['id']}:{title}")
+            print(f"{a['id']}:{text}")
+            print("---")
 
 
 # %%
-
-WINES_ARTICLES_URL = "https://zenodo.org/record/4812960/files/wines.txt?download=1"
-
-
-def download_articles(save_path: str, url: str = WINES_ARTICLES_URL) -> None:
-    if not os.path.exists(save_path):
-        print(f"Downloading file {save_path}...", file=sys.stderr)
-        urllib.request.urlretrieve(url, filename=save_path + ".tmp")
-        os.rename(save_path + ".tmp", save_path)
-
-
-def parse_articles(path: str) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    csv.field_size_limit(sys.maxsize)
-    title_to_id = {}
-    split = []
-    with open(path, newline="", encoding="utf-8") as articles_file:
-        reader = csv.DictReader(articles_file, fieldnames=["title", "sections"])
-
-        reader_iter = iter(reader)
-        # Skipping csv header
-        next(reader)
-
-        for article_id, article in enumerate(reader_iter):
-            title = article["title"]
-            sections = ast.literal_eval(article["sections"])
-            sections_data = []
-            for section_title, section_text in sections:
-                if section_text == "":
-                    continue
-                sections_data.append({"title": section_title, "text": section_text})
-
-            assert (
-                title not in title_to_id
-            ), f"Titles are not unique: '{title}' occured twice."
-
-            title_to_id[title] = article_id
-            split.append(
-                {
-                    "id": article_id,
-                    "title": title,
-                    "sections": sections_data,
-                }
-            )
-
-    return split, title_to_id
+def compare_all():
+    for i, sim in enumerate(sims):
+        source_article = articles[sim["source_id"]]
+        for target_id in sim["target_ids"]:
+            target_article = articles[target_id]
+            compare_articles([source_article, target_article])
+            print("\n\n\n")
+            yield i
 
 
-WINES_SIMS_URL = "https://github.com/microsoft/SDR/raw/main/data/datasets/wines/gt"
-
-
-def download_similarities(save_path: str, url: str = WINES_SIMS_URL) -> None:
-    if not os.path.exists(save_path):
-        print(f"Downloading {url} to {save_path} ...", file=sys.stderr)
-        urllib.request.urlretrieve(url, filename=save_path + ".tmp")
-        os.rename(save_path + ".tmp", save_path)
-
-
-def parse_similarities(path: str, title_to_id: dict[str, int]) -> list[dict[str, Any]]:
-    sims_raw = None
-    with open(path, mode="rb") as sims_file:
-        sims_raw = pickle.load(sims_file)
-
-    left_out_sources = 0
-    left_out_targets = 0
-
-    sims_data = []
-    for title, sim_articles in sims_raw.items():
-        if title not in title_to_id:
-            left_out_sources += 1
-            continue
-
-        sim_ids = []
-        for sim_title in sim_articles.keys():
-            if sim_title not in title_to_id:
-                left_out_targets += 1
-                continue
-            sim_ids.append(title_to_id[sim_title])
-
-        sims_data.append({"source_id": title_to_id[title], "target_ids": sim_ids})
-
-    title_to_id_name = f"{title_to_id=}".split("=")[0]
-    print(
-        f"Leaving out {left_out_sources} source articles. Reason: Not in"
-        f" '{title_to_id_name}' map.",
-        file=sys.stderr,
-    )
-    print(
-        f"Leaving out {left_out_targets} target articles. Reason: Not in"
-        f" '{title_to_id_name}' map.",
-        file=sys.stderr,
-    )
-    return sims_data
-
-
+for i in compare_all():
+    if i > 10:
+        break
 # %%
-ARTICLES_PATH = "./wines.txt"
-SIMS_PATH = "./wines_sims.txt"
+print(articles[24])
+# %%
+def create_text(article: dict[str, Any]) -> dict[str, Any]:
+    sections_text = [
+        f"{title} {text}"
+        for title, text in zip(article["section_titles"], article["section_texts"])
+    ]
+    return {"text": " ".join(sections_text)}
 
+
+text_articles = articles.map(create_text)
 # %%
-download_articles(ARTICLES_PATH)
+text_articles[24]
 # %%
-all_articles, title_to_id = parse_articles(ARTICLES_PATH)
+
+
+def get_found_count(text: str, to_find: list[str]) -> int:
+    count = 0
+    start = 0
+    inds = [text.find(word) for word in to_find]
+    while max(inds) > -1:
+        count += 1
+        start = min((ind for ind in inds if ind > -1))
+        inds = [text.find(word, start + 1) for word in to_find]
+
+    return count
+
+
+source_title_freqs = []
+target_title_freqs = []
+for sim in sims:
+    source_article = text_articles[sim["source_id"]]
+    words_to_find = source_article["title"].split(" ")
+    for target_id in sim["target_ids"]:
+        target_article = text_articles[target_id]
+        source_title_freqs.append(
+            get_found_count(target_article["text"], words_to_find)
+        )
+        target_title_freqs.append(
+            get_found_count(source_article["text"], target_article["title"].split())
+        )
 # %%
-# print(title_to_id)
-print("\n".join(sorted(title_to_id.keys())))
+
+plt.title(
+    "Occurencies of words of source's title in target's text in"
+    f" {len(source_title_freqs)} source-target pairs"
+)
+# plt.yscale("log")
+sns.histplot(source_title_freqs, bins=np.arange(-0.5, 30.5, 1))
 # %%
-print(len(all_articles))
+print(len(list(filter(lambda x: x == 0, source_title_freqs))))
 # %%
-print(all_articles[0])
-# %%
-download_similarities(SIMS_PATH)
-# %%
-sims = parse_similarities(SIMS_PATH, title_to_id)
-# %%
-print(sims)
-# %%
-print(len(sims))
+plt.title(
+    "Occurencies of words of target's title in source's text in"
+    f" {len(target_title_freqs)} source-target pairs"
+)
+# plt.yscale("log")
+sns.histplot(target_title_freqs, bins=np.arange(-0.5, 30.5, 1))
