@@ -4,7 +4,13 @@
 """
 import argparse
 import logging
+import os
 import pprint
+from typing import Iterable
+
+from tensorboard.backend.event_processing.event_accumulator import \
+    EventAccumulator
+from tensorboard.backend.event_processing.io_wrapper import IsSummaryEventsFile
 
 import transformer_document_embedding as tde
 from transformer_document_embedding.experiments.search import (GridSearch,
@@ -71,6 +77,33 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def list_event_files(dirpath: str, name: str = "") -> Iterable[tuple[str, str]]:
+    with os.scandir(dirpath) as direntry_it:
+        for entry in direntry_it:
+            if entry.is_dir():
+                for found_event_file in list_event_files(
+                    entry.path, f"{name}.{entry.name}" if name != "" else entry.name
+                ):
+                    yield found_event_file
+            elif IsSummaryEventsFile(entry.path):
+                yield name, entry.path
+
+
+def read_last_logged_scalars(log_dir: str) -> dict[str, float]:
+    last_metrics = {}
+    for metric, event_path in list_event_files(log_dir):
+        accumulator = EventAccumulator(event_path)
+
+        # Reads events
+        accumulator.Reload()
+        for scalar_name in accumulator.Tags()["scalars"]:
+            events = accumulator.Scalars(scalar_name)
+            if len(events) > 0 and hasattr(events[-1], "value"):
+                last_metrics[f"{metric}_{scalar_name}"] = events[-1].value
+
+    return last_metrics
+
+
 def run_single(
     config: tde.experiments.ExperimentConfig,
     early_stopping: bool,
@@ -91,7 +124,9 @@ def run_single(
     )
     logging.info("Training done.")
 
-    config.log_hparams()
+    results = read_last_logged_scalars(config.experiment_path)
+
+    config.log_hparams(results)
     config.save()
 
 

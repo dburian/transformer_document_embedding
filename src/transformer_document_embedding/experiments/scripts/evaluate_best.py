@@ -120,6 +120,8 @@ def evaluate_best(
         for name, res in results.items():
             tf.summary.scalar(name, res, step=1)
 
+        tf.summary.flush()
+
     config.save()
     return results
 

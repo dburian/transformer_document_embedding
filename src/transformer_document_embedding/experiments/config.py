@@ -108,13 +108,24 @@ class ExperimentConfig:
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
 
-    def log_hparams(self) -> None:
+    def log_hparams(self, results: dict[str, float]) -> None:
         with tf.summary.create_file_writer(
             os.path.join(self.experiment_path, "hparams")
         ).as_default():
-            hp_params = tde.experiments.flatten_dict(self.values)
-            hp_params["identifier"] = os.path.basename(self.experiment_path)
-            hp.hparams(hp_params)
+            hparams = tde.experiments.flatten_dict(self.values)
+            hparams["identifier"] = os.path.basename(self.experiment_path)
+
+            # Registering results as metrics
+            hp.hparams_config(
+                hparams=[hp.HParam(name) for name in hparams],
+                metrics=[hp.Metric(name) for name in results],
+            )
+
+            hp.hparams(hparams)
+            for metric, res in results.items():
+                tf.summary.scalar(metric, res, step=1)
+
+            tf.summary.flush()
 
     @classmethod
     def _import_type(cls, type_path: str) -> type:

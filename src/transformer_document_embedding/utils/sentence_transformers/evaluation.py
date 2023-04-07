@@ -1,12 +1,13 @@
-from typing import Callable, Optional, Any
+from typing import Any, Callable, Optional
+
+import pynvml
 import tensorflow as tf
 import torch
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.evaluation import SentenceEvaluator
-import pynvml
-from torch.utils.tensorboard.writer import SummaryWriter
 from sentence_transformers.util import batch_to_device
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import Metric
 
 
@@ -74,6 +75,8 @@ class TBMetricsEvaluator(SentenceEvaluator):
             self._writer.add_scalar(name, res, epoch * self._steps_in_epoch + step)
             self._metrics[name].reset()
 
+        self._writer.flush()
+        self._writer.close()
         if self._decisive_metric is None:
             return float("-inf")
 
@@ -82,7 +85,6 @@ class TBMetricsEvaluator(SentenceEvaluator):
         if not self._decisive_metric_hib:
             decisive_result *= -1
 
-        decisive_result = float("-inf")
         return decisive_result
 
 

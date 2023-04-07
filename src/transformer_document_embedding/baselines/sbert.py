@@ -17,7 +17,7 @@ import transformer_document_embedding.utils.torch as torch_utils
 from transformer_document_embedding.baselines.experimental_model import \
     ExperimentalModel
 from transformer_document_embedding.tasks.imdb import IMDBClassification
-from transformer_document_embedding.utils.metrics import LossMetric
+from transformer_document_embedding.utils.metrics import MeanLossMetric
 
 
 class SBertIMDB(ExperimentalModel):
@@ -133,7 +133,7 @@ class SBertIMDB(ExperimentalModel):
                     data_loader=train_data,
                     metrics={
                         "accuracy": MulticlassAccuracy(),
-                        "loss": LossMetric(self._loss_fn),
+                        "loss": MeanLossMetric(self._loss_fn),
                     },
                     metric_transforms={
                         "accuracy": take_first_tower,
@@ -153,7 +153,7 @@ class SBertIMDB(ExperimentalModel):
                         data_loader=val_data,
                         metrics={
                             "accuracy": MulticlassAccuracy(),
-                            "loss": LossMetric(self._loss_fn),
+                            "loss": MeanLossMetric(self._loss_fn),
                         },
                         metric_transforms={
                             "accuracy": take_first_tower,

@@ -276,6 +276,8 @@ def log_and_reset_metrics(
         summary_writer.add_scalar(name, metric.compute(), step)
         metric.reset()
 
+    summary_writer.flush()
+
 
 def train(
     *,
