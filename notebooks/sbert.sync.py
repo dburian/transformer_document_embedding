@@ -38,7 +38,7 @@ model = tde.baselines.sbert.SBertIMDB(
 task = tde.tasks.IMDBClassification(data_size_limit=500, validation_train_fraction=0.01)
 # %%
 
-print({key: len(split) for key, split in task.dataset.items()})
+print({key: len(split) for key, split in task.splits.items()})
 # %%
 train_ids = set((doc["id"] for doc in task.train))
 val_ids = set((doc["id"] for doc in task.validation))

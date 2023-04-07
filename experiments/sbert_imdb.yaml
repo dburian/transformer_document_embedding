@@ -13,4 +13,6 @@ model:
 task:
   module: imdb:IMDBClassification
   # kwargs:
-    # validation_train_fraction: 0.2
+  #   validation_source: 'train'
+  #   validation_source_fraction: 0.2
+  #   data_size_limit: 500

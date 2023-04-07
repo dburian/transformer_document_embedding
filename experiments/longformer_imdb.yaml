@@ -1,0 +1,15 @@
+tde_version: 0.0.2
+model:
+  module: longformer:LongformerIMDB
+  kwargs:
+    epochs: 4
+    large: True
+    classifier_activation: relu
+
+
+task:
+  module: imdb:IMDBClassification
+  # kwargs:
+  #   validation_source: 'test'
+  #   validation_source_fraction: 0.2
+
