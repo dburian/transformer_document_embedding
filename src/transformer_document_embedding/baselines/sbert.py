@@ -120,7 +120,7 @@ class SBertIMDB(ExperimentalModel):
         if log_dir is not None:
             evaluators = cast(
                 list[evaluation.SentenceEvaluator],
-                [tde_st_utils.evaluation.VMemEvaluator(log_dir)],
+                [tde_st_utils.evaluation.PyTorchVMemEvaluator(log_dir, steps_in_epoch)],
             )
 
             def take_first_tower(outputs: list):

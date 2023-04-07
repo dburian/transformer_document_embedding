@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 from typing import Any, Iterable, Union
+
 import torch
 from torcheval.metrics import Mean, Metric
 
 
-class LossMetric(Metric):
+class MeanLossMetric(Metric):
     """Metric accumulating the mean loss."""
 
     def __init__(self, loss_fn: torch.nn.Module, **kwargs) -> None:
@@ -14,7 +16,7 @@ class LossMetric(Metric):
 
     def to(
         self, device: Union[str, torch.device], *args: Any, **kwargs: Any
-    ) -> LossMetric:
+    ) -> MeanLossMetric:
         self._loss_fn.to(device)
         self._mean_loss = self._mean_loss.to(device, *args, **kwargs)
 
@@ -40,7 +42,7 @@ class LossMetric(Metric):
         self._mean_loss.reset()
 
     @torch.inference_mode()
-    def merge_state(self, metrics: Iterable[LossMetric]) -> LossMetric:
+    def merge_state(self, metrics: Iterable[MeanLossMetric]) -> MeanLossMetric:
         for metric in metrics:
             self._mean_loss.update(metric._mean_loss.compute())
 

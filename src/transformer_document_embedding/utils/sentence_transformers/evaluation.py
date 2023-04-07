@@ -132,3 +132,30 @@ class VMemEvaluator(SentenceEvaluator):
         with self._writer.as_default():
             tf.summary.scalar(self._name, used_MB, epoch)
         return float("-inf")
+
+
+class PyTorchVMemEvaluator(SentenceEvaluator):
+    def __init__(
+        self, log_dir: str, steps_in_epoch: int, name: str = "pytorch_vmem"
+    ) -> None:
+        self._writer = SummaryWriter(log_dir)
+        self._name = name
+        self._steps_in_epoch = steps_in_epoch
+
+    def __call__(
+        self,
+        model: SentenceTransformer,
+        output_path: Optional[str] = None,
+        epoch: int = -1,
+        step: int = -1,
+    ) -> float:
+        epoch, step, _ = _parse_epoch_step(epoch, step, self._steps_in_epoch)
+
+        mem_used = torch.cuda.memory_reserved(model.device)
+        used_MB = mem_used // 1024**2
+        self._writer.add_scalar(
+            self._name, used_MB, epoch * self._steps_in_epoch + step
+        )
+        self._writer.flush()
+
+        return float("-inf")
