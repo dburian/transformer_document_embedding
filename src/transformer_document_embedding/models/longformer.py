@@ -91,7 +91,8 @@ class TDELongformerForSequenceClassification(LongformerPreTrainedModel):
             return_dict if return_dict is not None else self.config.use_return_dict
         )
         if global_attention_mask is None:
-            logger.info("Initializing global attention on CLS token...")
+            # TODO: Better to give forward global_attention_mask explicitely
+            # logger.info("Initializing global attention on CLS token...")
             global_attention_mask = torch.zeros_like(input_ids)
             # global attention on cls token
             global_attention_mask[:, 0] = 1

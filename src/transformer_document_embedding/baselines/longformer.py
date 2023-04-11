@@ -18,6 +18,7 @@ from transformer_document_embedding.baselines import ExperimentalModel
 from transformer_document_embedding.models.longformer import (
     ClsLongformerConfig, TDELongformerForSequenceClassification)
 from transformer_document_embedding.tasks.imdb import IMDBClassification
+from transformer_document_embedding.utils.metrics import VMemMetric
 
 
 class LongformerIMDB(ExperimentalModel):
@@ -96,6 +97,7 @@ class LongformerIMDB(ExperimentalModel):
             optimizer=optimizer,
             metrics={
                 "accuracy": MulticlassAccuracy(),
+                "used_vmem": VMemMetric(),
             },
             summary_writer=summary_writer,
             val_summary_writer=val_summary_writer,
@@ -201,10 +203,7 @@ def training_step(
     batch_to_device(batch, device)
 
     with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=fp16):
-        outputs = model(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-        )
+        outputs = model(**batch)
         loss = loss_fn(outputs["logits"], batch["labels"]) / grad_accumulation_steps
 
     loss_metric.update(loss * grad_accumulation_steps)

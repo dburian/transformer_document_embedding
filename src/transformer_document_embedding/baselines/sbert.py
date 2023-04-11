@@ -17,7 +17,8 @@ import transformer_document_embedding.utils.torch as torch_utils
 from transformer_document_embedding.baselines.experimental_model import \
     ExperimentalModel
 from transformer_document_embedding.tasks.imdb import IMDBClassification
-from transformer_document_embedding.utils.metrics import MeanLossMetric
+from transformer_document_embedding.utils.metrics import (MeanLossMetric,
+                                                          VMemMetric)
 
 
 class SBertIMDB(ExperimentalModel):
@@ -118,10 +119,7 @@ class SBertIMDB(ExperimentalModel):
 
         evaluator = None
         if log_dir is not None:
-            evaluators = cast(
-                list[evaluation.SentenceEvaluator],
-                [tde_st_utils.evaluation.PyTorchVMemEvaluator(log_dir, steps_in_epoch)],
-            )
+            evaluators: list[evaluation.SentenceEvaluator] = []
 
             def take_first_tower(outputs: list):
                 return outputs[0]
@@ -134,6 +132,7 @@ class SBertIMDB(ExperimentalModel):
                     metrics={
                         "accuracy": MulticlassAccuracy(),
                         "loss": MeanLossMetric(self._loss_fn),
+                        "used_vmem": VMemMetric(device=self._device),
                     },
                     metric_transforms={
                         "accuracy": take_first_tower,
