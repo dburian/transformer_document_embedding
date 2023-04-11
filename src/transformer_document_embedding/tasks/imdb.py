@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from transformer_document_embedding.tasks.hf_task import HFTask
+from transformer_document_embedding.utils.evaluation import aggregate_batches
 
 
 class IMDBClassification(HFTask):
@@ -30,12 +31,9 @@ class IMDBClassification(HFTask):
         for met in metrics:
             met.reset_state()
 
-        true_iter = iter(self.dataset["test"])
-        for pred_batch in pred_batches:
-            true_batch = []
-            while len(true_batch) < len(pred_batch):
-                true_batch.append(next(true_iter)["label"])
-
+        for pred_batch, true_batch in aggregate_batches(
+            pred_batches, iter(self.splits["test"]), lambda x: x["label"]
+        ):
             for met in metrics:
                 met.update_state(true_batch, pred_batch)
 
