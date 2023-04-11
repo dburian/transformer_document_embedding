@@ -1,2 +1,2 @@
-from .evaluation import TBMetricsEvaluator, VMemEvaluator
+from .evaluation import TBMetricsEvaluator
 from .losses import BCELoss
