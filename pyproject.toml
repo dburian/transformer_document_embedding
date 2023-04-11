@@ -15,7 +15,6 @@ dependencies = [
   "gensim>=4.2",
   "torch>=1.13",
   "sentence-transformers>=2.2",
-  "nvidia-ml-py3",
 ]
 
 [project.scripts]

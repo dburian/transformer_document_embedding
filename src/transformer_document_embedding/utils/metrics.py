@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Union
+from typing import Any, Iterable, Optional, Union
 
 import torch
 from torcheval.metrics import Mean, Metric
@@ -57,3 +57,27 @@ class MeanLossMetric(Metric):
     def load_state_dict(self, state_dict: dict[str, Any], strict: bool = True) -> None:
         self._loss_fn.load_state_dict(state_dict["loss_fn"], strict)
         self._mean_loss.load_state_dict(state_dict["mean_loss"], strict)
+
+
+class VMemMetric(Metric):
+    """Metric outputting current amount of video memory used by pytorch."""
+
+    def __init__(
+        self,
+        return_MB: bool = True,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self._return_MB = return_MB  # pylint: disable=invalid-name
+
+    def update(self, *args, **kwargs) -> None:
+        pass
+
+    @torch.inference_mode()
+    def compute(self) -> torch.Tensor:
+        mem_used = torch.cuda.memory_reserved(self._device)
+        mem_used = mem_used // 1024**2 if self._return_MB else mem_used
+        return torch.tensor(mem_used)
+
+    def merge_state(self, _: Iterable[VMemMetric]) -> VMemMetric:
+        return self
