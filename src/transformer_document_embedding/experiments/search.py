@@ -15,7 +15,7 @@ class HyperparameterSearch:
             return cls(yaml.safe_load(gs_file))
 
     def __init__(self, hparams: dict[str, list[Any]]) -> None:
-        self._hparams = hparams
+        self.hparams = hparams
 
     def _update_with_hparam(
         self, exp_config: dict[str, Any], param_key: str, param_value: Any
@@ -35,12 +35,15 @@ class GridSearch(HyperparameterSearch):
     def based_on(
         self, reference_config: ExperimentConfig
     ) -> Iterable[ExperimentConfig]:
-        for combination in self._all_combinations(self._hparams):
+        for combination in self._all_combinations(self.hparams):
             new_values = deepcopy(reference_config.values)
             for gs_key, gs_value in combination.items():
                 self._update_with_hparam(new_values, gs_key, gs_value)
 
-            yield ExperimentConfig(new_values, reference_config.base_results_path)
+            yield ExperimentConfig(
+                new_values,
+                reference_config.base_results_dir,
+            )
 
     def _all_combinations(
         self, gs_values: dict[str, list[Any]]
@@ -61,9 +64,12 @@ class OneSearch(HyperparameterSearch):
     def based_on(
         self, reference_config: ExperimentConfig
     ) -> Iterable[ExperimentConfig]:
-        for hparam_key, value_set in self._hparams.items():
+        for hparam_key, value_set in self.hparams.items():
             for hparam_value in value_set:
                 new_values = deepcopy(reference_config.values)
                 self._update_with_hparam(new_values, hparam_key, hparam_value)
 
-                yield ExperimentConfig(new_values, reference_config.base_results_path)
+                yield ExperimentConfig(
+                    new_values,
+                    reference_config.base_results_dir,
+                )

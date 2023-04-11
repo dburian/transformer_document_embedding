@@ -11,8 +11,6 @@ import tensorflow as tf
 import yaml
 from tensorboard.plugins.hparams import api as hp
 
-import transformer_document_embedding as tde
-
 MODEL_MODULE_PREFIX = "transformer_document_embedding.baselines"
 TASK_MODULE_PREFIX = "transformer_document_embedding.tasks"
 CONF_REQUIRED_FIELDS = [
@@ -29,14 +27,18 @@ CONF_REQUIRED_FIELDS = [
 
 
 class ExperimentConfig:
-    @classmethod
-    def from_yaml(cls, config_file: str, base_results_path: str) -> ExperimentConfig:
+    @staticmethod
+    def from_yaml(config_file: str, base_results_dir: str) -> ExperimentConfig:
         with open(config_file, mode="r", encoding="utf8") as file:
             values = yaml.safe_load(file)
 
-            return cls(values, base_results_path)
+            return ExperimentConfig(values, base_results_dir)
 
-    def __init__(self, config_values: dict[str, Any], base_results_path: str) -> None:
+    def __init__(
+        self,
+        config_values: dict[str, Any],
+        base_results_dir: str,
+    ) -> None:
         def _check_field_exist(values: dict[str, Any], field_path: list[str]) -> bool:
             field = values
             for breadcrumb in field_path:
@@ -46,12 +48,10 @@ class ExperimentConfig:
             return True
 
         for field_path, desc in CONF_REQUIRED_FIELDS:
-            if not _check_field_exist(config_values, field_path):
-                logging.error(
-                    "Invalid experiment config. Missing required field: %s - %s.",
-                    ".".join(field_path),
-                    desc,
-                )
+            assert _check_field_exist(config_values, field_path), (
+                "Invalid experiment config. Missing required field:"
+                f" {'.'.join(field_path)} - {desc}."
+            )
 
         tde_version = pkg_resources.get_distribution(
             "transformer_document_embedding"
@@ -66,20 +66,19 @@ class ExperimentConfig:
             )
 
         self.values = config_values
-        self._exp_path = None
+        self.base_results_dir = base_results_dir
         self._model_path = None
-        self.base_results_path = base_results_path
+        self._exp_path = None
 
     @property
     def experiment_path(self) -> str:
         if self._exp_path is None:
             self._exp_path = os.path.join(
-                self.base_results_path,
+                self.base_results_dir,
                 self.values["task"]["module"],
                 self.values["model"]["module"],
                 f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}',
             )
-
             os.makedirs(self._exp_path, exist_ok=True)
 
         return self._exp_path
@@ -108,22 +107,13 @@ class ExperimentConfig:
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
 
-    def log_hparams(self, results: dict[str, float]) -> None:
-        with tf.summary.create_file_writer(
-            os.path.join(self.experiment_path, "hparams")
-        ).as_default():
-            hparams = tde.experiments.flatten_dict(self.values)
-            hparams["identifier"] = os.path.basename(self.experiment_path)
-
-            # Registering results as metrics
-            hp.hparams_config(
-                hparams=[hp.HParam(name) for name in hparams],
-                metrics=[hp.Metric(name) for name in results],
+    def log_hparams(self) -> None:
+        with tf.summary.create_file_writer(self.experiment_path).as_default():
+            hparams = flatten_dict(self.values)
+            hp.hparams(
+                hparams,
+                os.path.relpath(self.experiment_path, start=self.base_results_dir),
             )
-
-            hp.hparams(hparams)
-            for metric, res in results.items():
-                tf.summary.scalar(metric, res, step=1)
 
             tf.summary.flush()
 
