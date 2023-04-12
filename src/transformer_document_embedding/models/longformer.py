@@ -27,7 +27,7 @@ class ClsLongformerConfig(LongformerConfig):
 
         if classifier_activation is None:
             classifier_activation = self.hidden_act
-        self.cls_head_activation = classifier_activation
+        self.classifier_activation = classifier_activation
 
         if classifier_dropout_prob is None:
             classifier_dropout_prob = self.hidden_dropout_prob
