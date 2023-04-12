@@ -13,7 +13,7 @@ dependencies = [
   "datasets>=2.6",
   "matplotlib>=3.6",
   "gensim>=4.2",
-  "torch==1.13", #torch 2.0 cuases hangs https://github.com/pytorch/pytorch/issues/97580
+  "torch>=1.13, <2.0", #torch 2.0 cuases hangs https://github.com/pytorch/pytorch/issues/97580
   "sentence-transformers>=2.2",
   "torcheval",
 ]
