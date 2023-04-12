@@ -24,9 +24,6 @@ class ParagraphVectorIMDB(ExperimentalModel):
     ) -> None:
         # TODO: With so many handlers, maybe create separate dataclasses just
         # for configuration arguments. Its like 45 lines of just argument parsing :(.
-        if dm_kwargs is not None:
-            dm_kwargs["dm_tag_count"] = 1
-
         self._pv = ParagraphVector(dm_kwargs=dm_kwargs, dbow_kwargs=dbow_kwargs)
 
         if cls_head_kwargs is None:
