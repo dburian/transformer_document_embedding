@@ -72,7 +72,7 @@ _GAME_URLS = {
 }
 
 
-class WikipediaGamesWines(GeneratorBasedBuilder):
+class WikipediaSimilarities(GeneratorBasedBuilder):
     """TODO: Short description of my dataset."""
 
     logger = logging.getLogger("WikipediaWines")

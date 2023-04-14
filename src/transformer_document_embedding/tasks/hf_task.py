@@ -31,35 +31,26 @@ class HFTask(ExperimentalTask):
 
     @property
     def train(self) -> Dataset:
-        train = self._get_split("train")
-        assert train is not None
-        return train
+        return self.splits["train"]
 
     @property
     def test(self) -> Dataset:
-        test = self._get_split("test")
-        assert test is not None
+        test = self.splits["test"]
         return test.remove_columns("label")
 
     @property
     def unsupervised(self) -> Optional[Dataset]:
-        return self._get_split("unsupervised")
+        return self.splits.get("unsupervised", None)
 
     @property
     def validation(self) -> Optional[Dataset]:
-        return self._get_split("validation")
-
-    def _get_split(self, split: str) -> Optional[Dataset]:
-        if split not in self.splits:
-            return None
-
-        return self.splits[split]
+        return self.splits.get("validation", None)
 
     @property
     def splits(self) -> DatasetDict:
         if self._splits is None:
             dataset = self._retrieve_dataset()
-            self._splits = self._construct_splits(dataset)
+            self._splits = self._create_splits(dataset)
 
         return self._splits
 
@@ -67,7 +58,7 @@ class HFTask(ExperimentalTask):
         """Obtains the dataset. By default using the load_dataset function."""
         return cast(DatasetDict, load_dataset(self._path))
 
-    def _construct_splits(self, dataset: DatasetDict) -> DatasetDict:
+    def _create_splits(self, dataset: DatasetDict) -> DatasetDict:
         """Creates splits."""
         if self._add_ids:
             begin_id = 0
