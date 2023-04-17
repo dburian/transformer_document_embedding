@@ -1,6 +1,7 @@
 import copy
 import math
 import os
+import random
 from typing import Any, Iterable
 
 import numpy as np
@@ -62,52 +63,36 @@ class WikipediaSimilarities(HFTask):
         for article in train:
             articles_by_id[article["id"]] = article
 
-        def _test_gen(similarities: Dataset):
-            for sim in similarities:
-                labels = []
-                for article_id in sim["target_ids"]:
-                    target_article = copy.deepcopy(articles_by_id[article_id])
-                    target_article["label"] = []
-                    yield target_article
-                    labels.append(articles_by_id[article_id])
+        similarities_by_id = {}
+        for article in dataset["sims"]:
+            similarities_by_id[article["source_id"]] = article["target_ids"]
 
-                source_article = copy.deepcopy(articles_by_id[sim["source_id"]])
-                source_article["label"] = labels
-                yield source_article
+        def _add_label(
+            article: dict[str, Any], *, source_ids: set[int]
+        ) -> dict[str, Any]:
+            labels = []
 
-        test_features = Features(
-            {
-                "id": Value("uint16"),
-                "text": Value("string"),
-                "label": [{"id": Value("uint16"), "text": Value("string")}],
-            }
-        )
+            if article["id"] in source_ids:
+                target_ids = similarities_by_id[article["id"]]
+                labels = [copy.deepcopy(articles_by_id[id]) for id in target_ids]
 
-        test_similarities = dataset["sims"]
+            return {"label": labels}
+
+        test_source_ids = set(dataset["sims"]["source_id"])
         splits = {"train": train}
         if self._validation_fraction is not None and self._validation_source == "test":
-            test_sims_len = len(test_similarities)
+            test_sims_len = len(test_source_ids)
             val_sims_len = math.floor(test_sims_len * self._validation_fraction)
 
-            all_inds = np.arange(test_sims_len)
-            np.random.shuffle(all_inds)
+            val_source_ids = set(random.sample(list(test_source_ids), k=val_sims_len))
+            test_source_ids -= val_source_ids
 
-            val_inds = all_inds[:val_sims_len]
-            test_inds = all_inds[val_sims_len:]
-
-            validation_similarities = dataset["sims"].select(val_inds)
-            test_similarities = dataset["sims"].select(test_inds)
-
-            splits["validation"] = Dataset.from_generator(
-                _test_gen,
-                gen_kwargs={"similarities": validation_similarities},
-                features=test_features,
+            splits["validation"] = train.map(
+                _add_label, fn_kwargs={"source_ids": val_source_ids}
             )
 
-        splits["test"] = Dataset.from_generator(
-            _test_gen,
-            gen_kwargs={"similarities": test_similarities},
-            features=test_features,
+        splits["test"] = train.map(
+            _add_label, fn_kwargs={"source_ids": test_source_ids}
         )
 
         if self._data_size_limit is not None:

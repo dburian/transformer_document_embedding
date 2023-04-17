@@ -8,8 +8,9 @@ from datasets.load import load_dataset
 sns.set_theme()
 # %%
 articles = load_dataset(
-    "../data/wikipedia_similarities.py", "wine_articles", split="train"
+    "../data/wikipedia_similarities.py", "game_articles", split="train"
 )
+# %%
 # %%
 sims = load_dataset("../data/wikipedia_similarities.py", "wine_sims", split="train")
 # %%
@@ -144,7 +145,7 @@ from transformer_document_embedding.tasks.wikipedia_wines import \
 
 # %%
 task = WikipediaSimilarities(
-    dataset="wine",
+    dataset="game",
     datasets_dir="../data",
     validation_source="test",
     validation_source_fraction=0.2,
@@ -187,3 +188,11 @@ valid = test_integrity_of_test_set(task.splits["test"]) and test_integrity_of_te
 
 # %%
 print(valid)
+# %%
+replaced_char_count = 0
+for article in task.train:
+    replaced_char_count += article["text"].count("??")
+
+print(replaced_char_count)
+# %%
+print(task.train[16607])
