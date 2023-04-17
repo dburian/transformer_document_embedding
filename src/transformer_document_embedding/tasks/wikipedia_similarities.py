@@ -2,15 +2,17 @@ import copy
 import math
 import os
 import random
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
+import faiss
 import numpy as np
 from datasets.arrow_dataset import Dataset
 from datasets.dataset_dict import DatasetDict
-from datasets.features import Features, Value
 from datasets.load import load_dataset
 
 from transformer_document_embedding.tasks.hf_task import HFTask
+from transformer_document_embedding.utils.evaluation import (
+    evaluate_ir_metrics, smart_unbatch)
 
 DATASET_DIR = "./data"
 AVAILABLE_DATASETS = ["wine", "game"]
@@ -44,7 +46,7 @@ class WikipediaSimilarities(HFTask):
     def _create_splits(self, dataset: DatasetDict) -> DatasetDict:
         def _add_text(article: dict[str, Any]) -> dict[str, Any]:
             sections_text = [
-                f"{title} {text}"
+                f"{title} {text}".strip()
                 for title, text in zip(
                     article["section_titles"], article["section_texts"]
                 )
@@ -103,5 +105,42 @@ class WikipediaSimilarities(HFTask):
         return DatasetDict(splits)
 
     def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
-        # TODO: pred_batches are embeddings
-        pass
+        preds = smart_unbatch(pred_batches, 1)
+
+        true_pred_ids_iter = get_nearest_ids_from_faiss(self.splits["test"], preds)
+
+        return evaluate_ir_metrics(true_pred_ids_iter, hits_thresholds=[10, 100])
+
+
+def get_nearest_ids_from_faiss(
+    true_dataset: Dataset,
+    embeddings: Iterable[np.ndarray],
+    *,
+    k: Optional[int] = None,
+) -> Iterable[tuple[list[int], list[int]]]:
+    embed_column_name = "embedding"
+    faiss_dataset = true_dataset.add_column(
+        name=embed_column_name,
+        column=map(lambda vec: vec / np.linalg.norm(vec), embeddings),
+    )
+    faiss_dataset.add_faiss_index(
+        embed_column_name, metric_type=faiss.METRIC_INNER_PRODUCT
+    )
+
+    if k is None:
+        k = len(faiss_dataset)
+
+    for article in faiss_dataset:
+        if len(article["label"]) == 0:
+            continue
+
+        nearest_targets = faiss_dataset.get_nearest_examples(
+            embed_column_name,
+            np.array(article[embed_column_name]),
+            k=k + 1,  # We're later removing the first hit, which is the query itself.
+        )
+
+        true_ids = [target_article["id"] for target_article in article["label"]]
+        pred_ids = nearest_targets.examples["id"][1:]
+
+        yield true_ids, pred_ids

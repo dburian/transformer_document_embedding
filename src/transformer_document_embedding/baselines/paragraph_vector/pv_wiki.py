@@ -12,7 +12,7 @@ from transformer_document_embedding.tasks.experimental_task import \
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
 
 
-class ParagraphVectorWinesGames(ExperimentalModel):
+class ParagraphVectorWikipediaSimilarities(ExperimentalModel):
     def __init__(
         self,
         dm_kwargs: Optional[dict[str, Any]] = None,
@@ -28,7 +28,7 @@ class ParagraphVectorWinesGames(ExperimentalModel):
         save_best_path: Optional[str] = None,
         early_stopping: bool = False
     ) -> None:
-        train_data = GensimCorpus(task.unsupervised.shuffle())
+        train_data = GensimCorpus(task.train.shuffle())
 
         for module in self._pv.modules:
             module.build_vocab(train_data)
