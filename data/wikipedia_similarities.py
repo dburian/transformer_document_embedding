@@ -160,6 +160,11 @@ class WikipediaSimilarities(GeneratorBasedBuilder):
             ),
         ]
 
+    def _encode_check(self, text: str) -> str:
+        # Replaces characters that would cause encoding errors when caching.
+        # Only one surrogate replaced (in game articles)
+        return text.encode(encoding="utf-8", errors="replace").decode("utf-8")
+
     def _parse_articles(self, path: str) -> Iterable[tuple[int, dict[str, Any]]]:
         csv.field_size_limit(sys.maxsize)
         with open(path, newline="", encoding="utf-8") as articles_file:
@@ -177,7 +182,7 @@ class WikipediaSimilarities(GeneratorBasedBuilder):
                     if section_text == "":
                         continue
                     section_titles.append(section_title)
-                    section_texts.append(section_text)
+                    section_texts.append(self._encode_check(section_text))
 
                 yield article_id, {
                     "id": article_id,
