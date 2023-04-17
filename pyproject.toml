@@ -16,6 +16,7 @@ dependencies = [
   "torch>=1.13, <2.0", #torch 2.0 cuases hangs https://github.com/pytorch/pytorch/issues/97580
   "sentence-transformers>=2.2",
   "torcheval",
+  "faiss-cpu",
 ]
 
 [project.scripts]
