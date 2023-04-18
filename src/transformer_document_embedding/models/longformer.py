@@ -1,43 +1,60 @@
 import logging
-from typing import Optional
+from typing import Optional, Union, cast
 
 import torch
-from transformers import (LongformerConfig, LongformerModel,
-                          LongformerPreTrainedModel)
+import transformers.models.longformer.modeling_longformer as hf_longformer
+from transformers import PreTrainedModel
 from transformers.activations import get_activation
-from transformers.models.longformer.modeling_longformer import \
-    LongformerSequenceClassifierOutput
 
 logger = logging.getLogger(__name__)
 
+AVAILABLE_POOLERS = [
+    "sum",
+    "mean",
+]
 
-class ClsLongformerConfig(LongformerConfig):
+
+class LongformerConfig(hf_longformer.LongformerConfig):
     def __init__(
         self,
         classifier_activation: Optional[str] = None,
         classifier_hidden_size: Optional[int] = None,
         classifier_dropout_prob: Optional[float] = None,
+        pooler_type: Optional[str] = None,
         **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
-
+        # Due to lacking interface in HF's PreTrainedConfig, we take the
+        # approach: "If bad config value is set, something will crash later on."
         if classifier_hidden_size is None:
-            classifier_hidden_size = self.hidden_size
+            classifier_hidden_size = kwargs.get("hidden_size", None)
         self.classifier_hidden_size = classifier_hidden_size
 
         if classifier_activation is None:
-            classifier_activation = self.hidden_act
+            classifier_activation = kwargs.get("hidden_act", None)
         self.classifier_activation = classifier_activation
 
         if classifier_dropout_prob is None:
-            classifier_dropout_prob = self.hidden_dropout_prob
+            classifier_dropout_prob = kwargs.get("hidden_dropout_prob", None)
         self.classifier_dropout_prob = classifier_dropout_prob
 
+        assert (
+            pooler_type is None or pooler_type in AVAILABLE_POOLERS
+        ), f"pooler_type must be one of {AVAILABLE_POOLERS}"
+        self.pooler_type = pooler_type
 
-class TDELongformerClassificationHead(torch.nn.Module):
+        super().__init__(
+            classifier_hidden_size=classifier_hidden_size,
+            classifier_activation=classifier_activation,
+            classifier_dropout_prob=classifier_dropout_prob,
+            pooler_type=pooler_type,
+            **kwargs,
+        )
+
+
+class LongformerClassificationHead(torch.nn.Module):
     """My configurable head for sentence-level classification tasks."""
 
-    def __init__(self, config):
+    def __init__(self, config: LongformerConfig):
         super().__init__()
         self.dense = torch.nn.Linear(config.hidden_size, config.classifier_hidden_size)
         self.dropout = torch.nn.Dropout(config.classifier_dropout_prob)
@@ -46,32 +63,67 @@ class TDELongformerClassificationHead(torch.nn.Module):
         )
         self.activation_fn = get_activation(config.classifier_activation)
 
-    def forward(self, hidden_states, **_):
-        hidden_states = hidden_states[:, 0, :]  # take <s> token (equiv. to [CLS])
-        hidden_states = self.dropout(hidden_states)
-        hidden_states = self.dense(hidden_states)
-        hidden_states = self.activation_fn(hidden_states)
-        hidden_states = self.dropout(hidden_states)
-        output = self.out_proj(hidden_states)
+    def forward(self, hidden_state: torch.Tensor):
+        hidden_state = self.dropout(hidden_state)
+        hidden_state = self.dense(hidden_state)
+        hidden_state = self.activation_fn(hidden_state)
+        hidden_state = self.dropout(hidden_state)
+        output = self.out_proj(hidden_state)
         return output
 
 
-class TDELongformerForSequenceClassification(LongformerPreTrainedModel):
-    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+class LongformerMeanPooler(torch.nn.Module):
+    def forward(
+        self,
+        last_hidden_state: torch.Tensor,
+        attention_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        summed = torch.sum(last_hidden_state * attention_mask[:, :, None], 1)
+        row_lengths = torch.sum(attention_mask, 1)
+        return summed / row_lengths[:, None]
 
-    def __init__(self, config):
+
+class LongformerSumPooler(torch.nn.Module):
+    def forward(
+        self,
+        last_hidden_state: torch.Tensor,
+        attention_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        return torch.sum(last_hidden_state * attention_mask[:, :, None], 1)
+
+
+class LongformerClsPooler(torch.nn.Module):
+    def __init__(self, config: LongformerConfig) -> None:
+        super().__init__()
+        self.dense = torch.nn.Linear(config.hidden_size, config.max_position_embeddings)
+
+    def forward(
+        self, last_hidden_state: torch.Tensor, attention_mask: torch.Tensor
+    ) -> torch.Tensor:
+        # TODO: Transform CLS token's hidden state to weights with softmax.
+        # Then do weighted sum.
+        pass
+
+
+class LongformerForSequenceClassification(hf_longformer.LongformerPreTrainedModel):
+    def __init__(self, config: LongformerConfig) -> None:
         super().__init__(config)
         self.num_labels = config.num_labels
         self.config = config
 
-        # TODO: Classification on pooled hidden states?
-        self.longformer = LongformerModel(config, add_pooling_layer=False)
-        self.classifier = TDELongformerClassificationHead(config)
+        self.longformer = hf_longformer.LongformerModel(config)
+        self.classifier = LongformerClassificationHead(config)
+
+        self.pooler = None
+        if config.pooler_type is not None:
+            if config.pooler_type == "sum":
+                self.pooler = LongformerSumPooler()
+            elif config.pooler_type == "mean":
+                self.pooler = LongformerMeanPooler()
 
         # Initialize weights and apply final processing
         self.post_init()
 
-    # pylint: disable=too-many-locals
     def forward(
         self,
         *,
@@ -81,20 +133,17 @@ class TDELongformerForSequenceClassification(LongformerPreTrainedModel):
         head_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
-        inputs_embeds: Optional[torch.Tensor] = None,
-        labels: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
-    ) -> LongformerSequenceClassifierOutput:
-        return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
-        )
+        **_,  # Unused arguments which are given to models in HF framework.
+    ) -> Union[tuple, hf_longformer.LongformerSequenceClassifierOutput]:
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids)
+
         if global_attention_mask is None:
-            # TODO: Better to give forward global_attention_mask explicitely
             # logger.info("Initializing global attention on CLS token...")
+            # TODO: Better passing global_attention_mask explicitely
             global_attention_mask = torch.zeros_like(input_ids)
-            # global attention on cls token
             global_attention_mask[:, 0] = 1
 
         outputs = self.longformer(
@@ -104,45 +153,25 @@ class TDELongformerForSequenceClassification(LongformerPreTrainedModel):
             head_mask=head_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
-            inputs_embeds=inputs_embeds,
+            inputs_embeds=None,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
+            return_dict=True,
         )
-        sequence_output = outputs[0]
+
+        last_hidden_state = outputs[0]
+
+        # Taking the CLS token's last hidden state by default.
+        sequence_output = last_hidden_state[:, 0]
+        if self.pooler is not None:
+            sequence_output = self.pooler(
+                last_hidden_state=last_hidden_state, attention_mask=attention_mask
+            )
+
         logits = self.classifier(sequence_output)
 
-        loss = None
-        if labels is not None:
-            if self.config.problem_type is None:
-                if self.num_labels == 1:
-                    self.config.problem_type = "regression"
-                elif self.num_labels > 1 and (
-                    labels.dtype == torch.long or labels.dtype == torch.int
-                ):
-                    self.config.problem_type = "single_label_classification"
-                else:
-                    self.config.problem_type = "multi_label_classification"
-
-            if self.config.problem_type == "regression":
-                loss_fct = torch.nn.MSELoss()
-                if self.num_labels == 1:
-                    loss = loss_fct(logits.squeeze(), labels.squeeze())
-                else:
-                    loss = loss_fct(logits, labels)
-            elif self.config.problem_type == "single_label_classification":
-                loss_fct = torch.nn.CrossEntropyLoss()
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-            elif self.config.problem_type == "multi_label_classification":
-                loss_fct = torch.nn.BCEWithLogitsLoss()
-                loss = loss_fct(logits, labels)
-
-        if not return_dict:
-            output = (logits,) + outputs[2:]
-            return ((loss,) + output) if loss is not None else output
-
-        return LongformerSequenceClassifierOutput(
-            loss=loss,
+        return hf_longformer.LongformerSequenceClassifierOutput(
+            loss=None,
             logits=logits,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,

@@ -10,13 +10,14 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import Mean, Metric, MulticlassAccuracy
+# TODO: Compability with notebooks: import from tqdm.auto
 from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 from transformers.data.data_collator import DataCollatorWithPadding
 
 from transformer_document_embedding.baselines import ExperimentalModel
 from transformer_document_embedding.models.longformer import (
-    ClsLongformerConfig, TDELongformerForSequenceClassification)
+    LongformerConfig, LongformerForSequenceClassification)
 from transformer_document_embedding.tasks.imdb import IMDBClassification
 from transformer_document_embedding.utils.metrics import VMemMetric
 
@@ -30,9 +31,10 @@ class LongformerIMDB(ExperimentalModel):
         label_smoothing: float = 0.1,
         warmup_steps: int = math.floor(0.1 * 25000),
         batch_size: int = 1,
+        pooler_type: Optional[str] = None,
         classifier_dropout: Optional[float] = None,
         classifier_activation: Optional[str] = None,
-        classifier_dim: Optional[float] = None,
+        classifier_dim: Optional[int] = None,
     ) -> None:
         model_path = f"allenai/longformer-{'large' if large else 'base'}-4096"
         self._epochs = epochs
@@ -40,18 +42,18 @@ class LongformerIMDB(ExperimentalModel):
         self._warmup_steps = warmup_steps
         self._batch_size = batch_size
 
-        config = ClsLongformerConfig.from_pretrained(model_path)
-        if classifier_activation is not None:
-            config.classifier_activation = classifier_activation
-        if classifier_dropout is not None:
-            config.classifier_dropout_prob = classifier_dropout
-        if classifier_dim is not None:
-            config.classifier_hidden_size = classifier_dim
-        config.num_labels = 2
+        config = LongformerConfig(
+            classifier_dropout_prob=classifier_dropout,
+            classifier_activation=classifier_activation,
+            classifier_hidden_size=classifier_dim,
+            pooler_type=pooler_type,
+            num_labels=2,
+            **LongformerConfig.get_config_dict(model_path)[0],
+        )
 
         self._model = cast(
-            TDELongformerForSequenceClassification,
-            TDELongformerForSequenceClassification.from_pretrained(
+            LongformerForSequenceClassification,
+            LongformerForSequenceClassification.from_pretrained(
                 model_path,
                 config=config,
             ),
@@ -103,6 +105,7 @@ class LongformerIMDB(ExperimentalModel):
             val_summary_writer=val_summary_writer,
             fp16=True,
             max_grad_norm=1.0,
+            # TODO: Should add to 32 per effective batch.
             grad_accumulation_steps=16,
             lr_scheduler=get_linear_lr_scheduler_with_warmup(
                 optimizer,
@@ -136,8 +139,8 @@ class LongformerIMDB(ExperimentalModel):
 
     def load(self, dir_path: str) -> None:
         self._model = cast(
-            TDELongformerForSequenceClassification,
-            TDELongformerForSequenceClassification.from_pretrained(dir_path),
+            LongformerForSequenceClassification,
+            LongformerForSequenceClassification.from_pretrained(dir_path),
         )
 
     def _prepare_data(self, data: Dataset, training: bool = True) -> DataLoader:
