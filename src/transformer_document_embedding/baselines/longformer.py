@@ -10,8 +10,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import Mean, Metric, MulticlassAccuracy
-# TODO: Compability with notebooks: import from tqdm.auto
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 from transformers.data.data_collator import DataCollatorWithPadding
 
@@ -105,8 +104,7 @@ class LongformerIMDB(ExperimentalModel):
             val_summary_writer=val_summary_writer,
             fp16=True,
             max_grad_norm=1.0,
-            # TODO: Should add to 32 per effective batch.
-            grad_accumulation_steps=16,
+            grad_accumulation_steps=max(1, int(32 / self._batch_size)),
             lr_scheduler=get_linear_lr_scheduler_with_warmup(
                 optimizer,
                 self._warmup_steps,
