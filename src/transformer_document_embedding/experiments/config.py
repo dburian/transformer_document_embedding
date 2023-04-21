@@ -4,7 +4,7 @@ import importlib
 import logging
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import pkg_resources
 import tensorflow as tf
@@ -93,12 +93,12 @@ class ExperimentConfig:
 
     def get_model_type(self) -> type:
         return self._import_type(
-            MODEL_MODULE_PREFIX + "." + self.values["model"]["module"]
+            self.values["model"]["module"], module_prefix=MODEL_MODULE_PREFIX
         )
 
     def get_task_type(self) -> type:
         return self._import_type(
-            TASK_MODULE_PREFIX + "." + self.values["task"]["module"]
+            self.values["task"]["module"], module_prefix=TASK_MODULE_PREFIX
         )
 
     def save(self) -> None:
@@ -118,15 +118,22 @@ class ExperimentConfig:
             tf.summary.flush()
 
     @classmethod
-    def _import_type(cls, type_path: str) -> type:
+    def _import_type(
+        cls, type_spec: str, *, module_prefix: Optional[str] = None
+    ) -> type:
+        module_path = module_prefix if module_prefix is not None else ""
+        type_name = type_spec
+        if ":" in type_spec:
+            module_suffix, type_name = type_spec.split(":")
+            module_path += "." + module_suffix
+
         try:
-            module_path, type_name = type_path.split(":")
             module = importlib.import_module(module_path)
             return getattr(module, type_name)
         except Exception as exc:
             raise ValueError(
                 f"{ExperimentConfig._import_type.__name__}: invalid type path"
-                f" '{type_path}'."
+                f" '{type_spec}'."
             ) from exc
 
 
