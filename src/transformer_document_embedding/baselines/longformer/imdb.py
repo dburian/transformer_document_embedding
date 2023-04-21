@@ -5,11 +5,9 @@ from typing import Any, Iterable, Optional, cast
 import numpy as np
 import torch
 from datasets.arrow_dataset import Dataset
-from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import MulticlassAccuracy
 from transformers import AutoTokenizer
-from transformers.data.data_collator import DataCollatorWithPadding
 
 import transformer_document_embedding.baselines.longformer.train as train_utils
 from transformer_document_embedding.baselines import ExperimentalModel
@@ -71,14 +69,20 @@ class LongformerIMDB(ExperimentalModel):
             torch.cuda.is_available()
         ), f"Training {LongformerIMDB.__name__} is available only with gpu."
 
-        train_data = self._prepare_data(task.train)
+        train_data = train_utils.prepare_data(
+            task.train, tokenizer=self._tokenizer, batch_size=self._batch_size
+        )
 
         val_data = None
         val_summary_writer = None
         summary_writer = None
 
         if task.validation is not None:
-            val_data = self._prepare_data(task.validation)
+            val_data = train_utils.prepare_data(
+                task.validation,
+                tokenizer=self._tokenizer,
+                batch_size=self._batch_size,
+            )
 
             if log_dir is not None:
                 val_summary_writer = SummaryWriter(os.path.join(log_dir, "val"))
@@ -127,7 +131,12 @@ class LongformerIMDB(ExperimentalModel):
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
 
-        data = self._prepare_data(inputs, training=False)
+        data = train_utils.prepare_data(
+            inputs,
+            tokenizer=self._tokenizer,
+            batch_size=self._batch_size,
+            training=False,
+        )
         for batch in data:
             train_utils.batch_to_device(batch, self._model.device)
             logits = self._model(**batch)["logits"]
@@ -142,20 +151,3 @@ class LongformerIMDB(ExperimentalModel):
             LongformerForSequenceClassification,
             LongformerForSequenceClassification.from_pretrained(dir_path),
         )
-
-    def _prepare_data(self, data: Dataset, training: bool = True) -> DataLoader:
-        def _tokenize(doc: dict[str, Any]) -> dict[str, Any]:
-            return self._tokenizer(doc["text"], padding=False, truncation=True)
-
-        data = data.map(_tokenize, batched=True)
-        data = data.with_format("torch")
-        data = data.remove_columns(["text", "id"])
-
-        collator = DataCollatorWithPadding(tokenizer=self._tokenizer, padding="longest")
-        dataloader = DataLoader(
-            data,
-            batch_size=self._batch_size,
-            shuffle=training,
-            collate_fn=collator,
-        )
-        return dataloader

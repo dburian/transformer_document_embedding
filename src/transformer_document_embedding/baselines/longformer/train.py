@@ -1,6 +1,7 @@
 import math
 from typing import Any, Optional
 
+import datasets
 import torch
 from torch.cuda.amp.grad_scaler import GradScaler
 from torch.optim.lr_scheduler import LambdaLR
@@ -8,8 +9,33 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import Mean, Metric
 from tqdm.auto import tqdm
-from transformers import PreTrainedModel
+from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers.data.data_collator import DataCollatorWithPadding
 from transformers.trainer_pt_utils import get_parameter_names
+
+
+def prepare_data(
+    data: datasets.Dataset,
+    *,
+    tokenizer: PreTrainedTokenizer,
+    batch_size: int,
+    training: bool = True,
+) -> DataLoader:
+    def _tokenize(doc: dict[str, Any]) -> dict[str, Any]:
+        return tokenizer(doc["text"], padding=False, truncation=True)
+
+    data = data.map(_tokenize, batched=True)
+    data = data.with_format("torch")
+    data = data.remove_columns(["text", "id"])
+
+    collator = DataCollatorWithPadding(tokenizer=tokenizer, padding="longest")
+    dataloader = DataLoader(
+        data,
+        batch_size=batch_size,
+        shuffle=training,
+        collate_fn=collator,
+    )
+    return dataloader
 
 
 def batch_to_device(batch: dict[str, torch.Tensor], device: torch.device) -> None:

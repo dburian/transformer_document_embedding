@@ -1,1 +1,2 @@
-from .model import LongformerIMDB
+from .imdb import LongformerIMDB
+from .wiki import LongformerWikipediaSimilarities

@@ -1,0 +1,13 @@
+tde_version: 0.0.2
+model:
+  module: longformer:LongformerWikipediaSimilarities
+  kwargs:
+    pooler_type: mean
+    batch_size: 1
+
+
+task:
+  module: WikipediaSimilarities
+  kwargs:
+    dataset: wine
+
