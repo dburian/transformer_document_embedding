@@ -3,7 +3,7 @@ model:
   module: longformer:LongformerIMDB
   kwargs:
     epochs: 4
-    large: True
+    large: False
     classifier_activation: relu
 
 
