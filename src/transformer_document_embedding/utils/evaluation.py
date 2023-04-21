@@ -1,6 +1,7 @@
 from typing import Any, Callable, Iterable, Iterator, Optional
 
 import numpy as np
+from tqdm.auto import tqdm
 
 
 def aggregate_batches(
@@ -34,6 +35,8 @@ def evaluate_ir_metrics(
     true_pred_ids_iterable: Iterable[tuple[list[int], list[int]]],
     *,
     hits_thresholds: list[int],
+    iterable_length: Optional[int] = None,
+    verbose: bool = False,
 ) -> dict[str, float]:
     hits = [0 for _ in hits_thresholds]
     reciprocal_rank = 0
@@ -41,7 +44,12 @@ def evaluate_ir_metrics(
 
     total_queries = 0
 
-    for true_ids, pred_ids in true_pred_ids_iterable:
+    for true_ids, pred_ids in tqdm(
+        true_pred_ids_iterable,
+        desc="Checking similarities",
+        disable=not verbose,
+        total=iterable_length,
+    ):
         max_rank = len(pred_ids) - 1
         unordered_true = set(true_ids)
 

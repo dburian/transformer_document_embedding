@@ -36,6 +36,7 @@ class WikipediaSimilarities(HFTask):
         )
 
         self._dataset = dataset
+        self._test_sims_total = None
 
     def _retrieve_dataset(self) -> DatasetDict:
         articles = load_dataset(self._path, f"{self._dataset}_articles", split="train")
@@ -82,9 +83,10 @@ class WikipediaSimilarities(HFTask):
 
         test_source_ids = set(dataset["sims"]["source_id"])
         splits = {"train": train}
+        self._test_sims_total = len(dataset["sims"])
         if self._validation_fraction is not None and self._validation_source == "test":
-            test_sims_len = len(test_source_ids)
-            val_sims_len = math.floor(test_sims_len * self._validation_fraction)
+            self._test_sims_total = len(test_source_ids)
+            val_sims_len = math.floor(self._test_sims_total * self._validation_fraction)
 
             val_source_ids = set(random.sample(list(test_source_ids), k=val_sims_len))
             test_source_ids -= val_source_ids
@@ -107,9 +109,19 @@ class WikipediaSimilarities(HFTask):
     def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
         preds = smart_unbatch(pred_batches, 1)
 
-        true_pred_ids_iter = get_nearest_ids_from_faiss(self.splits["test"], preds)
+        true_pred_ids_iter = get_nearest_ids_from_faiss(
+            self.splits["test"],
+            preds,
+            k=1000,
+        )
 
-        return evaluate_ir_metrics(true_pred_ids_iter, hits_thresholds=[10, 100])
+        print(self._test_sims_total)
+        return evaluate_ir_metrics(
+            true_pred_ids_iter,
+            hits_thresholds=[10, 100],
+            iterable_length=self._test_sims_total,
+            verbose=True,
+        )
 
 
 def get_nearest_ids_from_faiss(
