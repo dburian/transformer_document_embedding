@@ -36,16 +36,18 @@ As far as I know we are hitting the max performence of the GPUs in AIC.
 The results of various configurations of the classification head were really
 close.
 
-| val accuracy | hidden dropout | hidden features | label smoothing |
-| ------------ | -------------- | --------------- | --------------- |
-| 0.9348       | 0.1            | 25              | 0.15            |
-| 0.9344       | 0.5            | 50              | 0.15            |
-| 0.9334       | 0.5            | 25              | 0.2             |
-| 0.9324       | 0.5            | 25              | 0.15            |
-| 0.932        | 0.5            | 0               | 0.15            |
-| 0.93         | 0.5            | 25              | 0.1             |
-| 0.929        | 0              | 25              | 0.15            |
-| 0.9282       | 0.5            | 150             | 0.15            |
+| val accuracy | hidden dropout | hidden features | label smoothing | model |
+| ------------ | -------------- | --------------- | --------------- | ----- |
+| 0.9448       | 0.1            | 25              | 0.15            | all-mpnet-base-v2 |
+| 0.9348       | 0.1            | 25              | 0.15            | all-distilroberta-v1 |
+| 0.9344       | 0.5            | 50              | 0.15            | all-distilroberta-v1 |
+| 0.9334       | 0.5            | 25              | 0.2             | all-distilroberta-v1 |
+| 0.9324       | 0.5            | 25              | 0.15            | all-distilroberta-v1 |
+| 0.932        | 0.5            | 0               | 0.15            | all-distilroberta-v1 |
+| 0.93         | 0.5            | 25              | 0.1             | all-distilroberta-v1 |
+| 0.929        | 0              | 25              | 0.15            | all-distilroberta-v1 |
+| 0.9282       | 0.5            | 150             | 0.15            | all-distilroberta-v1 |
+| 0.8763       | 0.1            | 25              | 0.15            | all-MiniLM-L12-v2 |
 
 Observations:
 - too many hidden features hurts the performence
