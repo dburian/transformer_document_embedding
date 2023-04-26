@@ -53,9 +53,8 @@ class LongformerWikipediaSimilarities(ExperimentalModel):
         )
         for batch in data:
             train_utils.batch_to_device(batch, self._model.device)
-            logits = self._model(**batch).pooler_output
-            preds = torch.argmax(logits, 1)
-            yield preds.numpy(force=True)
+            embeddings = self._model(**batch).pooler_output
+            yield embeddings.numpy(force=True)
 
     def save(self, dir_path: str) -> None:
         self._model.save_pretrained(dir_path)
