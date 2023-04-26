@@ -9,7 +9,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import MulticlassAccuracy
 from transformers import AutoTokenizer
 
-import transformer_document_embedding.baselines.longformer.train as train_utils
+import transformer_document_embedding.utils.torch.training as train_utils
 from transformer_document_embedding.baselines import ExperimentalModel
 from transformer_document_embedding.models.longformer import (
     LongformerConfig, LongformerForSequenceClassification)

@@ -2,7 +2,7 @@ import logging
 from typing import Optional, cast
 
 import torch
-import transformers.models.longformer.modeling_longformer as hf_longformer
+import transformers.models.big_bird.modeling_big_bird as hf_bigbird
 
 from transformer_document_embedding.models.hf_layers import (
     AVAILABLE_POOLERS, ClassificationConfigMixin, ClassificationHead,
@@ -11,17 +11,18 @@ from transformer_document_embedding.models.hf_layers import (
 logger = logging.getLogger(__name__)
 
 
-class LongformerConfig(
-    PooledConfigMixin, ClassificationConfigMixin, hf_longformer.LongformerConfig
+class BigBirdConfig(
+    PooledConfigMixin, ClassificationConfigMixin, hf_bigbird.BigBirdConfig
 ):
     pass
 
 
-class LongformerForTextEmbedding(hf_longformer.LongformerPreTrainedModel):
-    def __init__(self, config: LongformerConfig) -> None:
+# pylint: disable=abstract-method
+class BigBirdForTextEmbedding(hf_bigbird.BigBirdPreTrainedModel):
+    def __init__(self, config: BigBirdConfig) -> None:
         super().__init__(config)
 
-        self.longformer = hf_longformer.LongformerModel(config)
+        self.bert = hf_bigbird.BigBirdModel(config, add_pooling_layer=False)
         self.pooler = None
         if config.pooler_type is not None:
             self.pooler = AVAILABLE_POOLERS[config.pooler_type]()
@@ -33,31 +34,21 @@ class LongformerForTextEmbedding(hf_longformer.LongformerPreTrainedModel):
         *,
         input_ids: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
-        global_attention_mask: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
-        **_,  # Unused arguments which are given to models in HF framework.
-    ) -> hf_longformer.LongformerBaseModelOutputWithPooling:
-        # TODO: Check how outputs are handled during training.
-
+        **_,  # Unused arguments which are usually given to models in HF framework.
+    ) -> hf_bigbird.BaseModelOutputWithPoolingAndCrossAttentions:
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
 
-        if global_attention_mask is None:
-            # logger.info("Initializing global attention on CLS token...")
-            # TODO: Better passing global_attention_mask explicitely
-            global_attention_mask = torch.zeros_like(input_ids)
-            global_attention_mask[:, 0] = 1
-
         outputs = cast(
-            hf_longformer.LongformerBaseModelOutputWithPooling,
-            self.longformer(
+            hf_bigbird.BaseModelOutputWithPoolingAndCrossAttentions,
+            self.bert(
                 input_ids,
                 attention_mask=attention_mask,
-                global_attention_mask=global_attention_mask,
                 head_mask=head_mask,
                 token_type_ids=token_type_ids,
                 position_ids=position_ids,
@@ -68,20 +59,19 @@ class LongformerForTextEmbedding(hf_longformer.LongformerPreTrainedModel):
             ),
         )
 
-        outputs.pooler_output = (
-            self.pooler(
+        outputs.pooler_output = outputs.last_hidden_state[:, 0]
+
+        if self.pooler is not None:
+            outputs.pooler_output = self.pooler(
                 last_hidden_state=outputs.last_hidden_state,
                 attention_mask=attention_mask,
             )
-            if self.pooler is not None
-            else outputs.last_hidden_state[:, 0]
-        )
 
         return outputs
 
 
-class LongformerForSequenceClassification(LongformerForTextEmbedding):
-    def __init__(self, config: LongformerConfig) -> None:
+class BigBirdForSequenceClassification(BigBirdForTextEmbedding):
+    def __init__(self, config: BigBirdConfig) -> None:
         super().__init__(config)
 
         self.classifier = ClassificationHead(config)
@@ -94,18 +84,16 @@ class LongformerForSequenceClassification(LongformerForTextEmbedding):
         *,
         input_ids: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
-        global_attention_mask: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         **_,  # Unused arguments which are given to models in HF framework.
-    ) -> hf_longformer.LongformerSequenceClassifierOutput:
+    ) -> hf_bigbird.SequenceClassifierOutput:
         outputs = super().forward(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            global_attention_mask=global_attention_mask,
             head_mask=head_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
@@ -115,10 +103,9 @@ class LongformerForSequenceClassification(LongformerForTextEmbedding):
 
         logits = self.classifier(outputs.pooler_output)
 
-        return hf_longformer.LongformerSequenceClassifierOutput(
+        return hf_bigbird.SequenceClassifierOutput(
             loss=None,
             logits=logits,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
-            global_attentions=outputs.global_attentions,
         )

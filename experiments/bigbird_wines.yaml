@@ -1,0 +1,9 @@
+tde_version: 0.0.2
+model:
+  module: bigbird:BigBirdEmbedder
+
+task:
+  module: WikipediaSimilarities
+  kwargs:
+    dataset: 'wine'
+
