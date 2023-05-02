@@ -34,11 +34,12 @@ def smart_unbatch(
 def evaluate_ir_metrics(
     true_pred_ids_iterable: Iterable[tuple[list[int], list[int]]],
     *,
-    hits_thresholds: list[int],
+    hits_thresholds: list[int] | np.ndarray,
     iterable_length: Optional[int] = None,
     verbose: bool = False,
 ) -> dict[str, float]:
-    hits = [0 for _ in hits_thresholds]
+    hits_thresholds = np.array(hits_thresholds, dtype=np.int32)
+    hits = np.array([0 for _ in hits_thresholds])
     reciprocal_rank = 0
     percentile_ranks = []
 
@@ -57,17 +58,17 @@ def evaluate_ir_metrics(
             return target_id_with_rank[1] in unordered_true
 
         first_hit_ind = -1
+        query_hits = np.zeros_like(hits)
         for i, _ in filter(is_hit, enumerate(pred_ids)):
             if first_hit_ind == -1:
                 first_hit_ind = i
 
             percentile_ranks.append(i / max_rank)
-            for hit_ind, threshold in enumerate(hits_thresholds):
-                if i < threshold:
-                    hits[hit_ind] += 1
+            query_hits += i < hits_thresholds
 
         reciprocal_rank += 1 / (first_hit_ind + 1)
         total_queries += 1
+        hits += np.clip(query_hits, None, 1)
 
     results = {
         "mean_reciprocal_rank": reciprocal_rank / total_queries,
@@ -75,6 +76,6 @@ def evaluate_ir_metrics(
     }
 
     for hit_count, threshold in zip(hits, hits_thresholds):
-        results[f"hit_rate_at_{threshold}"] = hit_count / (threshold * total_queries)
+        results[f"hit_rate_at_{threshold}"] = hit_count / total_queries
 
     return results
