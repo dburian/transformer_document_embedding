@@ -53,6 +53,7 @@ class BigBirdEmbedder(ExperimentalModel):
     ) -> None:
         pass
 
+    @torch.no_grad()
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

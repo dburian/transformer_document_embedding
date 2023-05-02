@@ -128,6 +128,7 @@ class LongformerIMDB(ExperimentalModel):
                 # We have saved at least something, lets restore it
                 self.load(save_best_path)
 
+    @torch.no_grad()
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
 
