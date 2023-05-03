@@ -65,3 +65,9 @@ class TFIDF(ExperimentalModel):
         gensim_dict.filter_extremes(no_below=no_below, no_above=no_above)
 
         return gensim_dict
+
+    def save(self, dir_path: str) -> None:
+        pass
+
+    def load(self, dir_path: str) -> None:
+        pass
