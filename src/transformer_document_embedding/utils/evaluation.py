@@ -57,7 +57,7 @@ def evaluate_ir_metrics(
         def is_hit(target_id_with_rank: tuple[int, int]) -> bool:
             return target_id_with_rank[1] in unordered_true
 
-        first_hit_ind = -1
+        first_hit_ind = max_rank + 1
         query_hits = np.zeros_like(hits)
         for i, _ in filter(is_hit, enumerate(pred_ids)):
             if first_hit_ind == -1:
