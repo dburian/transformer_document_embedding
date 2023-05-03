@@ -5,12 +5,13 @@ import numpy as np
 import seaborn as sns
 from datasets.load import load_dataset
 
+from transformer_document_embedding.tasks import WikipediaSimilarities
+
 sns.set_theme()
 # %%
 articles = load_dataset(
     "../data/wikipedia_similarities.py", "game_articles", split="train"
 )
-# %%
 # %%
 sims = load_dataset("../data/wikipedia_similarities.py", "wine_sims", split="train")
 # %%
@@ -115,84 +116,23 @@ plt.title(
 )
 # plt.yscale("log")
 sns.histplot(target_title_freqs, bins=np.arange(-0.5, 30.5, 1))
-# %%
-
-
-def _add_text(article: dict[str, Any]) -> dict[str, Any]:
-    sections_text = [
-        f"{title} {text}"
-        for title, text in zip(article["section_titles"], article["section_texts"])
-    ]
-
-    text = " ".join(sections_text)
-    return {"text": f"{article['title']} {text}"}
-
-
-train = articles.map(_add_text)
-train = train.remove_columns(["section_texts", "section_titles", "title"])
-
-articles_by_id = {}
-for article in train:
-    articles_by_id[article["id"]] = article
-
-# %%
-print(articles_by_id.keys())
 # %% [markdown]
-# ## Trying out the task
+# ## Looking at the task
 # %%
-from transformer_document_embedding.tasks.wikipedia_wines import \
-    WikipediaSimilarities
-
-# %%
-task = WikipediaSimilarities(
-    dataset="game",
-    datasets_dir="../data",
-    validation_source="test",
-    validation_source_fraction=0.2,
-)
-# %%
-len(task.train)
-# %%
-len(task.validation)
-# %%
-len(task.test)
-# %%
-total_size = len(task.test) + len(task.validation)
-print(total_size)
-# %%
-print(total_size * 0.2)
-# %%
-from datasets.arrow_dataset import Dataset
-
-
-def test_integrity_of_test_set(test: Dataset) -> bool:
-    seen_ids = set()
-    ids_required = set()
-
-    for article in test:
-        if len(article["label"]) > 0:
-            ids_required.update(
-                target_article["id"] for target_article in article["label"]
-            )
-            ids_required.add(article["id"])
-
-        seen_ids.add(article["id"])
-
-    return seen_ids == ids_required
-
-
-# %%
-valid = test_integrity_of_test_set(task.splits["test"]) and test_integrity_of_test_set(
-    task.splits["validation"]
-)
-
-# %%
-print(valid)
+wines = WikipediaSimilarities(dataset="wine", datasets_dir="../data")
 # %%
 replaced_char_count = 0
-for article in task.train:
+for article in wines.train:
     replaced_char_count += article["text"].count("??")
 
 print(replaced_char_count)
 # %%
-print(task.train[16607])
+wines_df = wines.train.to_pandas()
+wines_df["Text length"] = wines_df[["text"]].applymap(lambda text: len(text))
+wines_df["Word count"] = wines_df[["text"]].applymap(lambda text: len(text.split()))
+# %%
+wines_df.describe()
+# %%
+sns.histplot(wines_df, x="Text length", binrange=(0, 20000))
+# %%
+sns.histplot(wines_df, x="Word count", binrange=(0, 5000))
