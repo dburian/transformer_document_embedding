@@ -1,3 +1,4 @@
+import logging
 from typing import Iterable, Optional, cast
 
 import numpy as np
@@ -12,6 +13,8 @@ from transformer_document_embedding.models.bigbird import (
 from transformer_document_embedding.tasks.experimental_task import \
     ExperimentalTask
 from transformer_document_embedding.utils.torch import training as train_utils
+
+logger = logging.getLogger(__name__)
 
 
 class BigBirdEmbedder(ExperimentalModel):
@@ -43,6 +46,15 @@ class BigBirdEmbedder(ExperimentalModel):
             ),
         )
 
+        # in order to use block_sparse attention, sequence_length has to be at least
+        # bigger than:
+        # 2 * block_size (global attentions) +
+        # 3 * block_size (sliding tokens) +
+        # 2 * num_random_blocks * block_size (random tokens)
+        self._min_sequence_length_for_block_sparse_attn = (
+            1 + (5 + 2 * num_random_blocks) * block_size
+        )
+
     def train(
         self,
         task: ExperimentalTask,
@@ -59,11 +71,16 @@ class BigBirdEmbedder(ExperimentalModel):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model.to(device)
 
-        data = train_utils.prepare_data(
+        mem_used = torch.cuda.memory_reserved(device)
+        mem_used = mem_used // 1024**2
+        logger.info("Memory exhausted by model: %d MB", mem_used)
+
+        data = train_utils.create_tokenized_data_loader(
             inputs,
             tokenizer=self._tokenizer,
             batch_size=self._batch_size,
             training=False,
+            min_sequence_length=self._min_sequence_length_for_block_sparse_attn,
         )
         for batch in data:
             train_utils.batch_to_device(batch, self._model.device)

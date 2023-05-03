@@ -69,7 +69,7 @@ class LongformerIMDB(ExperimentalModel):
             torch.cuda.is_available()
         ), f"Training {LongformerIMDB.__name__} is available only with gpu."
 
-        train_data = train_utils.prepare_data(
+        train_data = train_utils.create_tokenized_data_loader(
             task.train, tokenizer=self._tokenizer, batch_size=self._batch_size
         )
 
@@ -78,7 +78,7 @@ class LongformerIMDB(ExperimentalModel):
         summary_writer = None
 
         if task.validation is not None:
-            val_data = train_utils.prepare_data(
+            val_data = train_utils.create_tokenized_data_loader(
                 task.validation,
                 tokenizer=self._tokenizer,
                 batch_size=self._batch_size,
@@ -132,7 +132,7 @@ class LongformerIMDB(ExperimentalModel):
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
 
-        data = train_utils.prepare_data(
+        data = train_utils.create_tokenized_data_loader(
             inputs,
             tokenizer=self._tokenizer,
             batch_size=self._batch_size,

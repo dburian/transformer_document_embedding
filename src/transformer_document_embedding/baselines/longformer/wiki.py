@@ -46,7 +46,7 @@ class LongformerWikipediaSimilarities(ExperimentalModel):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model.to(device)
 
-        data = train_utils.prepare_data(
+        data = train_utils.create_tokenized_data_loader(
             inputs,
             tokenizer=self._tokenizer,
             batch_size=self._batch_size,
