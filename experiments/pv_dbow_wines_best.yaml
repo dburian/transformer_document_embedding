@@ -10,7 +10,6 @@ model:
       sample: 0
 
 task:
-  module: wikipedia_similarities:WikipediaSimilarities
+  module: WikipediaSimilarities
   kwargs:
-    datasets_dir: ./data
     dataset: wine

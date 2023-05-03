@@ -1,0 +1,9 @@
+tde_version: 0.0.2
+model:
+  module: tfidf:TFIDF
+
+task:
+  module: wikipedia_similarities:WikipediaSimilarities
+  kwargs:
+    dataset: wine
+
