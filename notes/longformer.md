@@ -2,7 +2,7 @@
 [hf_longformer]: https://huggingface.co/allenai/longformer-base-4096
 [i/longformer_attention]: ./imgs/longformer_attention.png
 [transformer_xl]: https://arxiv.org/abs/1901.02860
-[sukhbaatar_19]: https://arxiv.org/abs/1905.07799 
+[sukhbaatar_19]: https://arxiv.org/abs/1905.07799
 
 # Longformer
 
@@ -48,7 +48,7 @@ and values $V \in \mathcal{R}^{N \times E}$.
   locations powerful, so the resulting output can be used to asses the whole
   input. To give the model more flexibility different matricies $Q_g, K_g$ and
   $V_g$ are used for the global attention. These are initialized to the normal,
-  pretrained matricies when transfering from transformer with dense attention.
+  pretrained matricies when transferring from transformer with dense attention.
 
 We can think about the following images as visualizations of the $QK^T$ matrix
 -- green cells are non-zero, white cells are zero.
@@ -94,4 +94,3 @@ by:
 - using relative sinusoidal positional embeddings
 - staging learning: each stages doubles the window size and the sequence length
   and halves learning rate going from 2K to 23K tokens.
-

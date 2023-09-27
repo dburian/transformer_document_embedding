@@ -1,9 +1,12 @@
-from typing import Iterable, Optional
+from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
 
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+
+if TYPE_CHECKING:
+    from typing import Iterable, Optional
+    import numpy as np
+    from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
 # TODO: Rename just to baseline?

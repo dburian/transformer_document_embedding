@@ -5,10 +5,10 @@ import torch
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer
 
-from transformer_document_embedding.baselines.experimental_model import \
-    ExperimentalModel
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
+from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
 class SBERTWikipediaSimilarities(ExperimentalModel):

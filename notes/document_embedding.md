@@ -45,7 +45,7 @@ compare it against other models.
 
 ### The 'what'
 
-What information the embedding contains. We observe performence of the
+What information the embedding contains. We observe performance of the
 embeddings on various benchmarks. The way of thinking about this is if the model
 would capture this and that it would have good scores in this benchmark.
 
@@ -53,7 +53,7 @@ Benchmarks were picked from [dataset index][datasets].
 
 #### Similarity
 
-This is the category of tasks SBERT excells at. This is where we'll see if our
+This is the category of tasks SBERT excels at. This is where we'll see if our
 model is any good.
 
 - Documents similar (in terms of words, structure, meaning) to each other should
@@ -61,7 +61,7 @@ model is any good.
 - Benchmarks:
     - wine,
     - game,
-    - (similarity wikipedia triplets)
+    - (similarity Wikipedia triplets)
     - PAN plagiarism detection
 
 #### Topic

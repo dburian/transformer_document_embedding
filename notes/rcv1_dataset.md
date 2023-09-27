@@ -18,8 +18,8 @@ Problem: too short documents
 
 ## License
 
-To obtain the datsets [licenses][nist_download] approved by NIST must be signed.
-Together with the RCV1 one can recieve multilingual corpus and Thomas Reuters
+To obtain the datasets [licenses][nist_download] approved by NIST must be signed.
+Together with the RCV1 one can receive multilingual corpus and Thomas Reuters
 Text Research Collection (TRC2) -- not sure what that is about.
 
 
@@ -36,4 +36,3 @@ Text Research Collection (TRC2) -- not sure what that is about.
 ## Data analysis
 
 - size: 800k
-

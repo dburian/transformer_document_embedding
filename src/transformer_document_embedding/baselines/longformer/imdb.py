@@ -1,6 +1,6 @@
 import math
 import os
-from typing import Any, Iterable, Optional, cast
+from typing import Iterable, Optional, cast
 
 import numpy as np
 import torch
@@ -12,7 +12,9 @@ from transformers import AutoTokenizer
 import transformer_document_embedding.utils.torch.training as train_utils
 from transformer_document_embedding.baselines import ExperimentalModel
 from transformer_document_embedding.models.longformer import (
-    LongformerConfig, LongformerForSequenceClassification)
+    LongformerConfig,
+    LongformerForSequenceClassification,
+)
 from transformer_document_embedding.tasks.imdb import IMDBClassification
 from transformer_document_embedding.utils.metrics import VMemMetric
 

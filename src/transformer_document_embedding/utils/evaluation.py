@@ -10,7 +10,9 @@ def aggregate_batches(
     transform_true: Optional[Callable[[Any], np.ndarray]] = None,
 ) -> Iterable[tuple[np.ndarray, np.ndarray]]:
     if transform_true is None:
-        transform_true = lambda x: x
+
+        def transform_true(x):
+            return x
 
     for pred_batch in pred_batches:
         true_batch = []

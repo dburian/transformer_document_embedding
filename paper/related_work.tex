@@ -22,9 +22,9 @@ combines slightly altered DBOW and DM architectures previously used by Word2Vec
 in \cite{mikolov2013efficient}. As seen in Figure~\ref{fig:pv-dm_pv-dbow} the
 model's versions of DBOW and DM architectures, called PV-DBOW and PV-DM,
 incorporate paragraph's identifier. This allows the architectures to store the
-information about the input paragrahs, which is then used as the paragraph's
-embedding. The final paragrpah embedding is linear combination of the
-representations of both architectures. Note that, a paragrpah can be any piece
+information about the input paragraphs, which is then used as the paragraph's
+embedding. The final paragraph embedding is linear combination of the
+representations of both architectures. Note that, a paragraph can be any piece
 of continuous text.
 
 TODO: my own graphic here
@@ -39,7 +39,7 @@ TODO: my own graphic here
 Paragraph Vector is trained using language modelling --- both architectures should
 predict a word which is probable in the given context. In PV-DM the context is
 paragraph id and the neighbouring words, in PV-DBOW the context is only the
-pragraph id.
+paragraph id.
 
 Paragraph Vector's advantage is its small size and therefore quick learning.
 Moreover it is able to process paragraphs of all lengths. The disadvantage is
@@ -98,7 +98,3 @@ TODO: training
 \subsection{BigBird}
 
 TODO: how is it different from longformer
-
-
-
-

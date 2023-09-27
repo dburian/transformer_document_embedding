@@ -12,7 +12,9 @@ from datasets.load import load_dataset
 
 from transformer_document_embedding.tasks.hf_task import HFTask
 from transformer_document_embedding.utils.evaluation import (
-    evaluate_ir_metrics, smart_unbatch)
+    evaluate_ir_metrics,
+    smart_unbatch,
+)
 
 DATASET_DIR = "./data"
 AVAILABLE_DATASETS = ["wine", "game"]

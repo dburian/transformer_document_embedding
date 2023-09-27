@@ -6,4 +6,3 @@ task:
   module: wikipedia_similarities:WikipediaSimilarities
   kwargs:
     dataset: wine
-

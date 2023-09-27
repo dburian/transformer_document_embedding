@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Union
 
 import torch
 from torcheval.metrics import Mean, Metric

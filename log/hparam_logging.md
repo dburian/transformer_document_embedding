@@ -53,8 +53,8 @@ So I tried the following:
 3. To generate the hparam config we had to know two things:
     - hparams and their types
     - metric names
-Hparams and their types could be infered from YAML file, while metric names could be
-infered from experiments' logs (interpreting all scalars as metric names) after
+Hparams and their types could be inferred from YAML file, while metric names could be
+inferred from experiments' logs (interpreting all scalars as metric names) after
 all experiments have finished.
 4. To have the metrics in the hparam tuning directory structure, the scalars
    were copied (while changing their names) to a single event file under the
@@ -77,13 +77,13 @@ The problem of this approach is that for some reason the copied metrics got
 written as tensors instead of scalars. This complicated the scanning for
 metrics and to be honest was the last drop for me.
 
-I've written a lot of code for this approach so I'll share it at the end fo this
+I've written a lot of code for this approach so I'll share it at the end of this
 file.
 
 ### The easy, no-hparam-config approach
 
 The solution was just to log the hparam values at the root of the experiment
-directory. Thats it. HParams on their own infer all the hparam types, and
+directory. That's it. HParams on their own infer all the hparam types, and
 metrics from children directories. No duplicate metrics required, less code, no
 hacks.
 
@@ -255,7 +255,7 @@ Grid-search went as so:
             )
 ```
 
-Then the script recieved new argument:
+Then the script received new argument:
 ```python
 parser.add_argument(
     "--hp_search_base_path",

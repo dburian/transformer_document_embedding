@@ -20,7 +20,7 @@ pairs. There is still plenty of value in that:
 2. easy arguments loading, which are also automatically saved (see [experiment
    configuration][experiment_config])
 3. easily defined grid search (see [grid search config][experiment_config])
-4. avoiding *some* code repetition (though not as much as initially planed)
+4. avoiding *some* code repetition (though not as much as initially planned)
 5. automatic and systematic saving of experiment results and logging
 
 ## Implementation
@@ -59,7 +59,8 @@ that you'll never need.
 - Separating pure models and baselines
 
 Pure models are easily portable. Baselines are not. This is the main reason why
-the code is separated as so.
+the code is separated as so. Models can be written in pytorch or tensorflow,
+baselines also act as an adaptors.
 
 - importing models and tasks by package path
 

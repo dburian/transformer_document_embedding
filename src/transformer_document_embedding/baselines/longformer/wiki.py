@@ -6,10 +6,13 @@ from datasets import Dataset
 from transformers import AutoTokenizer
 
 import transformer_document_embedding.utils.torch.training as train_utils
-from transformer_document_embedding.baselines.experimental_model import \
-    ExperimentalModel
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
 from transformer_document_embedding.models.longformer import (
-    LongformerConfig, LongformerForTextEmbedding)
+    LongformerConfig,
+    LongformerForTextEmbedding,
+)
 from transformer_document_embedding.tasks import ExperimentalTask
 
 

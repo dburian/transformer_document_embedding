@@ -1,10 +1,12 @@
-from typing import Iterable
+from __future__ import annotations
 
-import numpy as np
-import tensorflow as tf
-
+from typing import TYPE_CHECKING
 from transformer_document_embedding.tasks.hf_task import HFTask
 from transformer_document_embedding.utils.evaluation import aggregate_batches
+
+if TYPE_CHECKING:
+    from typing import Iterable
+    import numpy as np
 
 
 class IMDBClassification(HFTask):
@@ -23,6 +25,8 @@ class IMDBClassification(HFTask):
         super().__init__("imdb", add_ids=True, **kwargs)
 
     def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
+        import tensorflow as tf
+
         metrics = [
             tf.keras.metrics.BinaryCrossentropy(),
             tf.keras.metrics.BinaryAccuracy(),

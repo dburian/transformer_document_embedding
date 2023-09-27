@@ -6,19 +6,18 @@ from typing import Any, Iterable, Optional, cast
 import numpy as np
 import torch
 from datasets.arrow_dataset import Dataset
-from sentence_transformers import (InputExample, SentenceTransformer,
-                                   evaluation, models)
+from sentence_transformers import InputExample, SentenceTransformer, evaluation, models
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics.classification import MulticlassAccuracy
 
 import transformer_document_embedding.utils.sentence_transformers as tde_st_utils
 import transformer_document_embedding.utils.torch as torch_utils
-from transformer_document_embedding.baselines.experimental_model import \
-    ExperimentalModel
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
 from transformer_document_embedding.tasks.imdb import IMDBClassification
-from transformer_document_embedding.utils.metrics import (MeanLossMetric,
-                                                          VMemMetric)
+from transformer_document_embedding.utils.metrics import MeanLossMetric, VMemMetric
 
 
 class SBertIMDB(ExperimentalModel):

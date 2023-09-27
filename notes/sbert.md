@@ -10,7 +10,7 @@ It's interesting because conceptually they did what I'm trying to do:
 1. take a transformer,
 2. adjust the architecture so it produces nice embeddings.
 
-As them I should focus on matching the performence of the original transformer,
+As them I should focus on matching the performance of the original transformer,
 while making it easier to find similar pieces of text.
 
 ## Architecture

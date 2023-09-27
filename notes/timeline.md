@@ -101,5 +101,3 @@ too long the work prolongs like crazy.
 6. Conclusion
 
 - what is the result of my work
-
-

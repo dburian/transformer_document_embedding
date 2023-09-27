@@ -10,12 +10,11 @@ from gensim.models import Doc2Vec
 from gensim.models.callbacks import CallbackAny2Vec
 
 import transformer_document_embedding.tasks.wikipedia_similarities as wiki_sims_task
-from transformer_document_embedding.baselines.experimental_model import \
-    ExperimentalModel
-from transformer_document_embedding.models.paragraph_vector import \
-    ParagraphVector
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
+from transformer_document_embedding.models.paragraph_vector import ParagraphVector
+from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 from transformer_document_embedding.utils.evaluation import evaluate_ir_metrics
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
 

@@ -21,7 +21,7 @@ My hunch that I will forget to:
 From Trainer:
 - `args.weight_decay` weight decay for all weights except biases and all weights
   of LayerNorms
-- `args.optim` optimizier with `args.adam_beta1` and `args.adam_beta2`
+- `args.optim` optimizer with `args.adam_beta1` and `args.adam_beta2`
 - linear warmup to 1 then `args.lr_scheduler`
 - call `gradient_checkpointing_enable` on model
 - for each epoch do

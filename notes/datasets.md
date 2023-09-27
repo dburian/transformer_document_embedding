@@ -60,7 +60,7 @@
 My research into suitable datasets for testing long document embeddings.
 
 Our focus is on **assessing similarity** on **longer documents**. Similarity
-because thats where you can gain the most by having good document embeddings.
+because that's where you can gain the most by having good document embeddings.
 Longer documents because there are models which probably will produce something
 better for shorter ones.
 
@@ -79,12 +79,12 @@ structure, meaning and whatever else the embeddings capture.
     - both are pretty small with ~90 source articles, each with ~10 similar
       articles
 
-- PAN plagiarism detection 
+- PAN plagiarism detection
     - introduced in [Multilevel Text Alignment with Cross-Document
       Attention][zhou_20]
     - downloadable from [A Benchmark for Document Relation Prediction and
       Localization][zhou_gitio]
-    - pairs of section and document, binary classification whehter the section
+    - pairs of section and document, binary classification whether the section
       plagiarises the given document
     - positive pairs are assessed by human annotators,
     - negatives are constructed from positives, by changing the section to
@@ -143,6 +143,7 @@ paper cited by the source paper
           the article
         - 172 hand crafted Wikipedia triplets and
         - 20k of Arxiv triplets, where similarity is based on shared subjects.
+
 
 #### Rejected
 
@@ -212,10 +213,11 @@ Get an idea how our model compares on shorter inputs:
     - Reason of rejection: articles are too short
 - [MLDoc][mldoc]
     - multilingual Reuters news collection
-    - uniform distribution accross languages
+    - uniform distribution across languages
     - for the official original dataset an agreement is needed (in a TREC track)
     - Reason of rejection: difficult to get
 
+### Benchmarks for other embedding models
 
 ### Generative task
 
@@ -289,7 +291,7 @@ Any document retrieval datasets (there are better models for that):
   background."
 - [TREC Robust 04][trec-robust04] - 250 keyword-queries over 520K news articles
 - [TREC Robust 05][trec-robust05] - 50 hard queries from Robust 04 over 1M docs
-  from AQUAINT - license is needed and data must be paid for
+  from ACQUAINT - license is needed and data must be paid for
 - [SciDocs][scidocs] - scientific article similarity benchmark based on
   citations, "may be overly optimistic", not from a single domain although 70%
   are Comp. Science, tasks include citations prediction, classification by
@@ -306,4 +308,3 @@ Any document retrieval datasets (there are better models for that):
 - [TREC CAR][trec-car] - mainly paragraph ordering task to explain query, short
   paragraphs
 - [CISI][cisi] - short documents, questions as queries
-

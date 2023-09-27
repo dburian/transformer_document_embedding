@@ -5,9 +5,7 @@ import datasets
 import torch
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
-from transformers import (BatchEncoding, PreTrainedTokenizerBase,
-                          PreTrainedTokenizerFast)
-from transformers.data.data_collator import DataCollatorWithPadding
+from transformers import BatchEncoding, PreTrainedTokenizerBase, PreTrainedTokenizerFast
 from transformers.tokenization_utils import TruncationStrategy
 from transformers.trainer_pt_utils import get_parameter_names
 from transformers.utils import PaddingStrategy

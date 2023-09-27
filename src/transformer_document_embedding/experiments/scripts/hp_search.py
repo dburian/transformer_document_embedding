@@ -7,8 +7,7 @@ import logging
 import pprint
 
 import transformer_document_embedding as tde
-from transformer_document_embedding.experiments.search import (GridSearch,
-                                                               OneSearch)
+from transformer_document_embedding.experiments.search import GridSearch, OneSearch
 
 EXPERIMENTS_DIR = "./results"
 

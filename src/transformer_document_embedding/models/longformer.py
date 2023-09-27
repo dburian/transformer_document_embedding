@@ -5,8 +5,11 @@ import torch
 import transformers.models.longformer.modeling_longformer as hf_longformer
 
 from transformer_document_embedding.models.hf_layers import (
-    AVAILABLE_POOLERS, ClassificationConfigMixin, ClassificationHead,
-    PooledConfigMixin)
+    AVAILABLE_POOLERS,
+    ClassificationConfigMixin,
+    ClassificationHead,
+    PooledConfigMixin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +51,7 @@ class LongformerForTextEmbedding(hf_longformer.LongformerPreTrainedModel):
 
         if global_attention_mask is None:
             # logger.info("Initializing global attention on CLS token...")
-            # TODO: Better passing global_attention_mask explicitely
+            # TODO: Better passing global_attention_mask explicitly
             global_attention_mask = torch.zeros_like(input_ids)
             global_attention_mask[:, 0] = 1
 

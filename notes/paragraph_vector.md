@@ -7,7 +7,7 @@
 Brief description of PV-DM and PV-DBOW models introduced by [Mikolov, Le in
 2014][paper].
 
-Each of the two models creates a dense vector representation of an arbitrarly
+Each of the two models creates a dense vector representation of an arbitrarily
 long piece of text. The two representations are usually concatenated, and thus
 form a one single model. This model is often regarded as doc2vec or simply
 Paragraph vector (as suggested by the authors).
@@ -41,5 +41,3 @@ The loss is again cross-entropy.
 
 During training the weights of the hidden layer are learned while in prediction
 are fixed.
-
-

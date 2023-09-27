@@ -1,3 +1,4 @@
+# %%
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,8 @@ sims = load_dataset("../data/wikipedia_similarities.py", "wine_sims", split="tra
 print(sims[0])
 # %%
 print(articles[123])
+
+
 # %%
 def compare_articles(articles) -> None:
     print("Titles:")
@@ -59,6 +62,8 @@ for i in compare_all():
         break
 # %%
 print(articles[24])
+
+
 # %%
 def create_text(article: dict[str, Any]) -> dict[str, Any]:
     sections_text = [

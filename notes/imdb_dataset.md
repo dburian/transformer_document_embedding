@@ -54,5 +54,3 @@ Cross-Entropy loss. Additionally global attention is used on the CLS token.
 ## Data Analysis
 
 [In notebook][d/imdb]
-
-

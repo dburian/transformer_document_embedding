@@ -11,13 +11,18 @@ dependencies = [
   "transformers>=4.24",
   "tensorflow>=2.10",
   "datasets>=2.6",
-  "matplotlib>=3.6",
   "gensim>=4.2",
-  "torch>=1.13, <2.0", #torch 2.0 cuases hangs https://github.com/pytorch/pytorch/issues/97580
+  "torch>=1.13",
   "sentence-transformers>=2.2",
   "torcheval",
   "faiss-cpu",
   "protobuf==3.20.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "seaborn",
+  "matplotlib>=3.6",
 ]
 
 [project.scripts]
@@ -27,3 +32,97 @@ hp_search = "transformer_document_embedding.experiments.scripts.hp_search:main"
 [project.urls]
 homepage = "https://github.com/dburian/transformer_document_embedding"
 repository = "https://github.com/dburian/transformer_document_embedding"
+
+[tool.ruff]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = ["E", "F"]
+ignore = []
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = [
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "I",
+  "N",
+  "Q",
+  "S",
+  "T",
+  "W",
+  "ANN",
+  "ARG",
+  "BLE",
+  "COM",
+  "DJ",
+  "DTZ",
+  "EM",
+  "ERA",
+  "EXE",
+  "FBT",
+  "ICN",
+  "INP",
+  "ISC",
+  "NPY",
+  "PD",
+  "PGH",
+  "PIE",
+  "PL",
+  "PT",
+  "PTH",
+  "PYI",
+  "RET",
+  "RSE",
+  "RUF",
+  "SIM",
+  "SLF",
+  "TCH",
+  "TID",
+  "TRY",
+  "UP",
+  "YTT"
+]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Same as Black.
+line-length = 88
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+target-version = "py311"
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.codespell]
+ignore-words-list = "theses"

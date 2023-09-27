@@ -1,4 +1,8 @@
-from typing import Any, Optional
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any, Optional
 
 
 # TODO: Rename to just task?
@@ -33,6 +37,6 @@ class ExperimentalTask:
     def evaluate(self, pred_batches) -> dict[str, float]:
         """Evaluates given test predictions on task-specific metrics.
 
-        Returns dictionary mapping metric names to their respecitve score.
+        Returns dictionary mapping metric names to their respective score.
         """
         raise NotImplementedError()

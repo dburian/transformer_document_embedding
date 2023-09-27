@@ -6,4 +6,3 @@ task:
   module: WikipediaSimilarities
   kwargs:
     dataset: 'wine'
-

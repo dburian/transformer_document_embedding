@@ -6,10 +6,10 @@ from gensim.corpora import Dictionary
 from gensim.matutils import sparse2full
 from gensim.models import TfidfModel
 
-from transformer_document_embedding.baselines.experimental_model import \
-    ExperimentalModel
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
+from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
 class TFIDF(ExperimentalModel):

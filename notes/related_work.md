@@ -62,7 +62,7 @@ All the sources in the field to give me some inspiration with my thing.
   SOTA performance on 3 out of 4 tasks.
 - [Siamese Multi-depth Transformer-based Hierarchical (SMITH) Encoder for
   Long-Form Document Matching][yang_20]
-    - another hierarchical aproach using Transformers. Sentences are greadily
+    - another hierarchical approach using Transformers. Sentences are greadily
       fed into transformer towers. Whose [CLS] tokens are then fed to another
       transformer whose first token will be used as the document representation.
     - uses similarity datasets Wiki65K (introduced in [Semantic Text Matching
@@ -100,7 +100,7 @@ TODO: Learn about these more - how are global attentions trained, initialized in
 inference, what makes them different
 - [Longformer (2020)][longformer]
 - [BigBird (2021)][bigbird]
-- [Transformer XL (2019)][transformer_xl] -- example of left-to-right transfomer
+- [Transformer XL (2019)][transformer_xl] -- example of left-to-right transformer
   (rather than with sparse attention)
 
 - [Multi-document tranformer for personality detection][yang_21]
@@ -177,7 +177,7 @@ embeddings..Ran across this list of tools:
 - [Milvus][milvus] - vector database built for scalable similarity search.
 
 
-I should dedicate some pages to efficency. Checkout this [benchmark for efficent
+I should dedicate some pages to efficiency. Checkout this [benchmark for efficient
 transformers by Tay, Dehghani et al. in 2020][tay_20]
 
 ## TODO

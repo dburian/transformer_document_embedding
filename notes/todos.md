@@ -35,4 +35,3 @@ torch lightning and similar solutions
 ## Cleanup
 
 - [ ] Split pyproject installations to optional dependencies based on framework
-

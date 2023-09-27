@@ -21,19 +21,22 @@ from transformers import (
     LongformerForSequenceClassification,
     AutoTokenizer,
 )
-import transformer_document_embedding as tde
+from transformer_document_embedding.tasks.imdb import IMDBClassification
 from typing import Any, Optional
 from torcheval.metrics import Metric, MulticlassAccuracy, Mean
 from torch.utils.tensorboard.writer import SummaryWriter
 from datetime import datetime
 import logging
 from tqdm import tqdm_notebook
+from transformers.data.data_collator import DataCollatorWithPadding
+from torch.utils.data import DataLoader
 
 # %%
 logging.basicConfig(format="[%(levelname)s]%(name)s: %(message)s (%(module)s)")
 
 # %%
-del model
+
+del model  # noqa: F821
 torch.cuda.empty_cache()
 
 # %%
@@ -43,7 +46,7 @@ model = AutoModelForSequenceClassification.from_pretrained(
 )
 
 # %%
-imdb_task = tde.tasks.IMDBClassification(data_size_limit=100)
+imdb_task = IMDBClassification(data_size_limit=100)
 
 
 # %%
@@ -63,18 +66,14 @@ print(train[0])
 print(train[0]["input_ids"].shape)
 
 # %%
-from transformers.data.data_collator import DataCollatorWithPadding
-from torch.utils.data import DataLoader
 
 collator = DataCollatorWithPadding(tokenizer=tokenizer, padding="longest")
 dataloader = DataLoader(train, batch_size=1, shuffle=True, collate_fn=collator)
 
 # %%
 for batch in dataloader:
+    print(batch)
     break
-
-print(batch)
-
 # %%
 model.train()
 with torch.no_grad():

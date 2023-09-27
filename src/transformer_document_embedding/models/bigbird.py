@@ -5,8 +5,11 @@ import torch
 import transformers.models.big_bird.modeling_big_bird as hf_bigbird
 
 from transformer_document_embedding.models.hf_layers import (
-    AVAILABLE_POOLERS, ClassificationConfigMixin, ClassificationHead,
-    PooledConfigMixin)
+    AVAILABLE_POOLERS,
+    ClassificationConfigMixin,
+    ClassificationHead,
+    PooledConfigMixin,
+)
 
 logger = logging.getLogger(__name__)
 

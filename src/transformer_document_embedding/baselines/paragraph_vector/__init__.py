@@ -1,2 +1,0 @@
-from .pv_imdb import ParagraphVectorIMDB
-from .pv_wiki import ParagraphVectorWikipediaSimilarities

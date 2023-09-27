@@ -24,7 +24,7 @@ can prepare the correct features for the pytorch Module. Use `DataLoader` with
 
 ## Hardware requirements
 
-As far as I know we are hitting the max performence of the GPUs in AIC.
+As far as I know we are hitting the max performance of the GPUs in AIC.
 
 - 64 batches were OOM
 - 2 batches used around 25% memory
@@ -50,7 +50,7 @@ close.
 | 0.8763       | 0.1            | 25              | 0.15            | all-MiniLM-L12-v2 |
 
 Observations:
-- too many hidden features hurts the performence
+- too many hidden features hurts the performance
 - best results seem to have around 25 - 50 hidden features with .15 label
   smoothing and at least 0.1 dropout (though 0.5 does not hurt that much)
 - after 10 epochs validation accuracy seem to have stabilized

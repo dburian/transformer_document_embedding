@@ -17,6 +17,3 @@ Scientific article similarity annotaded by experts.
 - [Article][article]
 - [Download - annotations][download_annotations]
 - [Download - abstracts][download_aspire] and [here][download_pub_annotations]
-
-
-

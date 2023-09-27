@@ -44,6 +44,8 @@ train_ids = set((doc["id"] for doc in task.train))
 val_ids = set((doc["id"] for doc in task.validation))
 
 print(val_ids.isdisjoint(train_ids))
+
+
 # %%
 class STDataset(torch.utils.data.Dataset):
     def __init__(self, hf_dataset: Dataset) -> None:

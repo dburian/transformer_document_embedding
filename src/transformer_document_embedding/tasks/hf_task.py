@@ -1,14 +1,17 @@
+from __future__ import annotations
 import math
 from abc import abstractmethod
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
-from datasets.arrow_dataset import Dataset
 from datasets.dataset_dict import DatasetDict
 from datasets.load import load_dataset
 
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+
+if TYPE_CHECKING:
+    from typing import Any, Optional, cast
+    from datasets.arrow_dataset import Dataset
 
 
 class HFTask(ExperimentalTask):

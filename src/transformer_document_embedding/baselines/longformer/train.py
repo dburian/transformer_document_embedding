@@ -79,7 +79,7 @@ def validation_step(
     metrics: dict[str, Metric],
     mean_val_loss: Metric,
 ) -> None:
-    batch_to_device(batch, device)
+    train_utils.batch_to_device(batch, device)
 
     with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=fp16):
         with torch.no_grad():

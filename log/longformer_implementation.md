@@ -48,7 +48,7 @@ config = CustomConfig(
 
 The smaller model consumed somewhere in the neighbourhood of 7600 MB of vmem.
 The larger model ran out of memory (with bs=1 and gradient_checkpointing) almost
-at the very begining of training.
+at the very beginning of training.
 
 ### Test set evaluations
 
@@ -60,7 +60,7 @@ Using the default CLS head, which is:
 - dropout, 0.1
 - FC
 
-and the prameters:
+and the parameters:
 
 ```yaml
 epochs: 10

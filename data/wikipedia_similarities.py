@@ -28,8 +28,10 @@ from datasets.splits import Split, SplitGenerator
 
 _CITATION = """\
 @misc{ginzburg2021selfsupervised,
-     title={Self-Supervised Document Similarity Ranking via Contextualized Language Models and Hierarchical Inference}, 
-     author={Dvir Ginzburg and Itzik Malkiel and Oren Barkan and Avi Caciularu and Noam Koenigstein},
+     title={Self-Supervised Document Similarity Ranking via Contextualized Language \
+Models and Hierarchical Inference},
+     author={Dvir Ginzburg and Itzik Malkiel and Oren Barkan and Avi Caciularu and \
+Noam Koenigstein},
      year={2021},
      eprint={2106.01186},
      archivePrefix={arXiv},
@@ -40,7 +42,8 @@ _CITATION = """\
 # TODO: Add description of the dataset here
 # You can copy an official description
 _DESCRIPTION = """\
-Parsed Wikipedia articles about wines and games, whose similarities are judged by experts.
+Parsed Wikipedia articles about wines and games, whose similarities are judged by\
+ experts.
 """
 
 # TODO: Add a link to an official homepage for the dataset here
@@ -128,7 +131,7 @@ class WikipediaSimilarities(GeneratorBasedBuilder):
 
         if features is None:
             raise ValueError(
-                f"{WikipediaGamesWines._info.__name__}: Config name not recognised"
+                f"{WikipediaSimilarities._info.__name__}: Config name not recognised"
             )
 
         return DatasetInfo(
@@ -148,7 +151,8 @@ class WikipediaSimilarities(GeneratorBasedBuilder):
 
         if filepaths is None:
             raise ValueError(
-                f"{WikipediaGamesWines._info.__name__}: Config name not recognised"
+                f"{WikipediaSimilarities._split_generators.__name__}: Config name not"
+                "recognised"
             )
 
         return [
@@ -206,7 +210,7 @@ class WikipediaSimilarities(GeneratorBasedBuilder):
 
                 assert (
                     title not in title_to_id
-                ), f"Titles are not unique: '{title}' occured twice."
+                ), f"Titles are not unique: '{title}' occurred twice."
 
                 title_to_id[title] = article_id
 
@@ -265,6 +269,6 @@ class WikipediaSimilarities(GeneratorBasedBuilder):
             return self._parse_similarities(filepaths["sims"], title_to_id)
 
         raise ValueError(
-            f"{WikipediaGamesWines._generate_examples.__name__}: Config name not"
+            f"{WikipediaSimilarities._generate_examples.__name__}: Config name not"
             " recognised"
         )

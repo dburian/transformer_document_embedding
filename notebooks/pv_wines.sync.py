@@ -1,10 +1,12 @@
 import logging
 import os
 
-from transformer_document_embedding.baselines.paragraph_vector import \
-    ParagraphVectorWikipediaSimilarities
-from transformer_document_embedding.tasks.wikipedia_similarities import \
-    WikipediaSimilarities
+from transformer_document_embedding.baselines.paragraph_vector import (
+    ParagraphVectorWikipediaSimilarities,
+)
+from transformer_document_embedding.tasks.wikipedia_similarities import (
+    WikipediaSimilarities,
+)
 
 # %%
 logging.basicConfig(

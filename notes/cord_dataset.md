@@ -30,4 +30,4 @@ All qrels are human assesed.
 - #qrels: 69K
 
 - avg. length of text: 1.7k words
-- avg. lenght of abstract: 140 words
+- avg. length of abstract: 140 words

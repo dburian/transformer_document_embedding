@@ -6,12 +6,14 @@ import torch
 from datasets import Dataset
 from transformers import AutoTokenizer
 
-from transformer_document_embedding.baselines.experimental_model import \
-    ExperimentalModel
+from transformer_document_embedding.baselines.experimental_model import (
+    ExperimentalModel,
+)
 from transformer_document_embedding.models.bigbird import (
-    BigBirdConfig, BigBirdForTextEmbedding)
-from transformer_document_embedding.tasks.experimental_task import \
-    ExperimentalTask
+    BigBirdConfig,
+    BigBirdForTextEmbedding,
+)
+from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 from transformer_document_embedding.utils.torch import training as train_utils
 
 logger = logging.getLogger(__name__)

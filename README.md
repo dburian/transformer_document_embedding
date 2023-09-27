@@ -98,4 +98,3 @@ of sentence embeddings. In Empirical Methods in Natural Language Processing
 ## Ideas
 
 - probing - what is represented by the document embedding
-
