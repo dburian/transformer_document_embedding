@@ -54,6 +54,7 @@
 [jiang_19]: https://dl.acm.org/doi/pdf/10.1145/3308558.3313707
 [yang_20]: https://dl.acm.org/doi/pdf/10.1145/3340531.3411908
 [radev_13]: https://link.springer.com/article/10.1007/s10579-012-9211-2
+[the_pile]: https://arxiv.org/abs/2101.00027
 
 # Datasets
 
@@ -245,6 +246,9 @@ TODO: or maybe: https://data.statmt.org/news-crawl/en-doc/
   of the English Wikipedia XML dump on Mar. 3, 2006 and is typically used to
   measure a model's ability to compress data.
 - [Gutenberg project books][gutenberg] - books with metadata
+- [The pile][the_pile] --- diverse and large (680GB) collection of text for
+  large LMs' pretraining
+- [CC-100][cc_100] --- attempt to recreate corpus for training XLM-R
 
 
 ## Found but unfit

@@ -28,12 +28,12 @@ BigBird uses three types of attention:
 - local windowed attention: each token gets information from his $k$ surrounding
   tokens,
 - random attention: for each token receives information from a randomly chosen
-  other token
+  other token -- this is the main **difference from Longformer**
 - global attention: some selected tokens get information from all other tokens
 
 ![BigBird's attention](./imgs/bigbird_attention.png)
 
-There are two implementations of global attention that then create two BigBird
+There are two types of global attention that then create two BigBird
 models:
 
 - BigBird-ITC: global tokens are chosen among the existing input tokens,
@@ -51,9 +51,17 @@ attention.
 
 ### Attention implementation
 
-BigBird implements attention with blocks. I do not quite understand the
-implementation yet, so let's read into it sometime. The size of 'block' is an
-hyperparameter.
+BigBird implements attention with blocks. To avoid the costly gather operation
+BigBird's attentions splits key, query and value matricies to blocks and which
+then concatenates/copies/reshapes such that the whole attention can be computed
+with a single batched tensor multiplication. The result is both time and space
+complexity is $O(n(g + w + r)bd)$, where
+
+- $n$ is sequence length
+- $g$, $w$ and $r$ is number of global tokens, window size and number of random
+  tokens per query
+- $b$ is block size
+- $d$ is hidden dimension.
 
 
 ## Theoretical results

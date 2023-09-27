@@ -28,6 +28,7 @@
 [jiang_19]: https://dl.acm.org/doi/pdf/10.1145/3308558.3313707
 [radev_13]: https://link.springer.com/article/10.1007/s10579-012-9211-2
 [howard_18]: https://arxiv.org/pdf/1801.06146.pdf
+[tay_22]: https://dl.acm.org/doi/full/10.1145/3530811
 
 # Related work
 
@@ -92,6 +93,11 @@ All the sources in the field to give me some inspiration with my thing.
 ## Backbones
 
 - [SBERT][d/sbert]
+- [BigBird 2021][bigbird]
+- [Sparse transformers by OpenAI][child_19] --- focuses only on autoregressive
+  models
+- [Longformer (2020)][longformer]
+- [Reformer][kitaev_20]
 
 - [Efficient transformes: A survey][tay_22] -- Summarization of efficient
   transformer models in recent years
@@ -109,11 +115,6 @@ inference, what makes them different
 - [Pretrained Language Models for Sequential Sentence Classification][cohan_19]
   - Transformer layers that "directly utilize contextual information from all
     words in all sentences"
-
-## Theory
-
-- [BigBird 2021][bigbird]
-- [Sparse transformers by OpenAI][child_19]
 
 ## Learning
 
