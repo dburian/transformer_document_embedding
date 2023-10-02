@@ -2,6 +2,63 @@
 
 ## Definition
 
+Currently similarity-based tasks output all articles (meaning the things that we
+compare using similarities) on all splits. However, for the test (and
+validation) splits some articles will have 'label' key with list of all similar
+articles.
+
+### Data format
+
+Below is an example of a format of single article:
+
+```python
+train_article = {
+    'id': 42,
+    'text': 'whole text of the article',
+}
+
+# Article with gold similarities
+source_test_article = {
+    'id': 42,
+    'text': 'whole text of the article',
+    'labels': [
+        {
+            'id': 43,
+            'text': 'Another whole text of the article',
+        },
+        ...
+    ]
+}
+
+# Article without gold similarities
+non_source_test_article = {
+    'id': 43,
+    'text': 'Another whole text of the article',
+}
+```
+
+## Evaluation
+
+For evaluation the currently implemented approach is to:
+
+- call function that iterates over predicted and gold similar articles
+    - adds normalized predictinons (=embeddings) for each article into a hf dataset
+    - adds faiss index for the embedding column with inner product as similarity
+    - for each article with labels return the labels and the k top similar
+      articles according to the index
+- call function that takes the iterator and computes IR metrics
+
+Currently there is only a single function which computes all metrics:
+
+TODO: Today
+- Mean Reciprocal Rank --
+- Mean Percentile Rank --
+- HitRatio@k --
+
+## Why's
+
+### Similarity or embedding based?
+
 There are multiple ways how to define tasks, which are based on similarity of
 documents:
 
@@ -19,3 +76,9 @@ similarities directly.
 
 We can always have multiple tasks using the same data, only providing different
 transformations of those data to suite given definition of similarity task.
+
+### Why use faiss with HF dataset as vector database
+
+Since we don't need anything super-scalable or fancy I went for the
+quickest-to-implement approach. Since HF datasets offer interface for faiss for free
+and faiss is very capable, there is not much to talk about.

@@ -1,6 +1,6 @@
 tde_version: 0.0.2
 model:
-  module: tfidf:TFIDF
+  module: bigbird.embed:BigBirdEmbedder
 
 task:
   module: wikipedia_similarities:WikipediaSimilarities

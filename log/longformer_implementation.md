@@ -26,7 +26,7 @@ Approaches:
        get assigned. From `configuration_utils`:
 ```python
 config = cls(**config_dict)
-...
+
 for key, value in kwargs.items():
     if hasattr(config, key):
         setattr(config, key, value)
