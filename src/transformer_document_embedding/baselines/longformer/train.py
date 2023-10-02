@@ -39,10 +39,12 @@ def training_step(
         outputs = model(**batch)
         loss = loss_fn(outputs["logits"], batch["labels"]) / grad_accumulation_steps
 
+    # Why multiply?
     loss_metric.update(loss * grad_accumulation_steps)
     for metric in metrics.values():
         metric.update(outputs["logits"], batch["labels"])
 
+    # Why fp16 plays a role here?
     loss = scaler.scale(loss) if fp16 else loss
     loss.backward()
 
@@ -144,6 +146,8 @@ def train(
 ) -> None:
     device = torch.device("cuda")
     model.to(device)
+    model.train()
+
     min_val_loss = float("inf")
     epochs_without_improvement = 0
 

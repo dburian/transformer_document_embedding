@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from typing import Any, Iterable, Optional
 
-import numpy as np
-import tensorflow as tf
-from datasets.arrow_dataset import Dataset
-from gensim.models import Doc2Vec
 from gensim.models.callbacks import CallbackAny2Vec
 
 import transformer_document_embedding.tasks.wikipedia_similarities as wiki_sims_task
@@ -14,9 +11,15 @@ from transformer_document_embedding.baselines.experimental_model import (
     ExperimentalModel,
 )
 from transformer_document_embedding.models.paragraph_vector import ParagraphVector
-from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 from transformer_document_embedding.utils.evaluation import evaluate_ir_metrics
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
+
+if TYPE_CHECKING:
+    from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+    from datasets.arrow_dataset import Dataset
+    from gensim.models import Doc2Vec
+    import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +35,21 @@ class EvaluateIRMetrics(CallbackAny2Vec):
         eval_every: int,
         log_dir: str,
         save_best_path: Optional[str] = None,
-        hits_thresholds: list[int] = [10, 100],
+        hits_thresholds: list[int] = None,
         decisive_metric: str = "mean_percentile_rank",
         higher_is_better: bool = False,
     ):
+        if hits_thresholds is None:
+            hits_thresholds = [10, 100]
         self._baseline = baseline
         self._true_dataset = val_dataset
         self._eval_every = eval_every
-        self._writer = tf.summary.create_file_writer(log_dir)
 
         self._save_best_path = save_best_path
         self._hits_thresholds = hits_thresholds
         self._decisive_metric = decisive_metric
         self._higher_is_better = higher_is_better
+        self._log_dir = log_dir
 
         self._epoch = 0
         self._best_score = float("inf")
@@ -86,7 +91,10 @@ class EvaluateIRMetrics(CallbackAny2Vec):
             self._best_score = score
             self._baseline.save(self._save_best_path)
 
-        with self._writer.as_default():
+        import tensorflow as tf
+
+        writer = tf.summary.create_file_writer(self._log_dir)
+        with writer.as_default():
             for name, score in metrics.items():
                 tf.summary.scalar(f"{log_name_prefix}_{name}", score, self._epoch)
 

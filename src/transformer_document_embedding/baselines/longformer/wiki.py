@@ -1,9 +1,11 @@
-from typing import Iterable, Optional, cast
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from typing import cast
 
-import numpy as np
 import torch
-from datasets import Dataset
 from transformers import AutoTokenizer
+from tqdm.auto import tqdm
+import logging
 
 import transformer_document_embedding.utils.torch.training as train_utils
 from transformer_document_embedding.baselines.experimental_model import (
@@ -13,7 +15,14 @@ from transformer_document_embedding.models.longformer import (
     LongformerConfig,
     LongformerForTextEmbedding,
 )
-from transformer_document_embedding.tasks import ExperimentalTask
+
+if TYPE_CHECKING:
+    from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+    from datasets import Dataset
+    from typing import Iterable, Optional
+    import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class LongformerWikipediaSimilarities(ExperimentalModel):
@@ -47,6 +56,7 @@ class LongformerWikipediaSimilarities(ExperimentalModel):
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(f"Predicting using {device}")
         self._model.to(device)
 
         data = train_utils.create_tokenized_data_loader(
@@ -55,7 +65,7 @@ class LongformerWikipediaSimilarities(ExperimentalModel):
             batch_size=self._batch_size,
             training=False,
         )
-        for batch in data:
+        for batch in tqdm(data, desc="Predicting batches"):
             train_utils.batch_to_device(batch, self._model.device)
             embeddings = self._model(**batch).pooler_output
             yield embeddings.numpy(force=True)

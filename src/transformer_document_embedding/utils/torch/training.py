@@ -1,14 +1,20 @@
-from dataclasses import dataclass
-from typing import Any, Optional, Union, cast
+from __future__ import annotations
 
-import datasets
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, cast
+
 import torch
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from transformers import BatchEncoding, PreTrainedTokenizerBase, PreTrainedTokenizerFast
-from transformers.tokenization_utils import TruncationStrategy
 from transformers.trainer_pt_utils import get_parameter_names
-from transformers.utils import PaddingStrategy
+
+if TYPE_CHECKING:
+    pass
+    from transformers.utils import PaddingStrategy
+    from transformers.tokenization_utils import TruncationStrategy
+    import datasets
+    from typing import Any, Optional, Union
 
 
 @dataclass
@@ -92,7 +98,7 @@ def create_tokenized_data_loader(
     tokenizer: PreTrainedTokenizerFast,
     batch_size: int,
     training: bool = True,
-    min_sequence_length: Optional[int] = None
+    min_sequence_length: Optional[int] = None,
 ) -> DataLoader:
     """Creates DataLoder giving batches of tokenized text."""
     data = data.with_format("torch")

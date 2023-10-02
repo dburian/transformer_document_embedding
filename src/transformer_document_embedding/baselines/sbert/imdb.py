@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterable, Optional, cast
+from typing import Any, Iterable, Optional, cast, TYPE_CHECKING
 
-import numpy as np
 import torch
-from datasets.arrow_dataset import Dataset
 from sentence_transformers import InputExample, SentenceTransformer, evaluation, models
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -16,8 +14,12 @@ import transformer_document_embedding.utils.torch as torch_utils
 from transformer_document_embedding.baselines.experimental_model import (
     ExperimentalModel,
 )
-from transformer_document_embedding.tasks.imdb import IMDBClassification
 from transformer_document_embedding.utils.metrics import MeanLossMetric, VMemMetric
+
+if TYPE_CHECKING:
+    from datasets.arrow_dataset import Dataset
+    import numpy as np
+    from transformer_document_embedding.tasks.imdb import IMDBClassification
 
 
 class SBertIMDB(ExperimentalModel):

@@ -9,10 +9,11 @@ def aggregate_batches(
     true_iter: Iterator[Any],
     transform_true: Optional[Callable[[Any], np.ndarray]] = None,
 ) -> Iterable[tuple[np.ndarray, np.ndarray]]:
-    if transform_true is None:
+    def identity(x):
+        return x
 
-        def transform_true(x):
-            return x
+    if transform_true is None:
+        transform_true = identity
 
     for pred_batch in pred_batches:
         true_batch = []
@@ -41,7 +42,7 @@ def evaluate_ir_metrics(
     verbose: bool = False,
 ) -> dict[str, float]:
     hits_thresholds = np.array(hits_thresholds, dtype=np.int32)
-    hits = np.array([0 for _ in hits_thresholds])
+    hit_percentages = [[] for _ in hits_thresholds]
     reciprocal_rank = 0
     percentile_ranks = []
 
@@ -53,31 +54,36 @@ def evaluate_ir_metrics(
         disable=not verbose,
         total=iterable_length,
     ):
-        max_rank = len(pred_ids) - 1
-        unordered_true = set(true_ids)
+        max_rank = len(pred_ids)
+        first_hit_ind = max_rank
+        query_hits = np.zeros(len(hits_thresholds))
+        # For all predictions
+        for i, pred_id in enumerate(pred_ids):
+            # Skip those which are incorrect
+            if pred_id not in true_ids:
+                continue
 
-        def is_hit(target_id_with_rank: tuple[int, int]) -> bool:
-            return target_id_with_rank[1] in unordered_true
-
-        first_hit_ind = max_rank + 1
-        query_hits = np.zeros_like(hits)
-        for i, _ in filter(is_hit, enumerate(pred_ids)):
-            if first_hit_ind == -1:
+            # Save the best-ranking correct prediction index
+            if first_hit_ind > i:
                 first_hit_ind = i
 
             percentile_ranks.append(i / max_rank)
-            query_hits += i < hits_thresholds
+            # For every correct prediction under a threshold we add 1
+            query_hits += (i < hits_thresholds).astype("int32")
 
-        reciprocal_rank += 1 / (first_hit_ind + 1)
+        # first_hit_ind could be zero if len(true_ids) == 0
+        reciprocal_rank += 1 / (first_hit_ind if first_hit_ind > 0 else 1)
         total_queries += 1
-        hits += np.clip(query_hits, None, 1)
+
+        for perctanges, percentages in zip(hit_percentages, query_hits, strict=True):
+            perctanges.append(percentages / len(true_ids))
 
     results = {
         "mean_reciprocal_rank": reciprocal_rank / total_queries,
         "mean_percentile_rank": np.mean(percentile_ranks),
     }
 
-    for hit_count, threshold in zip(hits, hits_thresholds):
-        results[f"hit_rate_at_{threshold}"] = hit_count / total_queries
+    for percentages, threshold in zip(hit_percentages, hits_thresholds, strict=True):
+        results[f"hit_rate_at_{threshold}"] = np.mean(percentages)
 
     return results

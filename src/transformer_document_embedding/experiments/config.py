@@ -4,12 +4,14 @@ import importlib
 import logging
 import os
 from datetime import datetime
-from typing import Any, Optional
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any, Optional
 
 import pkg_resources
-import tensorflow as tf
 import yaml
-from tensorboard.plugins.hparams import api as hp
 
 MODEL_MODULE_PREFIX = "transformer_document_embedding.baselines"
 TASK_MODULE_PREFIX = "transformer_document_embedding.tasks"
@@ -108,6 +110,9 @@ class ExperimentConfig:
             yaml.dump(self.values, file)
 
     def log_hparams(self) -> None:
+        import tensorflow as tf
+        from tensorboard.plugins.hparams import api as hp
+
         with tf.summary.create_file_writer(self.experiment_path).as_default():
             hparams = flatten_dict(self.values)
             hp.hparams(

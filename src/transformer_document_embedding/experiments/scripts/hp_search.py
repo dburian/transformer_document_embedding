@@ -2,11 +2,12 @@
 
 # TODO: Document this module once the interface settles...
 """
+from __future__ import annotations
 import argparse
 import logging
 import pprint
 
-import transformer_document_embedding as tde
+from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.experiments.search import GridSearch, OneSearch
 
 EXPERIMENTS_DIR = "./results"
@@ -71,7 +72,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_single(
-    config: tde.experiments.ExperimentConfig,
+    config: ExperimentConfig,
     early_stopping: bool,
 ) -> None:
     logging.info(
@@ -110,9 +111,7 @@ def main() -> None:
 
         search = search_cls.from_yaml(config_path)
         for exp_file in args.config:
-            config_path = tde.experiments.ExperimentConfig.from_yaml(
-                exp_file, args.output_base_path
-            )
+            config_path = ExperimentConfig.from_yaml(exp_file, args.output_base_path)
 
             for experiment_instance in search.based_on(config_path):
                 run_single(experiment_instance, args.early_stop)

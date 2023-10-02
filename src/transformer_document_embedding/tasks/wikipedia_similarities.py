@@ -51,7 +51,9 @@ class WikipediaSimilarities(HFTask):
             sections_text = [
                 f"{title} {text}".strip()
                 for title, text in zip(
-                    article["section_titles"], article["section_texts"]
+                    article["section_titles"],
+                    article["section_texts"],
+                    strict=True,
                 )
             ]
 
@@ -87,7 +89,6 @@ class WikipediaSimilarities(HFTask):
         splits = {"train": train}
         self._test_sims_total = len(dataset["sims"])
         if self._validation_fraction is not None and self._validation_source == "test":
-            self._test_sims_total = len(test_source_ids)
             val_sims_len = math.floor(self._test_sims_total * self._validation_fraction)
 
             val_source_ids = set(random.sample(list(test_source_ids), k=val_sims_len))
@@ -117,7 +118,6 @@ class WikipediaSimilarities(HFTask):
             k=1000,
         )
 
-        print(self._test_sims_total)
         return evaluate_ir_metrics(
             true_pred_ids_iter,
             hits_thresholds=[10, 100],

@@ -1,9 +1,10 @@
-import logging
-from typing import Iterable, Optional, cast
+from __future__ import annotations
 
-import numpy as np
+import logging
+from tqdm.auto import tqdm
+from typing import TYPE_CHECKING, cast
+
 import torch
-from datasets import Dataset
 from transformers import AutoTokenizer
 
 from transformer_document_embedding.baselines.experimental_model import (
@@ -13,8 +14,14 @@ from transformer_document_embedding.models.bigbird import (
     BigBirdConfig,
     BigBirdForTextEmbedding,
 )
-from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 from transformer_document_embedding.utils.torch import training as train_utils
+
+
+if TYPE_CHECKING:
+    import numpy as np
+    from datasets import Dataset
+    from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+    from typing import Iterable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +78,7 @@ class BigBirdEmbedder(ExperimentalModel):
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         self._model.eval()
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(f"Using {device} for prediction.")
         self._model.to(device)
 
         mem_used = torch.cuda.memory_reserved(device)
@@ -84,7 +92,7 @@ class BigBirdEmbedder(ExperimentalModel):
             training=False,
             min_sequence_length=self._min_sequence_length_for_block_sparse_attn,
         )
-        for batch in data:
+        for batch in tqdm(data, desc="Predicting batches"):
             train_utils.batch_to_device(batch, self._model.device)
             embeddings = self._model(**batch).pooler_output
             yield embeddings.numpy(force=True)

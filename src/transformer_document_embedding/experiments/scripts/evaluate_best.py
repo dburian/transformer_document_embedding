@@ -2,15 +2,19 @@
 
 # TODO: Document this module once the interface settles...
 """
+from __future__ import annotations
+
 import argparse
 import logging
 import os
 import pprint
-from typing import Optional
+from typing import TYPE_CHECKING
 
-import tensorflow as tf
+if TYPE_CHECKING:
+    from typing import Optional
 
-import transformer_document_embedding as tde
+from transformer_document_embedding.experiments.config import ExperimentConfig
+from transformer_document_embedding.experiments.result import save_csv_results
 
 EXPERIMENTS_DIR = "./results"
 
@@ -72,8 +76,18 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def log_results(log_path: str, results: dict[str, float]) -> None:
+    import tensorflow as tf
+
+    with tf.summary.create_file_writer(log_path).as_default():
+        for name, res in results.items():
+            tf.summary.scalar(name, res, step=1)
+
+        tf.summary.flush()
+
+
 def evaluate_best(
-    config: tde.experiments.ExperimentConfig,
+    config: ExperimentConfig,
     save_best: bool,
     early_stopping: bool,
     load_model_path: Optional[str],
@@ -113,14 +127,10 @@ def evaluate_best(
     results = task.evaluate(test_predictions)
     logging.info("Evaluation done. Results:\n%s", results)
 
-    tde.experiments.save_csv_results(results, config.experiment_path)
+    save_csv_results(results, config.experiment_path)
 
     test_log_path = os.path.join(config.experiment_path, "test")
-    with tf.summary.create_file_writer(test_log_path).as_default():
-        for name, res in results.items():
-            tf.summary.scalar(name, res, step=1)
-
-        tf.summary.flush()
+    log_results(test_log_path, results)
 
     config.save()
     return results
@@ -134,9 +144,7 @@ def main() -> None:
     )
 
     for exp_file in args.config:
-        config = tde.experiments.ExperimentConfig.from_yaml(
-            exp_file, args.output_base_path
-        )
+        config = ExperimentConfig.from_yaml(exp_file, args.output_base_path)
 
         evaluate_best(
             config,

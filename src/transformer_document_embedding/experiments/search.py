@@ -5,7 +5,7 @@ from typing import Any, Iterable
 
 import yaml
 
-from transformer_document_embedding.experiments import ExperimentConfig
+from transformer_document_embedding.experiments.config import ExperimentConfig
 
 
 class HyperparameterSearch:

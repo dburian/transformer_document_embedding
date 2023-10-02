@@ -1,14 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+
 from typing import Iterable, Optional
 
-import numpy as np
 import torch
-from datasets import Dataset
 from sentence_transformers import SentenceTransformer
 
 from transformer_document_embedding.baselines.experimental_model import (
     ExperimentalModel,
 )
-from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+
+if TYPE_CHECKING:
+    from datasets import Dataset
+    from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+    import numpy as np
 
 
 class SBERTWikipediaSimilarities(ExperimentalModel):
@@ -16,7 +23,7 @@ class SBERTWikipediaSimilarities(ExperimentalModel):
         self,
         *,
         transformer_model: str = "all-distilroberta-v1",
-        batch_size: int = 6,
+        batch_size: int = 12,
     ) -> None:
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
         self._model = SentenceTransformer(transformer_model, device=self._device)
@@ -33,14 +40,12 @@ class SBERTWikipediaSimilarities(ExperimentalModel):
         pass
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
-        for i in range(0, len(inputs), self._batch_size):
-            batch = inputs[i : i + self._batch_size]
-            yield self._model.encode(
-                batch["text"],
-                batch_size=self._batch_size,
-                convert_to_numpy=True,
-                show_progress_bar=False,
-            )
+        yield from self._model.encode(
+            inputs["text"],
+            batch_size=self._batch_size,
+            convert_to_numpy=True,
+            show_progress_bar=True,
+        )
 
     def save(self, dir_path: str) -> None:
         self._model.save(dir_path)

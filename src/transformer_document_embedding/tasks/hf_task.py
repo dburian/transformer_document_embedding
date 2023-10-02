@@ -8,9 +8,10 @@ from datasets.dataset_dict import DatasetDict
 from datasets.load import load_dataset
 
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+from typing import cast
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, cast
+    from typing import Any, Optional
     from datasets.arrow_dataset import Dataset
 
 

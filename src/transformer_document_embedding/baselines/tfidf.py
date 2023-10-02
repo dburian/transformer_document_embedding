@@ -36,7 +36,8 @@ class TFIDF(ExperimentalModel):
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         words_dataset = inputs.map(
-            lambda doc: {"words": doc["text"].split()}, remove_columns=["id", "text"]
+            lambda doc: {"words": doc["text"].lower().split()},
+            remove_columns=["id", "text"],
         )
         word_dict = self._get_word_dictionary(words_dataset)
 
