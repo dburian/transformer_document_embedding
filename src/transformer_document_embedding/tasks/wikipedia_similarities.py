@@ -1,6 +1,5 @@
 import copy
 import math
-import os
 import random
 from typing import Any, Iterable, Optional
 
@@ -16,21 +15,24 @@ from transformer_document_embedding.utils.evaluation import (
     smart_unbatch,
 )
 
-DATASET_DIR = "./data"
-AVAILABLE_DATASETS = ["wine", "game"]
-
 
 class WikipediaSimilarities(HFTask):
-    def __init__(self, dataset: str, datasets_dir: str = DATASET_DIR, **kwargs) -> None:
+    AVAILABLE_DATASETS = ["wine", "game"]
+
+    def __init__(
+        self,
+        dataset: str,
+        path: str = "./data/wikipedia_similarities.py",
+        **kwargs,
+    ) -> None:
         assert (
-            dataset in AVAILABLE_DATASETS
-        ), f"`dataset` must be one of: {', '.join(AVAILABLE_DATASETS)}"
+            dataset in self.AVAILABLE_DATASETS
+        ), f"`dataset` must be one of: {', '.join(self.AVAILABLE_DATASETS)}"
 
         # Dataset already contains ids
         kwargs["add_ids"] = False
-        super().__init__(
-            os.path.join(datasets_dir, "wikipedia_similarities.py"), **kwargs
-        )
+        super().__init__(**kwargs)
+        self._path = path
 
         assert self._validation_source is None or self._validation_source == "test", (
             "Constructing validation set from training data does not make sense for"

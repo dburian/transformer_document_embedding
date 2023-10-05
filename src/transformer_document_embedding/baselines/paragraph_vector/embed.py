@@ -30,7 +30,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
     def __init__(
         self,
         *,
-        baseline: ParagraphVectorWikipediaSimilarities,
+        baseline: ParagraphVectorEmbed,
         val_dataset: Dataset,
         eval_every: int,
         log_dir: str,
@@ -84,7 +84,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
         if self._save_best_path is not None and self._is_best(score):
             logger.info(
                 "Saving best %s model to %s.",
-                ParagraphVectorWikipediaSimilarities.__name__,
+                ParagraphVectorEmbed.__name__,
                 self._save_best_path,
             )
 
@@ -99,7 +99,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
                 tf.summary.scalar(f"{log_name_prefix}_{name}", score, self._epoch)
 
 
-class ParagraphVectorWikipediaSimilarities(ExperimentalModel):
+class ParagraphVectorEmbed(ExperimentalModel):
     def __init__(
         self,
         dm_kwargs: Optional[dict[str, Any]] = None,

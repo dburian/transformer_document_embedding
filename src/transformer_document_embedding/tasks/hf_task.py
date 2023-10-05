@@ -4,28 +4,24 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
-from datasets.dataset_dict import DatasetDict
-from datasets.load import load_dataset
 
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
-from typing import cast
 
 if TYPE_CHECKING:
     from typing import Any, Optional
+    from datasets.dataset_dict import DatasetDict
     from datasets.arrow_dataset import Dataset
 
 
 class HFTask(ExperimentalTask):
     def __init__(
         self,
-        path,
         *,
         data_size_limit: Optional[int] = None,
         add_ids: bool = False,
         validation_source_fraction: Optional[float] = None,
         validation_source: Optional[str] = None,
     ) -> None:
-        self._path = path
         self._data_size_limit = data_size_limit
 
         self._add_ids = add_ids
@@ -58,9 +54,10 @@ class HFTask(ExperimentalTask):
 
         return self._splits
 
+    @abstractmethod
     def _retrieve_dataset(self) -> DatasetDict:
         """Obtains the dataset. By default using the load_dataset function."""
-        return cast(DatasetDict, load_dataset(self._path))
+        raise NotImplementedError()
 
     def _create_splits(self, dataset: DatasetDict) -> DatasetDict:
         """Creates splits."""

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
+from datasets import load_dataset
 from transformer_document_embedding.tasks.hf_task import HFTask
 from transformer_document_embedding.utils.evaluation import aggregate_batches
+from datasets import DatasetDict
 
 if TYPE_CHECKING:
     from typing import Iterable
@@ -22,7 +25,13 @@ class IMDBClassification(HFTask):
     """
 
     def __init__(self, **kwargs) -> None:
-        super().__init__("imdb", add_ids=True, **kwargs)
+        super().__init__(add_ids=True, **kwargs)
+        self._path = "imdb"
+
+    def _retrieve_dataset(self) -> DatasetDict:
+        dataset_dict = load_dataset(self._path)
+        assert isinstance(dataset_dict, DatasetDict)
+        return dataset_dict
 
     def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
         import tensorflow as tf
