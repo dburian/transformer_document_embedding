@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 
 
 class C4(HFTask):
+    DEFAULT_TRAIN_FILES = "en/c4-train.000[012]*-of-01024.json.gz"  # ~30% of train
+    DEFAULT_VALIDATION_FILES = "en/c4-validation.*.json.gz"  # all validation
+
     def __init__(
         self,
         path: str = "allenai/c4",
@@ -27,8 +30,8 @@ class C4(HFTask):
 
         if data_files is None:
             data_files = {
-                "train": "en/c4-train.000[012]*-of-01024.json.gz",  # ~30% of train
-                "validation": "en/c4-validation.*.json.gz",  # all validation
+                "train": self.DEFAULT_TRAIN_FILES,
+                "validation": self.DEFAULT_VALIDATION_FILES,
             }
         self._data_files = data_files
 

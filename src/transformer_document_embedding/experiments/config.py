@@ -115,9 +115,12 @@ class ExperimentConfig:
 
         with tf.summary.create_file_writer(self.experiment_path).as_default():
             hparams = flatten_dict(self.values)
+
+            # tf is unable to log NoneTypes
             for key, value in hparams.items():
                 if value is None:
                     hparams[key] = "None"
+
             hp.hparams(
                 hparams,
                 os.path.relpath(self.experiment_path, start=self.base_results_dir),

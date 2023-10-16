@@ -9,7 +9,7 @@ import logging
 
 import transformer_document_embedding.utils.torch.training as train_utils
 from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+    Baseline,
 )
 from transformer_document_embedding.models.longformer import (
     LongformerConfig,
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LongformerWikipediaSimilarities(ExperimentalModel):
+class LongformerWikipediaSimilarities(Baseline):
     def __init__(
         self, *, large: bool = False, batch_size: int = 1, pooler_type: str = "mean"
     ) -> None:

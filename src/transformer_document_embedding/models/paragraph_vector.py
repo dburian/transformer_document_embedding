@@ -107,7 +107,7 @@ class ParagraphVector:
         for module_type in ["dm", "dbow"]:
             module_filepath = os.path.join(dir_path, module_type)
             if os.path.exists(module_filepath):
-                module = PV_DM.load(module_filepath)
+                module = doc2vec.Doc2Vec.load(module_filepath)
                 assert module.dbow == (module_type == "dbow"), (
                     f"{ParagraphVector.load.__name__}: Loaded module does not"
                     " correspond to assumed architecture."

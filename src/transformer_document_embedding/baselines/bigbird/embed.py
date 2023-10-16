@@ -8,7 +8,7 @@ import torch
 from transformers import AutoTokenizer
 
 from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+    Baseline,
 )
 from transformer_document_embedding.models.bigbird import (
     BigBirdConfig,
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class BigBirdEmbedder(ExperimentalModel):
+class BigBirdEmbedder(Baseline):
     def __init__(
         self,
         *,

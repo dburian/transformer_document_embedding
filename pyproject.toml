@@ -9,7 +9,6 @@ authors = [{name = "David Burian", email = "david.burian@me.com"}]
 dependencies = [
   "tokenizers>=0.13",
   "transformers>=4.24",
-  "tensorflow>=2.10",
   "datasets>=2.6",
   "gensim>=4.2",
   "torch>=1.13",
@@ -24,10 +23,19 @@ dev = [
   "seaborn",
   "matplotlib>=3.6",
 ]
+tf = [
+  "tensorflow>=2.10",
+]
+# Required by wikipedia Hugging Face dataset -- https://huggingface.co/datasets/wikipedia
+wikipedia = [
+  "apache_beam",
+  "mwparserfromhell"
+]
 
 [project.scripts]
-evaluate_best = "transformer_document_embedding.experiments.scripts.evaluate_best:main"
-hp_search = "transformer_document_embedding.experiments.scripts.hp_search:main"
+evaluate = "transformer_document_embedding.scripts.evaluate:main"
+hp_search = "transformer_document_embedding.scripts.hp_search:main"
+generate_embeddings = "transformer_document_embedding.scripts.generate_embeddings:main"
 
 [project.urls]
 homepage = "https://github.com/dburian/transformer_document_embedding"

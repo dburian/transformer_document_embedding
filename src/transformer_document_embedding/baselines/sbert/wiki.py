@@ -9,7 +9,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+    Baseline,
 )
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-class SBERTWikipediaSimilarities(ExperimentalModel):
+class SBERTWikipediaSimilarities(Baseline):
     def __init__(
         self,
         *,

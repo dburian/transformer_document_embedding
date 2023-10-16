@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import logging
 from typing import TYPE_CHECKING
 from typing import Any, Iterable, Optional
@@ -7,8 +8,8 @@ from typing import Any, Iterable, Optional
 from gensim.models.callbacks import CallbackAny2Vec
 
 import transformer_document_embedding.tasks.wikipedia_similarities as wiki_sims_task
-from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+from transformer_document_embedding.baselines.baseline import (
+    Baseline,
 )
 from transformer_document_embedding.models.paragraph_vector import ParagraphVector
 from transformer_document_embedding.utils.evaluation import evaluate_ir_metrics
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class EvaluateIRMetrics(CallbackAny2Vec):
-    """Callback to save model after each epoch."""
+    """Callback to to evaluate IR metrics."""
 
     def __init__(
         self,
@@ -35,7 +36,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
         eval_every: int,
         log_dir: str,
         save_best_path: Optional[str] = None,
-        hits_thresholds: list[int] = None,
+        hits_thresholds: Optional[list[int]] = None,
         decisive_metric: str = "mean_percentile_rank",
         higher_is_better: bool = False,
     ):
@@ -99,7 +100,32 @@ class EvaluateIRMetrics(CallbackAny2Vec):
                 tf.summary.scalar(f"{log_name_prefix}_{name}", score, self._epoch)
 
 
-class ParagraphVectorEmbed(ExperimentalModel):
+class CheckpointSave(CallbackAny2Vec):
+    """Callback to periodically save the model."""
+
+    def __init__(
+        self,
+        epoch_checkpoints: list[int],
+        save_dir: str,
+        paragraph_vector: ParagraphVector,
+    ) -> None:
+        self._epoch_checkpoints = epoch_checkpoints
+        self._save_dir = save_dir
+        self._epoch = 0
+        self._pv = paragraph_vector
+
+        os.makedirs(self._save_dir, exist_ok=True)
+
+    def on_epoch_end(self, _: Doc2Vec) -> None:
+        if self._epoch in self._epoch_checkpoints:
+            model_path = os.path.join(self._save_dir, f"after_epoch_{self._epoch}")
+            os.makedirs(model_path, exist_ok=True)
+            self._pv.save(model_path)
+
+        self._epoch += 1
+
+
+class ParagraphVectorEmbed(Baseline):
     def __init__(
         self,
         dm_kwargs: Optional[dict[str, Any]] = None,
@@ -110,10 +136,11 @@ class ParagraphVectorEmbed(ExperimentalModel):
     def train(
         self,
         task: ExperimentalTask,
-        *,
         log_dir: Optional[str] = None,
-        save_best_path: Optional[str] = None,
-        early_stopping: bool = False,
+        model_dir: Optional[str] = None,
+        save_best: bool = False,
+        save_at_epochs: Optional[list[int]] = None,
+        **kwargs,
     ) -> None:
         train_data = GensimCorpus(task.train.shuffle())
         callbacks = []
@@ -123,8 +150,19 @@ class ParagraphVectorEmbed(ExperimentalModel):
                     baseline=self,
                     val_dataset=task.validation,
                     eval_every=10,
-                    save_best_path=save_best_path,
+                    save_best_path=model_dir
+                    if save_best and model_dir is not None
+                    else None,
                     log_dir=log_dir,
+                )
+            )
+
+        if model_dir is not None and save_at_epochs is not None:
+            callbacks.append(
+                CheckpointSave(
+                    epoch_checkpoints=save_at_epochs,
+                    save_dir=os.path.join(model_dir, "checkpoints"),
+                    paragraph_vector=self._pv,
                 )
             )
 
@@ -137,9 +175,9 @@ class ParagraphVectorEmbed(ExperimentalModel):
                 callbacks=callbacks,
             )
 
-        if save_best_path and log_dir is None:
+        if save_best and model_dir is not None and log_dir is None:
             # We should save the model, but we don't know validation metrics.
-            self._pv.save(save_best_path)
+            self._pv.save(model_dir)
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         for doc in inputs:

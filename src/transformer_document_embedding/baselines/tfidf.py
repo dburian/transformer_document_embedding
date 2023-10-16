@@ -7,12 +7,12 @@ from gensim.matutils import sparse2full
 from gensim.models import TfidfModel
 
 from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+    Baseline,
 )
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
-class TFIDF(ExperimentalModel):
+class TFIDF(Baseline):
     def __init__(
         self,
         word_filter_no_below: int = 10,

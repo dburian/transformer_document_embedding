@@ -12,7 +12,7 @@ from torcheval.metrics.classification import MulticlassAccuracy
 import transformer_document_embedding.utils.sentence_transformers as tde_st_utils
 import transformer_document_embedding.utils.torch as torch_utils
 from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+    Baseline,
 )
 from transformer_document_embedding.utils.metrics import MeanLossMetric, VMemMetric
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from transformer_document_embedding.tasks.imdb import IMDBClassification
 
 
-class SBertIMDB(ExperimentalModel):
+class SBertIMDB(Baseline):
     # When I need this again, lets put it in some utils module
     class STDataset(torch.utils.data.Dataset):
         def __init__(self, hf_dataset: Dataset) -> None:

@@ -9,27 +9,22 @@ if TYPE_CHECKING:
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
-# TODO: Rename just to baseline?
-class ExperimentalModel:
+class Baseline:
     """Defines the minimal interface for models."""
 
     def train(
         self,
         task: ExperimentalTask,
-        *,
-        early_stopping: Optional[bool],
-        save_best_path: Optional[str],
         log_dir: Optional[str],
+        model_dir: Optional[str],
+        **kwargs,
     ) -> None:
         """Trains the model.
 
         Args:
             - task: task to train on with optional validation data,
-            - early_stopping: whether to stop when validation loss stops decreasing,
-            - save_best_path: Path to save (and then restore from) the
-              best checkpoint, i.e. with the lowest validation loss or at the
-              end of a training.
             - log_dir: directory where to save logs,
+            - model_dir: directory where to save the model's parameters,
         """
         raise NotImplementedError()
 

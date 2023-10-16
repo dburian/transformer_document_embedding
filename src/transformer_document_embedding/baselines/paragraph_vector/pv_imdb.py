@@ -7,7 +7,7 @@ import tensorflow as tf
 from datasets.arrow_dataset import Dataset
 
 from transformer_document_embedding.baselines.experimental_model import (
-    ExperimentalModel,
+    Baseline,
 )
 from transformer_document_embedding.models.paragraph_vector import ParagraphVector
 from transformer_document_embedding.models.tf.cls_head import ClsHead
@@ -15,7 +15,7 @@ from transformer_document_embedding.tasks.imdb import IMDBClassification
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
 
 
-class ParagraphVectorIMDB(ExperimentalModel):
+class ParagraphVectorIMDB(Baseline):
     def __init__(
         self,
         cls_head_kwargs: Optional[dict[str, Any]] = None,

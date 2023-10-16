@@ -9,6 +9,7 @@ import pprint
 
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.experiments.search import GridSearch, OneSearch
+from transformer_document_embedding.scripts.args import add_common_args
 
 EXPERIMENTS_DIR = "./results"
 
@@ -16,20 +17,6 @@ EXPERIMENTS_DIR = "./results"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "-c",
-        "--config",
-        type=str,
-        action="extend",
-        help=(
-            "Experiment configurations to be run described by YAML files. Required"
-            " syntax to be found here:"
-            " github.com/dburian/transformer_document_embedding/"
-            "blob/master/log/experiment_files.md."
-        ),
-        nargs="+",
-        required=True,
-    )
     parser.add_argument(
         "--grid_config",
         "--gc",
@@ -50,31 +37,13 @@ def parse_args() -> argparse.Namespace:
             " experiment configs."
         ),
     )
-    parser.add_argument(
-        "--output_base_path",
-        type=str,
-        default=EXPERIMENTS_DIR,
-        help=(
-            "Path to directory containing all experiment results. Default:"
-            f" '{EXPERIMENTS_DIR}'."
-        ),
-    )
-    parser.add_argument(
-        "--early_stop",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to stop training when the validation loss stops decreasing.",
-    )
 
-    args = parser.parse_args()
-    return args
+    add_common_args(parser)
+
+    return parser.parse_args()
 
 
-def run_single(
-    config: ExperimentConfig,
-    early_stopping: bool,
-) -> None:
+def run_single(config: ExperimentConfig) -> None:
     logging.info(
         "Starting experiment with config:\n%s",
         pprint.pformat(config.values, indent=1),
@@ -87,7 +56,7 @@ def run_single(
     model.train(
         task,
         log_dir=config.experiment_path,
-        early_stopping=early_stopping,
+        **config.values["model"].get("train_kwargs", {}),
     )
     logging.info("Training done.")
 
@@ -111,10 +80,10 @@ def main() -> None:
 
         search = search_cls.from_yaml(config_path)
         for exp_file in args.config:
-            config_path = ExperimentConfig.from_yaml(exp_file, args.output_base_path)
+            exp_config = ExperimentConfig.from_yaml(exp_file, args.output_base_path)
 
-            for experiment_instance in search.based_on(config_path):
-                run_single(experiment_instance, args.early_stop)
+            for experiment_instance in search.based_on(exp_config):
+                run_single(experiment_instance)
 
 
 if __name__ == "__main__":
