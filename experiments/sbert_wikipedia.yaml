@@ -1,0 +1,11 @@
+tde_version: 0.0.2
+model:
+  module: sbert.wiki:SBERTWikipediaSimilarities
+  kwargs:
+    transformer_model: all-mpnet-base-v2
+    batch_size: 60
+
+task:
+  module: wikipedia:Wikipedia
+  kwargs:
+    debug: True

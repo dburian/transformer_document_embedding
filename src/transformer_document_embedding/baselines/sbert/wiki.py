@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 import torch
 from sentence_transformers import SentenceTransformer
 
-from transformer_document_embedding.baselines.experimental_model import (
+from transformer_document_embedding.baselines.baseline import (
     Baseline,
 )
 
@@ -32,10 +32,9 @@ class SBERTWikipediaSimilarities(Baseline):
     def train(
         self,
         task: ExperimentalTask,
-        *,
         log_dir: Optional[str] = None,
-        save_best_path: Optional[str] = None,
-        early_stopping: bool = False,
+        model_dir: Optional[str] = None,
+        **kwargs,
     ) -> None:
         pass
 
