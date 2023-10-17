@@ -81,7 +81,9 @@ def save_embeddings(
         pd.DataFrame(df).to_csv(fragment_path, index=False)
 
     id_embed_iter = zip(split["id"], smart_unbatch(embed_iter, 1), strict=True)
-    for id, embed in tqdm(id_embed_iter, desc="Generating embeddings"):
+    for id, embed in tqdm(
+        id_embed_iter, desc="Generating embeddings", total=len(split)
+    ):
         df.append({"id": id, "embed": embed})
         if len(df) == args.embed_fragment_length:
             save_fragment(pd.DataFrame(df))
