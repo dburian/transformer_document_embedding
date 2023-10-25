@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 import os
 import argparse
@@ -8,14 +7,13 @@ import pprint
 
 import logging
 
+
+from datasets import Dataset, DatasetDict, concatenate_datasets
+import datasets.utils.logging as hf_logging
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.scripts.args import add_common_args
-from transformer_document_embedding.utils.evaluation import smart_unbatch
 
-if TYPE_CHECKING:
-    from typing import Iterable
-    import numpy as np
-    from datasets import Dataset
+from transformer_document_embedding.utils.evaluation import smart_unbatch
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,10 +28,26 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--split",
+        "--splits",
         type=str,
-        default="train",
-        help="Split for which the embeddings should be generated.",
+        default="all",
+        help="Name of splits separated by commas for which the embeddings should be"
+        "generated. 'all' means to generate embeddings for all splits.",
+    )
+
+    parser.add_argument(
+        "--embedding_col_name",
+        type=str,
+        default="embedding",
+        help="Column name for embedding of an input example that will be added to"
+        "the dataset.",
+    )
+
+    parser.add_argument(
+        "--max_shard_size",
+        type=str,
+        default="500MB",
+        help="Maximum size of generated shards.",
     )
 
     add_common_args(parser)
@@ -62,37 +76,6 @@ def parse_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
-
-
-def save_embeddings(
-    embed_iter: Iterable[np.ndarray],
-    split: Dataset,
-    args: argparse.Namespace,
-    embedding_path: str,
-) -> None:
-    import pandas as pd
-    from tqdm.auto import tqdm
-
-    fragment_counter = 0
-    df = []
-
-    def save_fragment(df: pd.DataFrame) -> None:
-        fragment_path = os.path.join(embedding_path, f"fragment_{fragment_counter}.csv")
-        pd.DataFrame(df).to_csv(fragment_path, index=False)
-
-    id_embed_iter = zip(split["id"], smart_unbatch(embed_iter, 1), strict=True)
-    for id, embed in tqdm(
-        id_embed_iter, desc="Generating embeddings", total=len(split)
-    ):
-        df.append({"id": id, "embed": embed})
-        if len(df) == args.embed_fragment_length:
-            save_fragment(pd.DataFrame(df))
-
-            df = []
-            fragment_counter += 1
-
-    if len(df) > 0:
-        save_fragment(pd.DataFrame(df))
 
 
 def generate_embeddings(
@@ -131,17 +114,45 @@ def generate_embeddings(
             os.makedirs(trained_path, exist_ok=True)
             model.save(trained_path)
 
-    embed_path = os.path.join(config.experiment_path, "embeddings")
-    os.makedirs(embed_path, exist_ok=True)
-    logging.info("Generating embeddings for '%s' to '%s'", args.split, embed_path)
-    split = getattr(task, args.split)
-    embed_iter = model.predict(split)
-    save_embeddings(
-        embed_iter=embed_iter,
-        split=split,
-        args=args,
-        embedding_path=embed_path,
-    )
+    # The gymnastics with generators, new dataset and concatenation is not
+    # straightforward, but:
+    # - `map` iterates over slices, which are not compatible with datasets so:
+    #   `.map(lambda x: model.predict(x))` won't work since `predict` accepts
+    #   only `Dataset`
+    # - `map` can iterate over whole splits, but we risk that the split won't fit
+    #   into memory
+    # - `add_column` can accept generator, but it is not documented and thus it
+    #   feels like a hacky solution
+    def embed_generator(split: Dataset):
+        for embed in smart_unbatch(model.predict(split), 1):
+            yield {args.embedding_col_name: embed}
+
+    embeddings = DatasetDict()
+
+    # TODO: We're relying on HF Task interface. Do we really need the basic
+    # task? Should the basic task also have `splits` property?
+    splits = args.splits.split(",") if args.splits != "all" else task.splits.keys()
+
+    hf_logging.disable_progress_bar()
+    for split_name in splits:
+        logging.info("Generating embeddings for split '%s'", split_name)
+        split = task.splits.get(split_name, None)
+        if split is None:
+            logging.warn(
+                "Split '%s' doesn't exist for this dataset. Skipping...", split_name
+            )
+            continue
+
+        split_embeddings = Dataset.from_generator(
+            embed_generator, gen_kwargs={"split": split}
+        )
+        embeddings[split_name] = concatenate_datasets([split, split_embeddings], axis=1)
+
+    hf_logging.enable_progress_bar()
+
+    embed_dataset_path = os.path.join(config.experiment_path, "embeddings")
+    logging.info("Saving the embeddings dataset to '%s'", embed_dataset_path)
+    embeddings.save_to_disk(embed_dataset_path, max_shard_size=args.max_shard_size)
 
 
 def main():
