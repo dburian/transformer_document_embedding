@@ -1,0 +1,10 @@
+tde_version: 0.2.0
+model:
+  module: longformer.student:LongformerStudent
+  kwargs:
+    epochs: 1
+
+task:
+  module: teacher_embedding:TeacherEmbedding
+  kwargs:
+    path: ./data/wikipedia_simple_embed

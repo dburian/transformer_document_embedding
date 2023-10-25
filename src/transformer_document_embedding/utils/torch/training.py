@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 import torch
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
-from transformers import BatchEncoding, PreTrainedTokenizerBase, PreTrainedTokenizerFast
+from transformers import BatchEncoding, PreTrainedTokenizerBase
 from transformers.trainer_pt_utils import get_parameter_names
 
 if TYPE_CHECKING:
@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 class FastDataCollator:
     """Custom data collator to be used with FastTokenizers.
 
-    Implemented
-        - to avoid the warning caused by first encoding with fast tokenizer and
+    Implemented in order to:
+        - avoid the warning caused by first encoding with fast tokenizer and
           then padding with it on a separate call.
-        - to have the feature of ensuring encoded input is of minimal length.
+        - have the feature of ensuring encoded input is of minimal length.
     """
 
     tokenizer: PreTrainedTokenizerBase
@@ -34,12 +34,18 @@ class FastDataCollator:
     return_tensors: str = "pt"
     min_length: Optional[int] = None
     truncation: Union[bool, str, TruncationStrategy] = "longest_first"
+    return_length: bool = False
 
     def __call__(self, features: list[dict[str, Any]]) -> dict[str, Any]:
         # Convert from list of dicts to dict of lists
-        batch = {
-            key: [example[key] for example in features] for key in features[0].keys()
-        }
+        batch = {}
+        for key in features[0].keys():
+            batch[key] = [example[key] for example in features]
+
+            # Prefer 2d tensors over list of tensors
+            if isinstance(batch[key][0], torch.Tensor):
+                batch[key] = torch.stack(batch[key])
+
         texts = batch["text"]
         del batch["text"]
 
@@ -52,6 +58,7 @@ class FastDataCollator:
                 pad_to_multiple_of=self.pad_to_multiple_of,
                 return_tensors=None,
                 truncation=self.truncation,
+                return_length=self.return_length,
             ),
         )
 
@@ -93,21 +100,15 @@ class FastDataCollator:
 
 
 def create_tokenized_data_loader(
-    data: datasets.Dataset,
-    *,
-    tokenizer: PreTrainedTokenizerFast,
-    batch_size: int,
-    training: bool = True,
-    min_sequence_length: Optional[int] = None,
+    data: datasets.Dataset, *, batch_size: int, training: bool = True, **kwargs
 ) -> DataLoader:
     """Creates DataLoder giving batches of tokenized text."""
     data = data.with_format("torch")
     data = data.remove_columns(["id"])
 
     collator = FastDataCollator(
-        tokenizer=tokenizer,
         padding="longest",
-        min_length=min_sequence_length,
+        **kwargs,
     )
     dataloader = DataLoader(
         data,
