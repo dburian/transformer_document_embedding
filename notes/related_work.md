@@ -108,6 +108,10 @@ inference, what makes them different
 - [BigBird (2021)][bigbird]
 - [Transformer XL (2019)][transformer_xl] -- example of left-to-right transformer
   (rather than with sparse attention)
+- [LongT5](https://arxiv.org/pdf/2112.07916.pdf)
+- [Memorizing transformer](https://arxiv.org/pdf/2203.08913.pdf)
+- [Focused Transformer](https://arxiv.org/pdf/2307.03170.pdf)
+
 
 - [Multi-document tranformer for personality detection][yang_21]
 

@@ -12,7 +12,7 @@
 
 # Longformer
 
-Introduced by [Beltagy, Peters, Cohan in 2020][paper].
+Introduced by [Beltagy, Peters, Cohan in 2020][paper]. Has cca 141M parameters.
 
 
 Longformer is one of the transformer models, whose aim is to alleviate

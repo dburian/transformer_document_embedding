@@ -13,7 +13,7 @@ there have been lots of discussions around this. But the status is that there is
 a PR, no ones working on it for some time now. This means that there is no
 built-in way of telling how many epochs should one do.
 
-Initially I though I resolved the issue by watching the change in document
+Initially I thought I resolved the issue by watching the change in document
 embeddings of randomly chosen documents. If change to their embeddings was only
 marginal between epochs I concluded the training converged.
 
@@ -120,8 +120,8 @@ dbow then focus on dm.
 
     | dm_kwargs.vector_size | dm_kwargs.epochs | test_binary_accuracy |
     | --------------------- | ---------------- | -------------------- |
-    | 100                   | 800              | 0.85895              |
     | 400                   | 800              | 0.8606               |
+    | 100                   | 800              | 0.85895              |
 
 So clearly benefits of larger vector size are marginal. Disappointedly test
 split did not do much.
