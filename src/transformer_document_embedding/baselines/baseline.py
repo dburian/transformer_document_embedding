@@ -15,8 +15,8 @@ class Baseline:
     def train(
         self,
         task: ExperimentalTask,
-        log_dir: Optional[str],
-        model_dir: Optional[str],
+        log_dir: Optional[str] = None,
+        model_dir: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Trains the model.

@@ -1,15 +1,23 @@
+from __future__ import annotations
 import math
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import torch
 from torch.cuda.amp.grad_scaler import GradScaler
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import Mean, Metric
 from tqdm.auto import tqdm
-from transformers import PreTrainedModel
 
 import transformer_document_embedding.utils.torch.training as train_utils
+
+if TYPE_CHECKING:
+    from torch.utils.data import DataLoader
+    from torch.utils.tensorboard.writer import SummaryWriter
+    from transformers import PreTrainedModel
+    from typing import Optional
+    from typing import Any
+    from typing import Callable
+
+    DictGetter = Callable[[dict[str, torch.Tensor]], Any]
 
 
 def training_step(
@@ -27,6 +35,8 @@ def training_step(
     lr_scheduler: Optional[object] = None,
     max_grad_norm: Optional[float] = None,
     step: int,
+    outputs_getter: DictGetter,
+    targets_getter: DictGetter,
 ) -> None:
     assert (
         scaler is not None or not fp16
@@ -37,14 +47,19 @@ def training_step(
 
     with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=fp16):
         outputs = model(**batch)
-        loss = loss_fn(outputs["logits"], batch["labels"]) / grad_accumulation_steps
+        # print(f"Outputs: {outputs}")
+        # print(f"Batch: {batch}")
+        loss: torch.Tensor = (
+            loss_fn(outputs_getter(outputs), targets_getter(batch))
+            / grad_accumulation_steps
+        )
 
-    # Why multiply?
+    # Log loss unscaled by accumulation steps
     loss_metric.update(loss * grad_accumulation_steps)
     for metric in metrics.values():
-        metric.update(outputs["logits"], batch["labels"])
+        metric.update(outputs_getter(outputs), targets_getter(batch))
 
-    # Why fp16 plays a role here?
+    # For fp16 there could be an underflow in gradients...
     loss = scaler.scale(loss) if fp16 else loss
     loss.backward()
 
@@ -58,7 +73,7 @@ def training_step(
             scale_before = scaler.get_scale()
             scaler.step(optimizer)
             scale_after = scaler.get_scale()
-            optimizer_was_run = scale_before <= scale_after
+            optimizer_was_run = scale_before < scale_after
 
             scaler.update()
         else:
@@ -80,6 +95,8 @@ def validation_step(
     loss_fn: torch.nn.Module,
     metrics: dict[str, Metric],
     mean_val_loss: Metric,
+    outputs_getter: DictGetter,
+    targets_getter: DictGetter,
 ) -> None:
     train_utils.batch_to_device(batch, device)
 
@@ -89,11 +106,11 @@ def validation_step(
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
             )
-            loss = loss_fn(outputs["logits"], batch["labels"])
+            loss = loss_fn(outputs_getter(outputs), targets_getter(batch))
 
     mean_val_loss.update(loss)
     for metric in metrics.values():
-        metric.update(outputs["logits"], batch["labels"])
+        metric.update(outputs_getter(outputs), targets_getter(batch))
 
 
 def compute_optimizer_step(
@@ -132,6 +149,8 @@ def train(
     loss_fn: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     metrics: dict[str, Metric],
+    outputs_getter: DictGetter,
+    targets_getter: DictGetter,
     summary_writer: Optional[SummaryWriter] = None,
     val_summary_writer: Optional[SummaryWriter] = None,
     fp16: bool = False,
@@ -180,6 +199,8 @@ def train(
                 step=i,
                 max_grad_norm=max_grad_norm,
                 lr_scheduler=lr_scheduler,
+                targets_getter=targets_getter,
+                outputs_getter=outputs_getter,
             )
 
         if summary_writer is not None:
@@ -208,6 +229,8 @@ def train(
                     loss_fn=loss_fn,
                     metrics=metrics,
                     mean_val_loss=mean_val_loss,
+                    targets_getter=targets_getter,
+                    outputs_getter=outputs_getter,
                 )
 
             val_loss = mean_val_loss.compute()

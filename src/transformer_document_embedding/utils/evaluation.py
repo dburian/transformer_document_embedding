@@ -28,8 +28,7 @@ def smart_unbatch(
 ) -> Iterable[np.ndarray]:
     for batch in iterable:
         if len(batch.shape) > dim_count:
-            for element in smart_unbatch(batch, dim_count):
-                yield element
+            yield from smart_unbatch(batch, dim_count)
         else:
             yield batch
 

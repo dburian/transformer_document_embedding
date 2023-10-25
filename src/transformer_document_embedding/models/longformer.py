@@ -71,7 +71,7 @@ class LongformerForTextEmbedding(hf_longformer.LongformerPreTrainedModel):
             ),
         )
 
-        outputs.pooler_output = (
+        outputs["pooler_output"] = (
             self.pooler(
                 last_hidden_state=outputs.last_hidden_state,
                 attention_mask=attention_mask,

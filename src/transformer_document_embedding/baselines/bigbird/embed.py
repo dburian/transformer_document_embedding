@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING, cast
 import torch
 from transformers import AutoTokenizer
 
-from transformer_document_embedding.baselines.experimental_model import (
-    Baseline,
-)
+from transformer_document_embedding.baselines.baseline import Baseline
 from transformer_document_embedding.models.bigbird import (
     BigBirdConfig,
     BigBirdForTextEmbedding,
