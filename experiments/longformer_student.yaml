@@ -2,9 +2,34 @@ tde_version: 0.2.0
 model:
   module: longformer.student:LongformerStudent
   kwargs:
+    large: False
+    batch_size: 3
+    pooler_type: mean
+    static_embed_dim: 100
+    contextual_max_length: 384
+    static_contextual_lambda: 0.5
+    use_dcca: True
+    dcca_norm: layer
+    cca_output_dim: 50
+    # dcca_model_layers: []
+    # dcca_static_layers: []
+    dcca_model_layers: [256]
+    dcca_static_layers: []
+
+  train_kwargs:
+    dataloader_sampling: consistent
+    grad_accumulation_steps: 10
+    short_inputs_in_effective_batch: 9
+    learning_rate: 3.0e-5
+    weight_decay: 1.0e-2
+    warmup_steps: 100
     epochs: 1
+    early_stopping: False
+    save_best: False
+    log_every_step: 10
 
 task:
   module: teacher_embedding:TeacherEmbedding
   kwargs:
-    path: ./data/wikipedia_simple_embed
+    path: /mnt/data/datasets/wikipedia_sample
+    # data_size_limit: 8000 #2h of training

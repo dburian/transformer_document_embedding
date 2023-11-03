@@ -3,14 +3,13 @@ model:
   module: paragraph_vector.embed:ParagraphVectorEmbed
   kwargs:
     dbow_kwargs:
-      # USE WORKERS!!!!!
       vector_size: 100
       min_count: 2
       epochs: 2
       negative: 5
       sample: 0
+  train_kwargs:
+    save_at_epochs: [1]
 
 task:
-  module: teacher_embedding:TeacherEmbedding
-  kwargs:
-    path: ./data/sbert_wikipedia_simple
+  module: bookcorpus:BookCorpus

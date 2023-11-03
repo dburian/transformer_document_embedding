@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from coolname import generate
 import importlib
+import sys
 import logging
 import os
-from datetime import datetime
 
 from typing import TYPE_CHECKING
 
@@ -28,18 +29,26 @@ CONF_REQUIRED_FIELDS = [
 ]
 
 
+logger = logging.getLogger(__name__)
+
+
 class ExperimentConfig:
     @staticmethod
-    def from_yaml(config_file: str, base_results_dir: str) -> ExperimentConfig:
+    def from_yaml(
+        config_file: str, base_results_dir: str, name: Optional[str] = None
+    ) -> ExperimentConfig:
         with open(config_file, mode="r", encoding="utf8") as file:
             values = yaml.safe_load(file)
 
-            return ExperimentConfig(values, base_results_dir)
+            return ExperimentConfig(
+                values, base_results_dir=base_results_dir, name=name
+            )
 
     def __init__(
         self,
         config_values: dict[str, Any],
         base_results_dir: str,
+        name: Optional[str] = None,
     ) -> None:
         def _check_field_exist(values: dict[str, Any], field_path: list[str]) -> bool:
             field = values
@@ -67,10 +76,15 @@ class ExperimentConfig:
                 tde_version,
             )
 
+        self._name = name if name is not None else "_".join(generate(2))
         self.values = config_values
         self.base_results_dir = base_results_dir
         self._model_path = None
         self._exp_path = None
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def experiment_path(self) -> str:
@@ -79,8 +93,14 @@ class ExperimentConfig:
                 self.base_results_dir,
                 self.values["task"]["module"],
                 self.values["model"]["module"],
-                f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}',
+                self._name,
             )
+            if os.path.exists(self._exp_path):
+                logger.error(
+                    "Experiment with the given name already exists at %s",
+                    self._exp_path,
+                )
+                sys.exit(1)
             os.makedirs(self._exp_path, exist_ok=True)
 
         return self._exp_path

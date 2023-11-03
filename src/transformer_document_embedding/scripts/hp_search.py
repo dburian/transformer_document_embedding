@@ -48,6 +48,7 @@ def run_single(config: ExperimentConfig) -> None:
         "Starting experiment with config:\n%s",
         pprint.pformat(config.values, indent=1),
     )
+    config.save()
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
@@ -61,7 +62,6 @@ def run_single(config: ExperimentConfig) -> None:
     logging.info("Training done.")
 
     config.log_hparams()
-    config.save()
 
 
 def main() -> None:

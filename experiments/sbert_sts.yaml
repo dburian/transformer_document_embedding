@@ -6,7 +6,6 @@ model:
     batch_size: 128
 
 task:
-  module: wikipedia:Wikipedia
+  module: sts_benchmark:STSBenchmark
   kwargs:
-    debug: True
-    data_size_limit: 5000
+    dir_path: ./data/stsbenchmark

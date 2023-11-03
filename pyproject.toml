@@ -16,6 +16,7 @@ dependencies = [
   "torcheval",
   "faiss-cpu",
   "protobuf==3.20.3",
+  "coolname",
 ]
 
 [project.optional-dependencies]
@@ -139,3 +140,7 @@ max-complexity = 10
 
 [tool.codespell]
 ignore-words-list = "theses"
+
+[tool.jupytext]
+# Globally pair jupytext notebooks
+formats = "ipynb,py:percent"

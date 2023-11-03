@@ -9,6 +9,7 @@ from datasets import DatasetDict
 
 if TYPE_CHECKING:
     from typing import Iterable
+    from datasets import Dataset
     import numpy as np
 
 
@@ -33,7 +34,9 @@ class IMDBClassification(HFTask):
         assert isinstance(dataset_dict, DatasetDict)
         return dataset_dict
 
-    def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
+    def evaluate(
+        self, split: Dataset, pred_batches: Iterable[np.ndarray]
+    ) -> dict[str, float]:
         import tensorflow as tf
 
         metrics = [
@@ -45,7 +48,7 @@ class IMDBClassification(HFTask):
             met.reset_state()
 
         for pred_batch, true_batch in aggregate_batches(
-            pred_batches, iter(self.splits["test"]), lambda x: x["label"]
+            pred_batches, iter(split), lambda x: x["label"]
         ):
             for met in metrics:
                 met.update_state(true_batch, pred_batch)

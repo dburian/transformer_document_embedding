@@ -1,0 +1,13 @@
+tde_version: 0.0.2
+model:
+  module: longformer.student:LongformerStudent
+  kwargs:
+    pooler_type: mean
+    batch_size: 4
+    epochs: 0
+
+
+task:
+  module: sts_benchmark:STSBenchmark
+  kwargs:
+    dir_path: ./data/stsbenchmark

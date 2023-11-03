@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max_shard_size",
         type=str,
-        default="500MB",
+        default="1GB",
         help="Maximum size of generated shards.",
     )
 
@@ -86,6 +86,7 @@ def generate_embeddings(
         "Starting experiment with config:\n%s",
         pprint.pformat(config.values, indent=1),
     )
+    config.save()
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
