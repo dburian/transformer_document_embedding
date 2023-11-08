@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Union
+from typing import Any, Callable, Iterable, Union
 
 import torch
 from torcheval.metrics import Mean, Metric
@@ -81,3 +81,52 @@ class VMemMetric(Metric):
 
     def merge_state(self, _: Iterable[VMemMetric]) -> VMemMetric:
         return self
+
+
+UpdateWrapperFn = Callable[
+    [Metric, dict[str, torch.Tensor], dict[str, torch.Tensor]], Any
+]
+
+
+class AccessorMetric(Metric):
+    def __init__(
+        self, inner_metric: Metric, update_fn: UpdateWrapperFn, **kwargs
+    ) -> None:
+        self._inner_metric = inner_metric
+        self._update_fn = update_fn
+        super().__init__(**kwargs)
+
+    @torch.inference_mode()
+    def update(
+        self,
+        outputs: dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
+    ) -> Any:
+        return self._update_fn(self._inner_metric, outputs, batch)
+
+    def merge_state(self, metrics: Iterable[Metric]) -> Any:
+        return self._inner_metric.merge_state(metrics)
+
+    def state_dict(self) -> dict[str, Any]:
+        return self._inner_metric.state_dict()
+
+    def compute(self) -> Any:
+        return self._inner_metric.compute()
+
+    def to(
+        self, device: Union[str, torch.device], *args: Any, **kwargs: Any
+    ) -> AccessorMetric:
+        self._inner_metric.to(device, *args, **kwargs)
+        return self
+
+    def load_state_dict(self, state_dict: dict[str, Any], strict: bool = True) -> None:
+        # We cannot serialize the update_fn function, so saving is useless
+        return self._inner_metric.load_state_dict(state_dict, strict)
+
+    def reset(self) -> AccessorMetric:
+        self._inner_metric.reset()
+        return self
+
+
+def with_accessor(metric: Metric, update_fn: UpdateWrapperFn) -> Metric:
+    return AccessorMetric(metric, update_fn)
