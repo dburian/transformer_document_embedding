@@ -7,14 +7,12 @@ model:
     pooler_type: mean
     static_embed_dim: 100
     contextual_max_length: 384
-    static_contextual_lambda: 0.5
-    use_dcca: True
-    dcca_norm: layer
+    static_contextual_lambda: 1000
+    static_loss_type: 'soft_cca'
+    projection_norm: layer
     cca_output_dim: 50
-    # dcca_model_layers: []
-    # dcca_static_layers: []
-    dcca_model_layers: [256]
-    dcca_static_layers: []
+    longformer_projection_layers: [256]
+    static_projection_layers: [64, 256]
 
   train_kwargs:
     dataloader_sampling: consistent
@@ -32,4 +30,4 @@ task:
   module: teacher_embedding:TeacherEmbedding
   kwargs:
     path: /mnt/data/datasets/wikipedia_sample
-    # data_size_limit: 8000 #2h of training
+    data_size_limit: 2000

@@ -1,8 +1,8 @@
 import logging
 import os
 
-from transformer_document_embedding.baselines.paragraph_vector import (
-    ParagraphVectorWikipediaSimilarities,
+from transformer_document_embedding.baselines.paragraph_vector.wiki import (
+    ParagraphVectorEmbeder,
 )
 from transformer_document_embedding.tasks.wikipedia_similarities import (
     WikipediaSimilarities,
@@ -19,7 +19,7 @@ task = WikipediaSimilarities(
     validation_source="test",
     validation_source_fraction=0.2,
 )
-model = ParagraphVectorWikipediaSimilarities(
+model = ParagraphVectorEmbeder(
     dbow_kwargs={
         "vector_size": 100,
         "min_count": 2,
@@ -29,7 +29,7 @@ model = ParagraphVectorWikipediaSimilarities(
     }
 )
 # %%
-task.validation
+print(task.validation)
 # %%
 len(list(filter(lambda doc: len(doc["label"]) > 0, task.validation)))
 # %%

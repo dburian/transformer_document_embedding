@@ -1,6 +1,6 @@
 from __future__ import annotations
 import torch
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 
 from transformer_document_embedding.utils.torch.net_helpers import get_activation
@@ -27,7 +27,7 @@ class AlwaysStaticShortContextual(torch.nn.Module):
         self._static_key = static_key
         self._len_threshold = len_threshold
         self._len_key = len_key
-        self._static_loss = static_loss
+        self.static_loss = static_loss
         self._lambda = lambda_
 
     def forward(
@@ -38,13 +38,13 @@ class AlwaysStaticShortContextual(torch.nn.Module):
             torch.nn.functional.mse_loss(inputs, targets[self._contextual_key])
             * contextual_mask
         )
-        static_loss_outputs = self._static_loss(inputs, targets[self._static_key])
+        static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
         static_loss = torch.mean(static_loss_outputs.pop("loss"))
 
         return {
             "loss": static_loss + self._lambda * contextual_loss,
-            "static_loss": static_loss.detach(),
-            "contextual_loss": contextual_loss.detach(),
+            "static_loss": static_loss,
+            "contextual_loss": contextual_loss,
             **static_loss_outputs,
         }
 
@@ -130,7 +130,7 @@ class CCALoss(torch.nn.Module):
         if self._output_dim is None:
             # We are using all singular values
             corr = torch.trace(torch.sqrt(A.T @ A))
-            return -corr
+            return self._return_computation(-corr)
 
         A_times_A = A.T @ A
         A_times_A = torch.add(
@@ -163,6 +163,7 @@ class RunningCCALoss(CCALoss):
         beta_mu: float = 0.9,
         beta_sigma: float = 0.9,
         device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -173,27 +174,21 @@ class RunningCCALoss(CCALoss):
             *args,
             **kwargs,
         )
+        factory_kwargs = {"device": device, "dtype": dtype}
 
-        self._sigma1 = torch.nn.Parameter(
-            torch.eye(view1_dimension, device=device),
-            requires_grad=False,
+        self.register_buffer("sigma1", torch.eye(view1_dimension, **factory_kwargs))
+        self.sigma1: torch.Tensor
+        self.register_buffer("sigma2", torch.eye(view2_dimension, **factory_kwargs))
+        self.sigma2: torch.Tensor
+        self.register_buffer(
+            "sigma", torch.zeros(view1_dimension, view2_dimension, **factory_kwargs)
         )
-        self._sigma2 = torch.nn.Parameter(
-            torch.eye(view2_dimension, device=device),
-            requires_grad=False,
-        )
-        self._sigma = torch.nn.Parameter(
-            torch.zeros(view1_dimension, view2_dimension, device=device),
-            requires_grad=False,
-        )
-        self._mu1 = torch.nn.Parameter(
-            torch.zeros(view1_dimension, device=device),
-            requires_grad=False,
-        )
-        self._mu2 = torch.nn.Parameter(
-            torch.zeros(view2_dimension, device=device),
-            requires_grad=False,
-        )
+        self.sigma: torch.Tensor
+
+        self.register_buffer("mu1", torch.zeros(view1_dimension, **factory_kwargs))
+        self.mu1: torch.Tensor
+        self.register_buffer("mu2", torch.zeros(view2_dimension, **factory_kwargs))
+        self.mu2: torch.Tensor
 
         self._beta_mu = beta_mu
         self._beta_sigma = beta_sigma
@@ -202,7 +197,7 @@ class RunningCCALoss(CCALoss):
 
     @staticmethod
     def _running_update(
-        beta: torch.Tensor, old: torch.Tensor, new: torch.Tensor
+        beta: float, old: torch.Tensor, new: torch.Tensor
     ) -> torch.Tensor:
         return old.detach() * beta + (1 - beta) * new
 
@@ -217,24 +212,18 @@ class RunningCCALoss(CCALoss):
         view1_bar = view1 - view1_mean.unsqueeze(dim=1)
         view2_bar = view2 - view2_mean.unsqueeze(dim=1)
 
-        last_sigma = self._covariance(view1_bar, view2_bar)
-        last_sigma1 = self._covariance(view1_bar, view1_bar)
-        last_sigma2 = self._covariance(view2_bar, view2_bar)
+        new_sigma = self._covariance(view1_bar, view2_bar)
+        new_sigma1 = self._covariance(view1_bar, view1_bar)
+        new_sigma2 = self._covariance(view2_bar, view2_bar)
 
-        self._sigma.detach().mul_(self._beta_sigma).add_(
-            last_sigma, alpha=1 - self._beta_sigma
-        )
-        self._sigma1.detach().mul_(self._beta_sigma).add_(
-            last_sigma1, alpha=1 - self._beta_sigma
-        )
-        self._sigma2.detach().mul_(self._beta_sigma).add_(
-            last_sigma2, alpha=1 - self._beta_sigma
-        )
+        self.sigma = self._running_update(self._beta_sigma, self.sigma, new_sigma)
+        self.sigma1 = self._running_update(self._beta_sigma, self.sigma1, new_sigma1)
+        self.sigma2 = self._running_update(self._beta_sigma, self.sigma2, new_sigma2)
 
         self._beta_sigma_power *= self._beta_sigma
-        sigma = self._sigma / (1 - self._beta_sigma_power)
-        sigma1 = self._sigma1 / (1 - self._beta_sigma_power)
-        sigma2 = self._sigma2 / (1 - self._beta_sigma_power)
+        sigma = self.sigma / (1 - self._beta_sigma_power)
+        sigma1 = self.sigma1 / (1 - self._beta_sigma_power)
+        sigma2 = self.sigma2 / (1 - self._beta_sigma_power)
 
         return sigma, sigma1, sigma2
 
@@ -249,16 +238,13 @@ class RunningCCALoss(CCALoss):
             view2: torch.Tensor
                 Embeddings of second view as columns.
         """
-        self._mu1.detach().mul_(self._beta_mu).add_(
-            view1.mean(dim=1), alpha=1 - self._beta_mu
-        )
-        self._mu2.detach().mul_(self._beta_mu).add_(
-            view2.mean(dim=1), alpha=1 - self._beta_mu
-        )
+        self.mu1 = self._running_update(self._beta_mu, self.mu1, view1.mean(dim=1))
+
+        self.mu2 = self._running_update(self._beta_mu, self.mu2, view2.mean(dim=1))
 
         self._beta_mu_power *= self._beta_mu
-        mu1 = self._mu1 / (1 - self._beta_mu_power)
-        mu2 = self._mu2 / (1 - self._beta_mu_power)
+        mu1 = self.mu1 / (1 - self._beta_mu_power)
+        mu2 = self.mu2 / (1 - self._beta_mu_power)
         return mu1, mu2
 
     def _return_computation(
@@ -266,9 +252,95 @@ class RunningCCALoss(CCALoss):
     ) -> dict[str, torch.Tensor]:
         return {
             **super()._return_computation(neg_correlation),
-            "covariance_mat": self._sigma.detach(),
-            "sigma2": (self._sigma2 / (1 - self._beta_sigma_power)).detach(),
+            "covariance_mat": self.sigma.detach(),
+            "sigma2": (self.sigma2 / (1 - self._beta_sigma_power)).detach(),
         }
+
+
+class SoftCCALoss(torch.nn.Module):
+    """According to:
+    Chang, Xiaobin, Tao Xiang, and Timothy M. Hospedales. "Scalable and
+    effective deep CCA via soft decorrelation." Proceedings of the IEEE
+    Conference on Computer Vision and Pattern Recognition. 2018.
+    """
+
+    def __init__(
+        self,
+        sdl1: StochasticDecorrelationLoss,
+        sdl2: StochasticDecorrelationLoss,
+        view1_dimension: int,
+        view2_dimension: int,
+        lam: float,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        self.sdl1 = sdl1
+        self.sdl2 = sdl2
+        self.bn1 = torch.nn.BatchNorm1d(view1_dimension, **factory_kwargs)
+        self.bn2 = torch.nn.BatchNorm1d(view2_dimension, **factory_kwargs)
+
+        self.lam = lam
+
+    def forward(
+        self, view1: torch.Tensor, view2: torch.Tensor
+    ) -> dict[str, torch.Tensor]:
+        view1, view2 = self.bn1(view1), self.bn2(view2)
+        sdl1, sdl2 = self.sdl1(view1), self.sdl2(view2)
+
+        l2 = torch.linalg.norm(view1 - view2, dim=(0, 1))
+
+        return {
+            "sdl1": sdl1,
+            "sdl2": sdl2,
+            "l2": l2,
+            "loss": l2 * self.lam + sdl1 + sdl2,
+        }
+
+
+class StochasticDecorrelationLoss(torch.nn.Module):
+    def __init__(
+        self,
+        dimension: int,
+        alpha: float = 0.8,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        self.register_buffer(
+            "sigma", torch.zeros(dimension, dimension, **factory_kwargs)
+        )
+        self.sigma: torch.Tensor
+
+        self.alpha = alpha
+        self.norm_factor = 0
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        # Assume batch-normalized inputs
+
+        # Batch size
+        m = inputs.size(0)
+
+        new_sigma = (1 / (m - 1)) * inputs.T @ inputs
+        self.sigma = self.alpha * self.sigma.detach() + new_sigma
+
+        self.norm_factor = self.alpha * self.norm_factor + 1
+        apprx_sigma = self.sigma / self.norm_factor
+        apprx_sigma = apprx_sigma.abs()
+
+        loss = apprx_sigma.sum() - apprx_sigma.trace()
+
+        return loss
 
 
 class DeepNet(torch.nn.Module):
@@ -307,32 +379,33 @@ class DeepNet(torch.nn.Module):
         outputs = inputs
         for layer in self.layers:
             outputs = layer(outputs)
+
         return outputs
 
 
-class DCCALoss(torch.nn.Module):
+class ProjectionLoss(torch.nn.Module):
     def __init__(
         self,
-        net1: DeepNet,
-        net2: DeepNet,
-        cca_loss: CCALoss,
+        net1: Optional[DeepNet],
+        net2: Optional[DeepNet],
+        loss_fn: torch.nn.Module,
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        self._net1 = net1
-        self._net2 = net2
-        self._cca = cca_loss
+        self.net1 = net1
+        self.net2 = net2
+        self.loss_fn = loss_fn
 
     def forward(
         self, view1: torch.Tensor, view2: torch.Tensor
     ) -> dict[str, torch.Tensor]:
-        projected_view1 = self._net1(view1)
-        projected_view2 = self._net2(view2)
+        projected_view1 = self.net1(view1) if self.net1 is not None else view1
+        projected_view2 = self.net2(view2) if self.net2 is not None else view2
 
         return {
-            **self._cca(projected_view1, projected_view2),
+            **self.loss_fn(projected_view1, projected_view2),
             "projected_view1": projected_view1,
             "projected_view2": projected_view2,
         }
@@ -348,28 +421,14 @@ def get_cross_corr(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return torch.sum(cross_corr)
 
 
-class ProjectedMSE(torch.nn.Module):
-    def __init__(
-        self,
-        input_features: int,
-        output_features: int,
-        activation: str = "linear",
-        loss: torch.nn.Module
-        | Callable[
-            [torch.Tensor, torch.Tensor], torch.Tensor
-        ] = torch.nn.functional.mse_loss,
-        *args,
-        **kwargs,
-    ) -> None:
+class CosineDistanceLoss(torch.nn.Module):
+    def __init__(self, dim: int = 1, eps: float = 1e-8, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._linear = torch.nn.Linear(input_features, output_features)
-        self._activation = get_activation(activation)()
-        self._loss = loss() if isinstance(loss, torch.nn.Module) else loss
+        self.dim = dim
+        self.eps = eps
 
-    def forward(
-        self, inputs: torch.Tensor, targets: torch.Tensor
-    ) -> dict[str, torch.Tensor]:
-        transformed = self._activation(self._linear(inputs))
-
-        return {"loss": self._loss(transformed, targets)}
+    def forward(self, inputs: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
+        return 1 - torch.nn.functional.cosine_similarity(
+            inputs, outputs, self.dim, self.eps
+        )

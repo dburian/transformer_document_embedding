@@ -58,12 +58,13 @@ def training_step(
     )
     lr_metric.update(torch.tensor(current_lr, device=device))
 
-    for metric in metrics.values():
-        metric.update(outputs, batch)
-
     # For fp16 there could be an underflow in gradients...
     loss = scaler.scale(loss) if fp16 else loss
     loss.backward()
+
+    # After `loss.backward()` so that gradients are populated
+    for metric in metrics.values():
+        metric.update(outputs, batch)
 
     if (step + 1) % grad_accumulation_steps == 0 or (step + 1) == steps_in_epoch:
         if max_grad_norm is not None:
@@ -148,7 +149,7 @@ def train(
     lr_scheduler=None,
     progress_bar: bool = True,
     validate_every_epoch: int = 1,
-    checkpoint_path: Optional[str] = None,
+    save_model_callback: Optional[Callable[[torch.nn.Module], None]] = None,
     patience: Optional[int] = None,
     log_every_step: Optional[int] = None,
 ) -> None:
@@ -235,8 +236,8 @@ def train(
                 min_val_loss = val_loss
                 epochs_without_improvement = 0
 
-                if checkpoint_path is not None:
-                    model.save_pretrained(checkpoint_path)
+                if save_model_callback is not None:
+                    save_model_callback(model)
             else:
                 epochs_without_improvement += 1
 

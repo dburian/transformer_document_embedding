@@ -6,7 +6,9 @@ import numpy as np
 import seaborn as sns
 from datasets.load import load_dataset
 
-from transformer_document_embedding.tasks import WikipediaSimilarities
+from transformer_document_embedding.tasks.wikipedia_similarities import (
+    WikipediaSimilarities,
+)
 
 sns.set_theme()
 # %%
@@ -68,7 +70,9 @@ print(articles[24])
 def create_text(article: dict[str, Any]) -> dict[str, Any]:
     sections_text = [
         f"{title} {text}"
-        for title, text in zip(article["section_titles"], article["section_texts"])
+        for title, text in zip(
+            article["section_titles"], article["section_texts"], strict=True
+        )
     ]
     return {"text": " ".join(sections_text)}
 
@@ -124,7 +128,13 @@ sns.histplot(target_title_freqs, bins=np.arange(-0.5, 30.5, 1))
 # %% [markdown]
 # ## Looking at the task
 # %%
-wines = WikipediaSimilarities(dataset="wine", datasets_dir="../data")
+wines = WikipediaSimilarities(dataset="game", datasets_dir="../data")
+# %%
+len(wines.train)
+
+# %%
+len(wines.test)
+
 # %%
 replaced_char_count = 0
 for article in wines.train:
@@ -133,11 +143,7 @@ for article in wines.train:
 print(replaced_char_count)
 # %%
 wines_df = wines.train.to_pandas()
-wines_df["Text length"] = wines_df[["text"]].applymap(lambda text: len(text))
-wines_df["Word count"] = wines_df[["text"]].applymap(lambda text: len(text.split()))
+wines_df["Text length"] = wines_df[["text"]].map(lambda text: len(text))
+wines_df["Word count"] = wines_df[["text"]].map(lambda text: len(text.split()))
 # %%
 wines_df.describe()
-# %%
-sns.histplot(wines_df, x="Text length", binrange=(0, 20000))
-# %%
-sns.histplot(wines_df, x="Word count", binrange=(0, 5000))
