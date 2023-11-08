@@ -139,3 +139,11 @@ max-complexity = 10
 
 [tool.codespell]
 ignore-words-list = "theses"
+
+[tool.jupytext]
+# Globally pair jupytext notebooks
+formats = "ipynb,py:percent"
+
+[tool.ruff.per-file-ignores]
+"*.nb.py" = ["B018"] # Allow useless expresisons in notebooks
+"tmp.nb.py" = ["E402"] # Allow imports not at the top of the tmp notebook
