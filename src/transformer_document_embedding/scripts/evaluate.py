@@ -59,9 +59,12 @@ def evaluate_best(
     args: argparse.Namespace,
 ) -> None:
     logging.info(
-        "Starting experiment with config:\n%s",
+        "Starting experiment '%s', with config:\n%s",
+        config.name,
         pprint.pformat(config.values, indent=1),
     )
+    config.save()
+
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
@@ -98,7 +101,6 @@ def evaluate_best(
     test_log_path = os.path.join(config.experiment_path, "test")
     log_results(test_log_path, results)
 
-    config.save()
     return results
 
 
@@ -110,7 +112,7 @@ def main() -> None:
     )
 
     for exp_file in args.config:
-        config = ExperimentConfig.from_yaml(exp_file, args.output_base_path)
+        config = ExperimentConfig.from_yaml(exp_file, args.output_base_path, args.name)
 
         evaluate_best(config, args)
 
