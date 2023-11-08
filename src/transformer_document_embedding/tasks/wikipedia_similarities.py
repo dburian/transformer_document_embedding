@@ -111,11 +111,13 @@ class WikipediaSimilarities(HFTask):
 
         return DatasetDict(splits)
 
-    def evaluate(self, pred_batches: Iterable[np.ndarray]) -> dict[str, float]:
+    def evaluate(
+        self, split: Dataset, pred_batches: Iterable[np.ndarray]
+    ) -> dict[str, float]:
         preds = smart_unbatch(pred_batches, 1)
 
         true_pred_ids_iter = get_nearest_ids_from_faiss(
-            self.splits["test"],
+            split,
             preds,
             k=1000,
         )

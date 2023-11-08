@@ -73,7 +73,6 @@ def evaluate_best(
 
         model.train(
             task,
-            # TODO: Change interface for baseline
             log_dir=config.experiment_path,
             model_dir=config.model_path,
             **config.values["model"].get("train_kwargs", {}),
@@ -91,7 +90,7 @@ def evaluate_best(
 
     logging.info("Evaluating on test data...")
     test_predictions = model.predict(task.test)
-    results = task.evaluate(test_predictions)
+    results = task.evaluate(task.test, test_predictions)
     logging.info("Evaluation done. Results:\n%s", results)
 
     save_csv_results(results, config.experiment_path)

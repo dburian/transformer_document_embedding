@@ -29,13 +29,8 @@ class ExperimentalTask:
         """Returns validation data."""
         return None
 
-    @property
-    def unsupervised(self) -> Optional[Any]:
-        """Returns unsupervised data."""
-        return None
-
-    def evaluate(self, pred_batches) -> dict[str, float]:
-        """Evaluates given test predictions on task-specific metrics.
+    def evaluate(self, split, pred_batches) -> dict[str, float]:
+        """Evaluates given split predictions on task-specific metrics.
 
         Returns dictionary mapping metric names to their respective score.
         """

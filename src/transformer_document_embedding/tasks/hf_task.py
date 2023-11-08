@@ -35,12 +35,7 @@ class HFTask(ExperimentalTask):
 
     @property
     def test(self) -> Dataset:
-        test = self.splits["test"]
-        return test.remove_columns("label")
-
-    @property
-    def unsupervised(self) -> Optional[Dataset]:
-        return self.splits.get("unsupervised", None)
+        return self.splits["test"]
 
     @property
     def validation(self) -> Optional[Dataset]:
@@ -58,6 +53,16 @@ class HFTask(ExperimentalTask):
     def _retrieve_dataset(self) -> DatasetDict:
         """Obtains the dataset. By default using the load_dataset function."""
         raise NotImplementedError()
+
+    def _shorten_splits(self, dataset: DatasetDict) -> DatasetDict:
+        if self._data_size_limit is None:
+            return dataset
+
+        for name, split in dataset.items():
+            if len(split) > self._data_size_limit:
+                dataset[name] = split.select(range(self._data_size_limit))
+
+        return dataset
 
     def _create_splits(self, dataset: DatasetDict) -> DatasetDict:
         """Creates splits."""
@@ -92,13 +97,10 @@ class HFTask(ExperimentalTask):
                 new_source_indicies
             )
 
-        if self._data_size_limit is not None:
-            for name, split in dataset.items():
-                if len(split) > self._data_size_limit:
-                    dataset[name] = split.select(range(self._data_size_limit))
+        dataset = self._shorten_splits(dataset)
 
         return dataset
 
     @abstractmethod
-    def evaluate(self, pred_batches) -> dict[str, float]:
+    def evaluate(self, split, pred_batches) -> dict[str, float]:
         raise NotImplementedError()
