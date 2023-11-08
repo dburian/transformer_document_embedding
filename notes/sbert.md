@@ -40,3 +40,20 @@ computing triplet loss.
 
 They trained on pairs of sentences classified into three classes:
 *contradiction*, *entailment*, *neutral*.
+
+## Evaluation
+
+The authors evaluated SBERT on the following tasks:
+
+- unsupervised Semantic Text Similarity (STS) tasks
+- supervised Semantic Text Similarity (STS) tasks
+- ...
+
+### Unsupervised STS tasks
+
+There are:
+1. [2012]()
+
+1. [STS Benchmark
+   (STSb)](https://ixa2.si.ehu.eus/stswiki/index.php/STSbenchmark) -- download
+   and info
