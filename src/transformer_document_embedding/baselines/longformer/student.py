@@ -220,10 +220,25 @@ class LongformerStudent(Baseline):
         )
 
         model.transformer.gradient_checkpointing_enable()
-        longformer_training.train(
+        # longformer_training.train(
+        #     model=model,
+        #     train_data=train_data,
+        #     epochs=epochs,
+        #     optimizer=optimizer,
+        #     metrics=self._construct_train_metrics(model),
+        #     summary_writer=summary_writer,
+        #     fp16=True,
+        #     max_grad_norm=1.0,
+        #     grad_accumulation_steps=grad_accumulation_steps,
+        #     lr_scheduler=lr_scheduler,
+        #     patience=3 if early_stopping else None,
+        #     save_model_callback=None,
+        #     log_every_step=log_every_step,
+        # )
+
+        trainer = longformer_training.LongformerTrainer(
             model=model,
             train_data=train_data,
-            epochs=epochs,
             optimizer=optimizer,
             metrics=self._construct_train_metrics(model),
             summary_writer=summary_writer,
@@ -231,10 +246,10 @@ class LongformerStudent(Baseline):
             max_grad_norm=1.0,
             grad_accumulation_steps=grad_accumulation_steps,
             lr_scheduler=lr_scheduler,
-            patience=3 if early_stopping else None,
-            save_model_callback=None,
             log_every_step=log_every_step,
         )
+
+        trainer.train(epochs=epochs)
 
     def _construct_train_metrics(
         self, model: _LongformerStudentWrapper

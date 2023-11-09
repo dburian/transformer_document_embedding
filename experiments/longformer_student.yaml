@@ -11,8 +11,8 @@ model:
     static_loss_type: 'soft_cca'
     projection_norm: layer
     cca_output_dim: 50
-    longformer_projection_layers: [256]
-    static_projection_layers: [64, 256]
+    longformer_projection_layers: [256, 512]
+    static_projection_layers: [64, 256, 512]
 
   train_kwargs:
     dataloader_sampling: consistent
