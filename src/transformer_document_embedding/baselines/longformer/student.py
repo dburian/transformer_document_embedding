@@ -16,7 +16,14 @@ from transformer_document_embedding.models.longformer import (
     LongformerConfig,
     LongformerForTextEmbedding,
 )
-from transformer_document_embedding.utils.metrics import with_accessor, VMemMetric
+from transformer_document_embedding.utils.metrics import (
+    CCAMetric,
+    CosineDistanceWithSBERT,
+    MSEWithSBERT,
+    PercentLengthBelowThres,
+    with_accessor,
+    VMemMetric,
+)
 from tqdm.auto import tqdm
 
 if TYPE_CHECKING:
@@ -256,6 +263,9 @@ class LongformerStudent(Baseline):
                 metrics.Mean(),
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
+            "sbert_mse": MSEWithSBERT(),
+            "sbert_cos": CosineDistanceWithSBERT(),
+            "short_percentage": PercentLengthBelowThres(model.loss.len_threshold),
             # "mean_cov_mat_sum": with_accessor(
             #     metrics.Mean(),
             #     lambda metric, outputs, _: metric.update(
@@ -276,6 +286,14 @@ class LongformerStudent(Baseline):
                 ),
             ),
         }
+
+        for n_components in [16, 32, 64, 128]:
+            train_metrics[f"cca_{n_components}"] = with_accessor(
+                CCAMetric(n_components=n_components),
+                lambda metric, outputs, _: metric.update(
+                    outputs["projected_view1"], outputs["projected_view2"]
+                ),
+            )
 
         if isinstance(model.loss.static_loss, losses.ProjectionLoss):
             sample_projection_weight_path = None

@@ -30,6 +30,10 @@ class AlwaysStaticShortContextual(torch.nn.Module):
         self.static_loss = static_loss
         self._lambda = lambda_
 
+    @property
+    def len_threshold(self) -> int:
+        return self._len_threshold
+
     def forward(
         self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
     ) -> dict[str, torch.Tensor]:
