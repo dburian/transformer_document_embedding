@@ -33,11 +33,13 @@ class AlwaysStaticShortContextual(torch.nn.Module):
     def forward(
         self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
     ) -> dict[str, torch.Tensor]:
-        contextual_mask = targets[self._len_key] < self._len_threshold
-        contextual_loss = torch.mean(
-            torch.nn.functional.mse_loss(inputs, targets[self._contextual_key])
-            * contextual_mask
+        contextual_mask = (targets[self._len_key] < self._len_threshold).unsqueeze(1)
+        # Multiply the inputs, as mse outputs a single number. Zero equals zero
+        contextual_loss = torch.nn.functional.mse_loss(
+            inputs * contextual_mask,
+            targets[self._contextual_key] * contextual_mask,
         )
+
         static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
         static_loss = torch.mean(static_loss_outputs.pop("loss"))
 
