@@ -6,7 +6,6 @@ import logging
 
 from typing import Any, cast, TYPE_CHECKING
 from torch.utils.tensorboard.writer import SummaryWriter
-from torcheval import metrics
 from transformers import AutoTokenizer, PreTrainedModel
 from transformer_document_embedding.baselines.baseline import Baseline
 import transformer_document_embedding.utils.torch.losses as losses
@@ -17,16 +16,19 @@ from transformer_document_embedding.models.longformer import (
     LongformerForTextEmbedding,
 )
 from transformer_document_embedding.utils.metrics import (
-    CCAMetric,
-    CosineDistanceWithSBERT,
-    MSEWithSBERT,
+    WindowedCCAMetric,
+    WindowedCosineDistanceWithSBERT,
+    WindowedMSEWithSBERT,
     PercentLengthBelowThres,
+    WindowedMax,
+    WindowedMean,
     with_accessor,
     VMemMetric,
 )
 from tqdm.auto import tqdm
 
 if TYPE_CHECKING:
+    from torcheval import metrics
     import numpy as np
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
     from datasets import Dataset
@@ -175,12 +177,10 @@ class LongformerStudent(Baseline):
         task: ExperimentalTask,
         dataloader_sampling: str,
         grad_accumulation_steps: int,
-        short_inputs_in_effective_batch: int,
         learning_rate: float,
         weight_decay: float,
         warmup_steps: int,
         epochs: int,
-        early_stopping: bool,
         log_every_step: int,
         log_dir: Optional[str] = None,
         **_,
@@ -220,22 +220,6 @@ class LongformerStudent(Baseline):
         )
 
         model.transformer.gradient_checkpointing_enable()
-        # longformer_training.train(
-        #     model=model,
-        #     train_data=train_data,
-        #     epochs=epochs,
-        #     optimizer=optimizer,
-        #     metrics=self._construct_train_metrics(model),
-        #     summary_writer=summary_writer,
-        #     fp16=True,
-        #     max_grad_norm=1.0,
-        #     grad_accumulation_steps=grad_accumulation_steps,
-        #     lr_scheduler=lr_scheduler,
-        #     patience=3 if early_stopping else None,
-        #     save_model_callback=None,
-        #     log_every_step=log_every_step,
-        # )
-
         trainer = longformer_training.LongformerTrainer(
             model=model,
             train_data=train_data,
@@ -267,19 +251,19 @@ class LongformerStudent(Baseline):
         train_metrics = {
             "used_vmem": VMemMetric(),
             "mean_contextual_loss": with_accessor(
-                metrics.Mean(),
+                WindowedMean(),
                 lambda metric, outputs, _: metric.update(outputs["contextual_loss"]),
             ),
             "mean_static_loss": with_accessor(
-                metrics.Mean(),
+                WindowedMean(),
                 lambda metric, outputs, _: metric.update(outputs["static_loss"]),
             ),
             "mean_length": with_accessor(
-                metrics.Mean(),
+                WindowedMean(),
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
-            "sbert_mse": MSEWithSBERT(),
-            "sbert_cos": CosineDistanceWithSBERT(),
+            "sbert_mse": WindowedMSEWithSBERT(),
+            "sbert_cos": WindowedCosineDistanceWithSBERT(),
             "short_percentage": PercentLengthBelowThres(model.loss.len_threshold),
             # "mean_cov_mat_sum": with_accessor(
             #     metrics.Mean(),
@@ -294,7 +278,7 @@ class LongformerStudent(Baseline):
             #     ),
             # ),
             "max_abs_longformer_grad": with_accessor(
-                metrics.Max(),
+                WindowedMax(),
                 partial(
                     log_max_abs_grad,
                     param="transformer.longformer.encoder.layer.11.output.dense.weight",
@@ -302,9 +286,12 @@ class LongformerStudent(Baseline):
             ),
         }
 
-        for n_components in [16, 32, 64, 128]:
+        for n_components in [128, 256, 512]:
             train_metrics[f"cca_{n_components}"] = with_accessor(
-                CCAMetric(n_components=n_components),
+                WindowedCCAMetric(
+                    n_components=n_components,
+                    max_window_size=5 * n_components,
+                ),
                 lambda metric, outputs, _: metric.update(
                     outputs["projected_view1"], outputs["projected_view2"]
                 ),
@@ -326,7 +313,7 @@ class LongformerStudent(Baseline):
 
             if sample_projection_weight_path is not None:
                 train_metrics["max_abs_dcca_grad"] = with_accessor(
-                    metrics.Max(),
+                    WindowedMax(),
                     partial(
                         log_max_abs_grad,
                         param=sample_projection_weight_path,
@@ -335,15 +322,15 @@ class LongformerStudent(Baseline):
 
             if isinstance(model.loss.static_loss.loss_fn, losses.SoftCCALoss):
                 train_metrics["mean_projection_l2_norm"] = with_accessor(
-                    metrics.Mean(),
+                    WindowedMean(),
                     lambda metric, outputs, _: metric.update(outputs["l2"]),
                 )
                 train_metrics["mean_projection_sdl1"] = with_accessor(
-                    metrics.Mean(),
+                    WindowedMean(),
                     lambda metric, outputs, _: metric.update(outputs["sdl1"]),
                 )
                 train_metrics["mean_projection_sdl2"] = with_accessor(
-                    metrics.Mean(),
+                    WindowedMean(),
                     lambda metric, outputs, _: metric.update(outputs["sdl2"]),
                 )
 
