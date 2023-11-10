@@ -274,31 +274,23 @@ class SoftCCALoss(torch.nn.Module):
         self,
         sdl1: StochasticDecorrelationLoss,
         sdl2: StochasticDecorrelationLoss,
-        view1_dimension: int,
-        view2_dimension: int,
         lam: float,
-        device: Optional[torch.device] = None,
-        dtype: Optional[torch.dtype] = None,
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        factory_kwargs = {"device": device, "dtype": dtype}
-
         self.sdl1 = sdl1
         self.sdl2 = sdl2
-        self.bn1 = torch.nn.BatchNorm1d(view1_dimension, **factory_kwargs)
-        self.bn2 = torch.nn.BatchNorm1d(view2_dimension, **factory_kwargs)
 
         self.lam = lam
 
     def forward(
         self, view1: torch.Tensor, view2: torch.Tensor
     ) -> dict[str, torch.Tensor]:
-        view1, view2 = self.bn1(view1), self.bn2(view2)
         sdl1, sdl2 = self.sdl1(view1), self.sdl2(view2)
 
+        # TODO: Is this correct?
         l2 = torch.linalg.norm(view1 - view2, dim=(0, 1))
 
         return {
@@ -327,12 +319,13 @@ class StochasticDecorrelationLoss(torch.nn.Module):
             "sigma", torch.zeros(dimension, dimension, **factory_kwargs)
         )
         self.sigma: torch.Tensor
+        self.batch_norm = torch.nn.BatchNorm1d(dimension, affine=False)
 
         self.alpha = alpha
         self.norm_factor = 0
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        # Assume batch-normalized inputs
+        inputs = self.batch_norm(inputs)
 
         # Batch size
         m = inputs.size(0)

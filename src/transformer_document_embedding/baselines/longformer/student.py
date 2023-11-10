@@ -140,8 +140,6 @@ class LongformerStudent(Baseline):
             static_loss_fn = losses.SoftCCALoss(
                 sdl1=losses.StochasticDecorrelationLoss(view1_dim),
                 sdl2=losses.StochasticDecorrelationLoss(view2_dim),
-                view1_dimension=view1_dim,
-                view2_dimension=view2_dim,
                 lam=0.8,
             )
         elif static_loss_type == "mse":
