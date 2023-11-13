@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from typing import Any
 
 # %%
-DS_PATH = "/mnt/data/datasets/wikipedia_with_embeddings"
-NEW_DS_PATH = "/mnt/data/datasets/wikipedia_with_embeddings_lengths"
+DS_PATH = "../data/wikipedia_with_eval"
+NEW_DS_PATH = "../data/wikipedia_with_eval_with_lengths"
 TOKENIZER_PATH = "allenai/longformer-base-4096"
 
 # %%
@@ -42,7 +42,7 @@ def get_length(inputs: dict[str, Any]) -> dict[str, Any]:
 
 
 # %%
-ds = ds.map(get_length, batched=True)
+ds = ds.map(get_length, batched=True, num_proc=12)
 
 # %%
-ds.save_to_disk(NEW_DS_PATH, max_shard_size="1GB")
+ds.save_to_disk(NEW_DS_PATH, max_shard_size="1GB", num_proc=12)
