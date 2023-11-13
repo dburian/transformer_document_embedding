@@ -114,7 +114,5 @@ class ParagraphVector:
                 )
                 new_modules.append(module)
 
-        assert (
-            len(self.modules) > 0
-        ), f"{ParagraphVector.load.__name__}: no model found."
+        assert len(new_modules) > 0, f"{ParagraphVector.load.__name__}: no model found."
         self.modules = new_modules
