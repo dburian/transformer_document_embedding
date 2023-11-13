@@ -38,7 +38,7 @@ class LongformerTrainer:
         max_grad_norm: Optional[float] = None,
         grad_accumulation_steps: int = 1,
         lr_scheduler=None,
-        save_model_callback: Optional[Callable[[torch.nn.Module], None]] = None,
+        save_model_callback: Optional[Callable[[torch.nn.Module, int], None]] = None,
         patience: Optional[int] = None,
         log_every_step: Optional[int] = None,
         validate_every_step: Optional[int] = None,

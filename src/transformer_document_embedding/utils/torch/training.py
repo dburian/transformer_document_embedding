@@ -193,7 +193,7 @@ class TargetLenghtDistSampler(Sampler):
         self,
         dataset: datasets.Dataset,
         effective_batch_size: int,
-        length_limits: list[int],
+        bucket_limits: list[int],
         target_dist: list[float],
         generator: Optional[np.random.Generator] = None,
         max_bucket_size_factor: int = 3,
@@ -218,7 +218,7 @@ class TargetLenghtDistSampler(Sampler):
         self._target_dist = target_dist
 
         self._buffer = BucketedBuffer(
-            limits=length_limits,
+            limits=bucket_limits,
             generator=generator,
             max_bucket_size=max_bucket_size_factor * effective_batch_size,
         )

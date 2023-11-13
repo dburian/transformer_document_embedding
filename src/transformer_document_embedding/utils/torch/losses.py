@@ -9,15 +9,16 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
-class AlwaysStaticShortContextual(torch.nn.Module):
+class StaticContextualLoss(torch.nn.Module):
     def __init__(
         self,
-        contextual_key: str,
-        static_key: str,
-        static_loss: torch.nn.Module,
-        lambda_: float = 0.5,
+        lam: Optional[float] = None,
+        static_loss: Optional[torch.nn.Module] = None,
+        contextual_loss: Optional[torch.nn.Module] = None,
+        contextual_key: str = "sbert",
+        static_key: str = "dbow",
         len_key: str = "length",
-        len_threshold: int = 512,
+        contextual_max_length: int = 512,
         *args,
         **kwargs,
     ) -> None:
@@ -25,34 +26,48 @@ class AlwaysStaticShortContextual(torch.nn.Module):
 
         self._contextual_key = contextual_key
         self._static_key = static_key
-        self._len_threshold = len_threshold
+        self._contextual_max_length = contextual_max_length
         self._len_key = len_key
         self.static_loss = static_loss
-        self._lambda = lambda_
+        self.contextual_loss = contextual_loss
+        self._lam = lam
 
     @property
-    def len_threshold(self) -> int:
-        return self._len_threshold
+    def contextual_max_length(self) -> int:
+        return self._contextual_max_length
 
     def forward(
         self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
     ) -> dict[str, torch.Tensor]:
-        contextual_mask = (targets[self._len_key] < self._len_threshold).unsqueeze(1)
-        # Multiply the inputs, as mse outputs a single number. Zero equals zero
-        contextual_loss = torch.nn.functional.mse_loss(
-            inputs * contextual_mask,
-            targets[self._contextual_key] * contextual_mask,
-        )
+        outputs = {"loss": torch.tensor(0, device=inputs.device)}
 
-        static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
-        static_loss = torch.mean(static_loss_outputs.pop("loss"))
+        if self.contextual_loss is not None:
+            contextual_mask = (
+                torch.ones((targets[self._contextual_key].size(0), 1))
+                if self._len_key is None
+                else (targets[self._len_key] < self._contextual_max_length).unsqueeze(1)
+            )
+            # Multiply the inputs, as mse outputs a single number. Zero equals zero
+            contextual_loss = torch.nn.functional.mse_loss(
+                inputs * contextual_mask,
+                targets[self._contextual_key] * contextual_mask,
+            )
 
-        return {
-            "loss": static_loss + self._lambda * contextual_loss,
-            "static_loss": static_loss,
-            "contextual_loss": contextual_loss,
-            **static_loss_outputs,
-        }
+            if self._lam is not None:
+                contextual_loss *= self._lam
+
+            outputs["contextual_loss"] = contextual_loss
+            outputs["loss"] += contextual_loss
+
+        if self.static_loss is not None:
+            static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
+            static_loss = torch.mean(static_loss_outputs.pop("loss"))
+
+            outputs.update(static_loss_outputs)
+            outputs["static_loss"] = static_loss
+            outputs["loss"] += static_loss
+
+        return outputs
 
 
 class CCALoss(torch.nn.Module):

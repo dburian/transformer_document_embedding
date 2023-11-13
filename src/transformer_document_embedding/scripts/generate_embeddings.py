@@ -148,7 +148,6 @@ def generate_embeddings(
             embed_generator, gen_kwargs={"split": split}
         )
         embeddings[split_name] = concatenate_datasets([split, split_embeddings], axis=1)
-
     hf_logging.enable_progress_bar()
 
     embed_dataset_path = os.path.join(config.experiment_path, "embeddings")

@@ -5,14 +5,19 @@ model:
     large: False
     batch_size: 3
     pooler_type: mean
-    static_embed_dim: 100
-    contextual_max_length: 384
-    static_contextual_lambda: 1000
-    static_loss_type: 'soft_cca'
-    projection_norm: layer
-    cca_output_dim: 50
-    longformer_projection_layers: [256, 512]
-    static_projection_layers: [64, 256, 512]
+    static_loss_kwargs:
+      static_key: dbow
+      static_embed_dim: 100
+      static_loss_type: 'soft_cca'
+      projection_norm: layer
+      cca_output_dim: 50
+      longformer_projection_layers: [256, 512]
+      static_projection_layers: [64, 256, 512]
+    contextual_loss_kwargs:
+      contextual_max_length: 384
+      contextual_key: sbert
+      lam: 1000
+      contextual_loss_type: mse
 
   train_kwargs:
     dataloader_sampling: consistent

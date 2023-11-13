@@ -28,6 +28,7 @@ from transformer_document_embedding.utils.metrics import (
 from tqdm.auto import tqdm
 
 if TYPE_CHECKING:
+    from torch.utils.data import DataLoader
     from torcheval import metrics
     import numpy as np
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
@@ -43,17 +44,10 @@ class LongformerStudent(Baseline):
         large: bool,
         batch_size: int,
         pooler_type: str,
-        static_embed_dim: int,
-        contextual_max_length: int,
-        static_contextual_lambda: float,
-        static_loss_type: str,
-        longformer_projection_layers: list[int],
-        static_projection_layers: list[int],
-        cca_output_dim: Optional[int] = None,
-        projection_norm: Optional[str] = None,
+        contextual_loss_kwargs: Optional[dict[str, Any]] = None,
+        static_loss_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         self._batch_size = batch_size
-        self._contextual_max_length = contextual_max_length
 
         model_path = f"allenai/longformer-{'large' if large else 'base'}-4096"
         config = LongformerConfig(
@@ -67,43 +61,35 @@ class LongformerStudent(Baseline):
         )
 
         self._loss = self._construct_loss(
-            static_loss_type=static_loss_type,
-            longformer_projection_layers=longformer_projection_layers,
-            static_projection_layers=static_projection_layers,
-            projection_norm=projection_norm,
-            static_embed_dim=static_embed_dim,
-            cca_output_dim=cca_output_dim,
-            static_contextual_lambda=static_contextual_lambda,
-            contextual_max_length=contextual_max_length,
+            static_loss_kwargs=static_loss_kwargs,
+            contextual_loss_kwargs=contextual_loss_kwargs,
         )
 
     def _construct_loss(
         self,
-        static_loss_type: str,
-        longformer_projection_layers: list[int],
-        static_projection_layers: list[int],
-        projection_norm: Optional[str],
-        static_embed_dim: int,
-        cca_output_dim: Optional[int],
-        static_contextual_lambda: float,
-        contextual_max_length: int,
-    ) -> losses.AlwaysStaticShortContextual:
-        static_loss = self._construct_static_loss(
-            static_loss_type=static_loss_type,
-            longformer_projection_layers=longformer_projection_layers,
-            static_projection_layers=static_projection_layers,
-            projection_norm=projection_norm,
-            static_embed_dim=static_embed_dim,
-            cca_output_dim=cca_output_dim,
-        )
+        static_loss_kwargs: Optional[dict[str, Any]],
+        contextual_loss_kwargs: Optional[dict[str, Any]],
+    ) -> losses.StaticContextualLoss:
+        loss_kwargs: dict[str, Any] = {
+            "static_loss": None,
+            "contextual_loss": None,
+        }
+        if static_loss_kwargs is not None:
+            loss_kwargs["static_key"] = static_loss_kwargs.pop("static_key")
 
-        return losses.AlwaysStaticShortContextual(
-            contextual_key="sbert",
-            static_key="dbow",
-            static_loss=static_loss,
-            lambda_=static_contextual_lambda,
-            len_threshold=contextual_max_length,
-        )
+            loss_kwargs["static_loss"] = self._construct_static_loss(
+                **static_loss_kwargs
+            )
+
+        if contextual_loss_kwargs is not None:
+            for param in ["contextual_key", "contextual_max_length", "lam"]:
+                loss_kwargs[param] = contextual_loss_kwargs.pop(param)
+
+            loss_kwargs["contextual_loss"] = self._construct_contextual_loss(
+                **contextual_loss_kwargs
+            )
+
+        return losses.StaticContextualLoss(**loss_kwargs)
 
     def _construct_static_loss(
         self,
@@ -170,6 +156,14 @@ class LongformerStudent(Baseline):
             loss_fn=static_loss_fn,
         )
 
+    def _construct_contextual_loss(self, loss_type: str) -> torch.nn.Module:
+        if loss_type == "mse":
+            return torch.nn.MSELoss()
+        elif loss_type == "cos":
+            return losses.CosineDistanceLoss()
+
+        raise ValueError("Unknown contextual `loss_type`: {}".format(loss_type))
+
     def train(
         self,
         task: ExperimentalTask,
@@ -180,25 +174,42 @@ class LongformerStudent(Baseline):
         warmup_steps: int,
         epochs: int,
         log_every_step: int,
-        log_dir: Optional[str] = None,
+        save_best: bool,
+        log_dir: Optional[str],
+        model_dir: Optional[str],
+        validate_every_step: Optional[int] = None,
         **_,
     ) -> None:
         model = _LongformerStudentWrapper(transformer=self._longformer, loss=self._loss)
 
-        train_data = train_utils.create_tokenized_data_loader(
-            task.train,
-            tokenizer=self._tokenizer,
-            batch_size=self._batch_size,
-            sampling=dataloader_sampling,
-            training=True,
-            return_length=True,
-            sampler_kwargs={
-                "effective_batch_size": self._batch_size * grad_accumulation_steps,
-                "bucket_limits": [384],
-                # "short_count": short_inputs_in_effective_batch,
-                # "short_threshold": self._contextual_max_length,
-            },
-        )
+        def _create_summary_writer(name: str) -> Optional[SummaryWriter]:
+            return (
+                SummaryWriter(os.path.join(log_dir, name))
+                if log_dir is not None
+                else None
+            )
+
+        def _create_data_loader(dataset, training: bool = True) -> DataLoader:
+            return train_utils.create_tokenized_data_loader(
+                dataset,
+                tokenizer=self._tokenizer,
+                batch_size=self._batch_size,
+                sampling=dataloader_sampling,
+                training=training,
+                return_length=False,
+                sampler_kwargs={
+                    "effective_batch_size": self._batch_size * grad_accumulation_steps,
+                    "bucket_limits": [model.loss.contextual_max_length],
+                },
+            )
+
+        train_data = _create_data_loader(task.train)
+
+        val_summary_writer = None
+        val_data = None
+        if task.validation is not None:
+            val_summary_writer = _create_summary_writer("val")
+            val_data = _create_data_loader(task.validation, training=False)
 
         optimizer = torch.optim.AdamW(
             train_utils.get_optimizer_params(model, weight_decay),
@@ -211,11 +222,15 @@ class LongformerStudent(Baseline):
             epochs * len(train_data),
         )
 
-        summary_writer = (
-            SummaryWriter(os.path.join(log_dir, "train"))
-            if log_dir is not None
-            else None
-        )
+        summary_writer = _create_summary_writer("train")
+
+        save_model_callback = None
+        if save_best and model_dir is not None:
+
+            def save_cb(_, total_step: int) -> None:
+                self.save(os.path.join(model_dir, f"checkpoint_{total_step}"))
+
+            save_model_callback = save_cb
 
         model.transformer.gradient_checkpointing_enable()
         trainer = longformer_training.LongformerTrainer(
@@ -224,9 +239,13 @@ class LongformerStudent(Baseline):
             optimizer=optimizer,
             metrics=self._construct_train_metrics(model),
             summary_writer=summary_writer,
+            val_summary_writer=val_summary_writer,
+            val_data=val_data,
+            validate_every_step=validate_every_step,
             fp16=True,
             max_grad_norm=1.0,
             grad_accumulation_steps=grad_accumulation_steps,
+            save_model_callback=save_model_callback,
             lr_scheduler=lr_scheduler,
             log_every_step=log_every_step,
         )
@@ -241,10 +260,6 @@ class LongformerStudent(Baseline):
             assert grad is not None
 
             metric.update(grad.abs().max())
-
-        # torch.from_numpy(np.load("notebooks/wiki_sample_dbow_sigma.npy")).to(
-        #     torch.device("cuda")
-        # )
 
         train_metrics = {
             "used_vmem": VMemMetric(),
@@ -262,19 +277,9 @@ class LongformerStudent(Baseline):
             ),
             "sbert_mse": WindowedMSEWithSBERT(),
             "sbert_cos": WindowedCosineDistanceWithSBERT(),
-            "short_percentage": PercentLengthBelowThres(model.loss.len_threshold),
-            # "mean_cov_mat_sum": with_accessor(
-            #     metrics.Mean(),
-            #     lambda metric, outputs, _: metric.update(
-            #         outputs["covariance_mat"].sum()
-            #     ),
-            # ),
-            # "abs_diff_dbow_sigma": with_accessor(
-            #     metrics.Mean(),
-            #     lambda metric, outputs, _: metric.update(
-            #         torch.abs(outputs["sigma2"] - true_dbow_sigma).sum()
-            #     ),
-            # ),
+            "short_percentage": PercentLengthBelowThres(
+                model.loss.contextual_max_length
+            ),
             "max_abs_longformer_grad": with_accessor(
                 WindowedMax(),
                 partial(
@@ -379,7 +384,7 @@ class _LongformerStudentWrapper(torch.nn.Module):
     def __init__(
         self,
         transformer: PreTrainedModel,
-        loss: losses.AlwaysStaticShortContextual,
+        loss: losses.StaticContextualLoss,
         *args,
         **kwargs,
     ) -> None:
