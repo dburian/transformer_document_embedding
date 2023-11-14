@@ -1,4 +1,4 @@
-tde_version: 0.2.0
+tde_version: 0.0.2
 model:
   module: longformer.student:LongformerStudent
   kwargs:
@@ -25,14 +25,17 @@ model:
     short_inputs_in_effective_batch: 9
     learning_rate: 3.0e-5
     weight_decay: 1.0e-2
-    warmup_steps: 100
+    warmup_steps: 10
     epochs: 1
     early_stopping: False
-    save_best: False
+    save_best: True
     log_every_step: 10
+    validate_every_step: 10
 
 task:
   module: teacher_embedding:TeacherEmbedding
   kwargs:
-    path: /mnt/data/datasets/wikipedia_sample
-    data_size_limit: 2000
+    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    data_size_limit:
+      validation: 12
+      train: 2048

@@ -156,13 +156,15 @@ class LongformerStudent(Baseline):
             loss_fn=static_loss_fn,
         )
 
-    def _construct_contextual_loss(self, loss_type: str) -> torch.nn.Module:
-        if loss_type == "mse":
+    def _construct_contextual_loss(self, contextual_loss_type: str) -> torch.nn.Module:
+        if contextual_loss_type == "mse":
             return torch.nn.MSELoss()
-        elif loss_type == "cos":
+        elif contextual_loss_type == "cos":
             return losses.CosineDistanceLoss()
 
-        raise ValueError("Unknown contextual `loss_type`: {}".format(loss_type))
+        raise ValueError(
+            "Unknown contextual `loss_type`: {}".format(contextual_loss_type)
+        )
 
     def train(
         self,
@@ -175,8 +177,8 @@ class LongformerStudent(Baseline):
         epochs: int,
         log_every_step: int,
         save_best: bool,
-        log_dir: Optional[str],
-        model_dir: Optional[str],
+        log_dir: Optional[str] = None,
+        model_dir: Optional[str] = None,
         validate_every_step: Optional[int] = None,
         **_,
     ) -> None:
@@ -227,8 +229,8 @@ class LongformerStudent(Baseline):
         save_model_callback = None
         if save_best and model_dir is not None:
 
-            def save_cb(_, total_step: int) -> None:
-                self.save(os.path.join(model_dir, f"checkpoint_{total_step}"))
+            def save_cb(*_) -> None:
+                self.save(os.path.join(model_dir, "checkpoint"))
 
             save_model_callback = save_cb
 
@@ -248,6 +250,8 @@ class LongformerStudent(Baseline):
             save_model_callback=save_model_callback,
             lr_scheduler=lr_scheduler,
             log_every_step=log_every_step,
+            main_metric="loss",
+            lower_is_better=True,
         )
 
         trainer.train(epochs=epochs)
@@ -255,11 +259,13 @@ class LongformerStudent(Baseline):
     def _construct_train_metrics(
         self, model: _LongformerStudentWrapper
     ) -> dict[str, metrics.Metric]:
-        def log_max_abs_grad(metric, *_, param: str) -> None:
-            grad = model.get_parameter(param).grad
-            assert grad is not None
-
-            metric.update(grad.abs().max())
+        def log_max_abs_grad(metric, *_, param_name: str) -> None:
+            param = model.get_parameter(param_name)
+            grad = param.grad
+            if grad is None:
+                metric.update(torch.tensor([torch.nan], device=param.device))
+            else:
+                metric.update(grad.abs().max())
 
         train_metrics = {
             "used_vmem": VMemMetric(),
@@ -284,7 +290,7 @@ class LongformerStudent(Baseline):
                 WindowedMax(),
                 partial(
                     log_max_abs_grad,
-                    param="transformer.longformer.encoder.layer.11.output.dense.weight",
+                    param_name="transformer.longformer.encoder.layer.11.output.dense.weight",
                 ),
             ),
         }
@@ -319,7 +325,7 @@ class LongformerStudent(Baseline):
                     WindowedMax(),
                     partial(
                         log_max_abs_grad,
-                        param=sample_projection_weight_path,
+                        param_name=sample_projection_weight_path,
                     ),
                 )
 

@@ -39,7 +39,7 @@ class StaticContextualLoss(torch.nn.Module):
     def forward(
         self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
     ) -> dict[str, torch.Tensor]:
-        outputs = {"loss": torch.tensor(0, device=inputs.device)}
+        outputs = {"loss": torch.tensor(0, device=inputs.device, dtype=inputs.dtype)}
 
         if self.contextual_loss is not None:
             contextual_mask = (
