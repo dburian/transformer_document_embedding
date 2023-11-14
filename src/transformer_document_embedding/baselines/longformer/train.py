@@ -5,9 +5,8 @@ from typing import TYPE_CHECKING, Iterable
 import logging
 import torch
 from torch.cuda.amp.grad_scaler import GradScaler
-from torcheval.metrics import Metric, toolkit
+from torcheval.metrics import Mean, Metric, toolkit
 from tqdm.auto import tqdm
-from transformer_document_embedding.utils.metrics import WindowedMean
 
 import transformer_document_embedding.utils.torch.training as train_utils
 
@@ -52,8 +51,8 @@ class LongformerTrainer:
 
         self._metrics = metrics if metrics is not None else {}
         self._special_metrics: dict[str, Metric] = {
-            "loss": WindowedMean(max_window_size=100),
-            "learning_rate": WindowedMean(max_window_size=100),
+            "loss": Mean(),
+            "learning_rate": Mean(),
         }
         self._log_every_step = (
             log_every_step if log_every_step is not None else grad_accumulation_steps
@@ -63,7 +62,7 @@ class LongformerTrainer:
             name: toolkit.clone_metric(metric) for name, metric in self._metrics.items()
         }
         self._val_special_metrics: dict[str, Metric] = {
-            "loss": WindowedMean(max_window_size=100),
+            "loss": Mean(),
         }
 
         self._summary_writer = summary_writer
@@ -119,9 +118,9 @@ class LongformerTrainer:
     def _reset_metrics(self, metrics: Iterable[dict[str, Metric]]) -> None:
         for metric_set in metrics:
             for metric in metric_set.values():
+                metric.reset()
                 if metric.device != self._device:
                     metric.to(self._device)
-                metric.reset()
 
     def train(self, epochs: int, progress_bar: bool = True) -> None:
         self._init_train()
@@ -143,7 +142,7 @@ class LongformerTrainer:
                     self._summary_writer is not None
                     and (total_step + 1) % self._log_every_step == 0
                 ):
-                    self._log(
+                    self._log_and_reset(
                         total_step=total_step,
                         writer=self._summary_writer,
                         metrics=(self._metrics, self._special_metrics),
@@ -191,7 +190,7 @@ class LongformerTrainer:
                         )
                         return
 
-    def _log(
+    def _log_and_reset(
         self,
         total_step: int,
         writer: SummaryWriter,
@@ -200,6 +199,7 @@ class LongformerTrainer:
         for metric_set in metrics:
             for name, metric in metric_set.items():
                 writer.add_scalar(name, metric.compute(), total_step)
+                metric.reset()
 
         writer.flush()
 
@@ -216,7 +216,7 @@ class LongformerTrainer:
             self._validation_step(batch=batch)
 
         if self._val_summary_writer is not None:
-            self._log(
+            self._log_and_reset(
                 total_step=total_step,
                 writer=self._val_summary_writer,
                 metrics=(self._val_metrics, self._val_special_metrics),

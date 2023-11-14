@@ -1,5 +1,4 @@
 from __future__ import annotations
-from abc import abstractmethod
 import logging
 
 import warnings
@@ -10,7 +9,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 import numpy as np
 import torch
-from torcheval.metrics import Mean, Metric, WindowedMeanSquaredError
+from torcheval.metrics import Mean, MeanSquaredError, Metric
 
 if TYPE_CHECKING:
     from typing import Iterable, Optional, Union
@@ -95,57 +94,6 @@ class VMemMetric(Metric):
         return self
 
 
-class WindowedSingleValue(Metric):
-    def __init__(
-        self, max_window_size: int = 512, device: Optional[torch.device] = None
-    ) -> None:
-        super().__init__(device=device)
-
-        self._add_state("values", torch.tensor([], device=device))
-        self.values: torch.Tensor
-        self.max_window_size = max_window_size
-
-    @torch.inference_mode()
-    def update(self, new_val: torch.Tensor) -> WindowedSingleValue:
-        # If new_val is a single value, make a vector out of it
-        if new_val.dim() == 0:
-            new_val = new_val.unsqueeze(0)
-        self.values = torch.cat((self.values, new_val))
-
-        if self.values.size(0) > self.max_window_size:
-            self.values = self.values[-self.max_window_size :]
-
-        return self
-
-    @torch.inference_mode()
-    def merge_state(
-        self, metrics: Iterable[WindowedSingleValue]
-    ) -> WindowedSingleValue:
-        vals = [self.values] + [m.values for m in metrics]
-        self.values = torch.cat(vals)
-
-        if self.values.size(0) > self.max_window_size:
-            self.values = self.values[-self.max_window_size :]
-
-        return self
-
-    @abstractmethod
-    def compute(self) -> torch.Tensor:
-        return super().compute()
-
-
-class WindowedMean(WindowedSingleValue):
-    @torch.inference_mode()
-    def compute(self) -> torch.Tensor:
-        return torch.mean(self.values)
-
-
-class WindowedMax(WindowedSingleValue):
-    @torch.inference_mode()
-    def compute(self) -> torch.Tensor:
-        return torch.max(self.values)
-
-
 UpdateWrapperFn = Callable[
     [Metric, dict[str, torch.Tensor], dict[str, torch.Tensor]], Any
 ]
@@ -196,11 +144,9 @@ def with_accessor(metric: Metric, update_fn: UpdateWrapperFn) -> Metric:
     return AccessorMetric(metric, update_fn)
 
 
-class WindowedMSEWithSBERT(AccessorMetric):
+class MSEWithSBERT(AccessorMetric):
     def __init__(self, **kwargs) -> None:
-        super().__init__(
-            WindowedMeanSquaredError(enable_lifetime=False), self._accessor, **kwargs
-        )
+        super().__init__(MeanSquaredError(), self._accessor, **kwargs)
 
     @classmethod
     def _accessor(
@@ -212,9 +158,9 @@ class WindowedMSEWithSBERT(AccessorMetric):
         metric.update(outputs["pooler_output"][-1], batch["sbert"][-1])
 
 
-class WindowedCosineDistanceWithSBERT(AccessorMetric):
+class CosineDistanceWithSBERT(AccessorMetric):
     def __init__(self, **kwargs) -> None:
-        super().__init__(WindowedMean(), self._accessor, **kwargs)
+        super().__init__(Mean(), self._accessor, **kwargs)
 
     @classmethod
     def _accessor(
@@ -272,11 +218,25 @@ class PercentLengthBelowThres(AccessorMetric):
         metric.update(batch["length"] < self._len_thres)
 
 
-class WindowedCCAMetric(Metric):
+class WindowedNonResetableCCAMetric(Metric):
+    """CCA computed by sklearn. The metric does not reset and has fixed window.
+
+    Does not reset because it is assumed that to have enough elements to
+    compute CCA this metric will need much more updates than regular metric.
+    Ergo if this metric reset it would never output any values.
+
+    It has a fixed window because the size of window influences the result. By
+    having fixed window we make sure that the values are always informative and
+    comparable.
+
+    """
+
+    # How many n_components will fit in window
+    WINDOW_MULT_FACTOR = 3
+
     def __init__(
         self,
         n_components: int,
-        max_window_size: int,
         device: Optional[torch.device] = None,
     ) -> None:
         super().__init__(device=device)
@@ -286,30 +246,37 @@ class WindowedCCAMetric(Metric):
         self._add_state("views2", torch.tensor([], device=device))
         self.views2: torch.Tensor
 
-        self.max_window_size = max_window_size
+        self._window_size = self.WINDOW_MULT_FACTOR * n_components
 
         self.n_components = n_components
 
+    @property
+    def window_size(self) -> int:
+        return self._window_size
+
     @torch.inference_mode()
-    def update(self, views1: torch.Tensor, views2: torch.Tensor) -> WindowedCCAMetric:
+    def update(
+        self, views1: torch.Tensor, views2: torch.Tensor
+    ) -> WindowedNonResetableCCAMetric:
         self.views1 = torch.cat((self.views1, views1))
         self.views2 = torch.cat((self.views2, views2))
 
-        if self.views1.size(0) > self.max_window_size:
-            self.views1 = self.views1[-self.max_window_size :, :]
-            self.views2 = self.views2[-self.max_window_size :, :]
-
+        self._shorten_views_to_size()
         return self
 
     @torch.inference_mode()
     def compute(self) -> float:
+        samples = self.views1.size(0)
+
+        if samples != self.window_size:
+            return torch.nan
+
         view1_dim = self.views1.size(1)
         view2_dim = self.views2.size(1)
-        samples = self.views1.size(0)
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
-            return np.nan
+            return torch.nan
 
         cca = CCA(n_components=self.n_components, max_iter=5000)
         try:
@@ -329,7 +296,9 @@ class WindowedCCAMetric(Metric):
             logger.warn("Error when computing CCA: %s", e)
             return np.nan
 
-    def merge_state(self, metrics: Iterable[WindowedCCAMetric]) -> WindowedCCAMetric:
+    def merge_state(
+        self, metrics: Iterable[WindowedNonResetableCCAMetric]
+    ) -> WindowedNonResetableCCAMetric:
         views1 = [self.views1]
         views2 = [self.views2]
         for other in metrics:
@@ -339,4 +308,15 @@ class WindowedCCAMetric(Metric):
         self.views1 = torch.cat(views1)
         self.views2 = torch.cat(views2)
 
+        self._shorten_views_to_size()
+
         return self
+
+    def reset(self) -> WindowedNonResetableCCAMetric:
+        return self
+
+    def _shorten_views_to_size(self) -> None:
+        if self.views1.size(0) > self.window_size:
+            self.views1 = self.views1[-self.window_size :, :]
+        if self.views2.size(0) > self.window_size:
+            self.views2 = self.views2[-self.window_size :, :]

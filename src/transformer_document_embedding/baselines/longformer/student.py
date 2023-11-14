@@ -6,6 +6,7 @@ import logging
 
 from typing import Any, cast, TYPE_CHECKING
 from torch.utils.tensorboard.writer import SummaryWriter
+from torcheval.metrics import Max, Mean, Metric
 from transformers import AutoTokenizer, PreTrainedModel
 from transformer_document_embedding.baselines.baseline import Baseline
 import transformer_document_embedding.utils.torch.losses as losses
@@ -16,12 +17,10 @@ from transformer_document_embedding.models.longformer import (
     LongformerForTextEmbedding,
 )
 from transformer_document_embedding.utils.metrics import (
-    WindowedCCAMetric,
-    WindowedCosineDistanceWithSBERT,
-    WindowedMSEWithSBERT,
+    WindowedNonResetableCCAMetric,
+    CosineDistanceWithSBERT,
+    MSEWithSBERT,
     PercentLengthBelowThres,
-    WindowedMax,
-    WindowedMean,
     with_accessor,
     VMemMetric,
 )
@@ -29,7 +28,6 @@ from tqdm.auto import tqdm
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
-    from torcheval import metrics
     import numpy as np
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
     from datasets import Dataset
@@ -82,8 +80,8 @@ class LongformerStudent(Baseline):
             )
 
         if contextual_loss_kwargs is not None:
-            for param in ["contextual_key", "contextual_max_length", "lam"]:
-                loss_kwargs[param] = contextual_loss_kwargs.pop(param)
+            for param_name in ["contextual_key", "contextual_max_length", "lam"]:
+                loss_kwargs[param_name] = contextual_loss_kwargs.pop(param_name)
 
             loss_kwargs["contextual_loss"] = self._construct_contextual_loss(
                 **contextual_loss_kwargs
@@ -239,7 +237,7 @@ class LongformerStudent(Baseline):
             model=model,
             train_data=train_data,
             optimizer=optimizer,
-            metrics=self._construct_train_metrics(model),
+            metrics=self._construct_train_metrics(model, val_data),
             summary_writer=summary_writer,
             val_summary_writer=val_summary_writer,
             val_data=val_data,
@@ -257,91 +255,112 @@ class LongformerStudent(Baseline):
         trainer.train(epochs=epochs)
 
     def _construct_train_metrics(
-        self, model: _LongformerStudentWrapper
-    ) -> dict[str, metrics.Metric]:
-        def log_max_abs_grad(metric, *_, param_name: str) -> None:
-            param = model.get_parameter(param_name)
-            grad = param.grad
-            if grad is None:
-                metric.update(torch.tensor([torch.nan], device=param.device))
-            else:
-                metric.update(grad.abs().max())
-
+        self, model: _LongformerStudentWrapper, val_data: Optional[DataLoader]
+    ) -> dict[str, Metric]:
         train_metrics = {
             "used_vmem": VMemMetric(),
-            "mean_contextual_loss": with_accessor(
-                WindowedMean(),
-                lambda metric, outputs, _: metric.update(outputs["contextual_loss"]),
-            ),
-            "mean_static_loss": with_accessor(
-                WindowedMean(),
-                lambda metric, outputs, _: metric.update(outputs["static_loss"]),
-            ),
             "mean_length": with_accessor(
-                WindowedMean(),
+                Mean(),
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
-            "sbert_mse": WindowedMSEWithSBERT(),
-            "sbert_cos": WindowedCosineDistanceWithSBERT(),
+            "sbert_mse": MSEWithSBERT(),
+            "sbert_cos": CosineDistanceWithSBERT(),
             "short_percentage": PercentLengthBelowThres(
                 model.loss.contextual_max_length
             ),
             "max_abs_longformer_grad": with_accessor(
-                WindowedMax(),
+                Max(),
                 partial(
                     log_max_abs_grad,
                     param_name="transformer.longformer.encoder.layer.11.output.dense.weight",
+                    model=model,
                 ),
             ),
+            **self._construct_projection_metrics(model, val_data),
         }
 
-        for n_components in [128, 256, 512]:
-            train_metrics[f"cca_{n_components}"] = with_accessor(
-                WindowedCCAMetric(
-                    n_components=n_components,
-                    max_window_size=5 * n_components,
-                ),
-                lambda metric, outputs, _: metric.update(
-                    outputs["projected_view1"], outputs["projected_view2"]
-                ),
+        if model.loss.contextual_loss is not None:
+            train_metrics["mean_contextual_loss"] = with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(outputs["contextual_loss"]),
             )
 
-        if isinstance(model.loss.static_loss, losses.ProjectionLoss):
-            sample_projection_weight_path = None
-
-            if model.loss.static_loss.net1 is not None:
-                layer_count = len(model.loss.static_loss.net1.layers)
-                sample_projection_weight_path = (
-                    f"loss.static_loss.net1.layers.{layer_count -1}.weight"
-                )
-            elif model.loss.static_loss.net2 is not None:
-                layer_count = len(model.loss.static_loss.net2.layers)
-                sample_projection_weight_path = (
-                    f"loss.static_loss.net2.layers.{layer_count -1}.weight"
-                )
-
-            if sample_projection_weight_path is not None:
-                train_metrics["max_abs_dcca_grad"] = with_accessor(
-                    WindowedMax(),
-                    partial(
-                        log_max_abs_grad,
-                        param_name=sample_projection_weight_path,
-                    ),
-                )
+        if model.loss.static_loss is not None:
+            train_metrics["mean_static_loss"] = with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(outputs["static_loss"]),
+            )
 
             if isinstance(model.loss.static_loss.loss_fn, losses.SoftCCALoss):
                 train_metrics["mean_projection_l2_norm"] = with_accessor(
-                    WindowedMean(),
+                    Mean(),
                     lambda metric, outputs, _: metric.update(outputs["l2"]),
                 )
                 train_metrics["mean_projection_sdl1"] = with_accessor(
-                    WindowedMean(),
+                    Mean(),
                     lambda metric, outputs, _: metric.update(outputs["sdl1"]),
                 )
                 train_metrics["mean_projection_sdl2"] = with_accessor(
-                    WindowedMean(),
+                    Mean(),
                     lambda metric, outputs, _: metric.update(outputs["sdl2"]),
                 )
+
+        return train_metrics
+
+    def _construct_projection_metrics(
+        self,
+        model: _LongformerStudentWrapper,
+        val_data: Optional[DataLoader],
+    ) -> dict[str, Metric]:
+        if model.loss.static_loss is None or not isinstance(
+            model.loss.static_loss, losses.ProjectionLoss
+        ):
+            return {}
+
+        train_metrics = {}
+        sample_projection_weight_path = None
+
+        for net_name in ["net1", "net2"]:
+            net = getattr(model.loss.static_loss, net_name)
+            if net is not None:
+                layer_count = len(net.layers)
+                sample_projection_weight_path = (
+                    f"loss.static_loss.{net_name}.layers.{layer_count -1}.weight"
+                )
+                break
+
+        if sample_projection_weight_path is not None:
+            train_metrics["max_abs_dcca_grad"] = with_accessor(
+                Max(),
+                partial(
+                    log_max_abs_grad,
+                    param_name=sample_projection_weight_path,
+                    model=model,
+                ),
+            )
+
+        def _update_with_projected_views(metric, outputs, _):
+            metric.update(outputs["projected_view1"], outputs["projected_view2"])
+
+        for n_components in [64, 128, 256, 512]:
+            inner_metric = WindowedNonResetableCCAMetric(n_components=n_components)
+            metric_name = f"cca_{n_components}x{inner_metric.window_size}"
+            if (
+                val_data is not None
+                and (val_size := len(val_data) * (val_data.batch_size or 1))
+                < inner_metric.window_size
+            ):
+                logger.warn(
+                    "Validation data smaller than CCA window. "
+                    "Metric '%s' will be outdated by %d inputs.",
+                    metric_name,
+                    inner_metric.window_size - val_size,
+                )
+
+            train_metrics[metric_name] = with_accessor(
+                inner_metric,
+                _update_with_projected_views,
+            )
 
         return train_metrics
 
@@ -406,3 +425,17 @@ class _LongformerStudentWrapper(torch.nn.Module):
             **outputs,
             **loss_outputs,
         }
+
+
+def log_max_abs_grad(
+    metric: Metric,
+    *_,
+    param_name: str,
+    model: torch.nn.Module,
+) -> None:
+    param = model.get_parameter(param_name)
+    grad = param.grad
+    if grad is None:
+        metric.update(torch.tensor([torch.nan], device=param.device))
+    else:
+        metric.update(grad.abs().max())
