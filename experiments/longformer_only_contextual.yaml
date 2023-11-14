@@ -5,37 +5,29 @@ model:
     large: False
     batch_size: 3
     pooler_type: mean
-    static_loss_kwargs:
-      static_key: dbow
-      static_embed_dim: 100
-      static_loss_type: soft_cca
-      projection_norm: layer
-      cca_output_dim: 50
-      longformer_projection_layers: [256, 512]
-      static_projection_layers: [64, 256, 512]
+    static_loss_kwargs: null
     contextual_loss_kwargs:
       contextual_max_length: 384
       contextual_key: sbert
-      lam: 1000
+      lam: 1
       contextual_loss_type: mse
 
   train_kwargs:
     dataloader_sampling: consistent
-    grad_accumulation_steps: 10
-    short_inputs_in_effective_batch: 9
+    grad_accumulation_steps: 8
     learning_rate: 3.0e-5
     weight_decay: 1.0e-2
-    warmup_steps: 10
+    warmup_steps: 30
     epochs: 1
     early_stopping: False
-    save_best: True
-    log_every_step: 10
-    validate_every_step: 10
+    save_best: False
+    log_every_step: 8
+    validate_every_step: 350
 
 task:
   module: teacher_embedding:TeacherEmbedding
   kwargs:
     path: /mnt/data/datasets/wikipedia_sample_with_eval
     data_size_limit:
-      validation: 12
-      train: 2048
+      validation: 240
+      train: 4200

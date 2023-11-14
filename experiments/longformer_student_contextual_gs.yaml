@@ -1,0 +1,6 @@
+model.kwargs.contextual_loss_kwargs.contextual_loss_type:
+  - mse
+  - cos
+model.train_kwargs.grad_accumulation_steps:
+  - 8
+  - 32
