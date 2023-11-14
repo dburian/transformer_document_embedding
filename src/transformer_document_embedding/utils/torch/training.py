@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+import math
 import numpy as np
 
 import logging
@@ -449,3 +450,13 @@ def get_linear_lr_scheduler_with_warmup(
         )
 
     return LambdaLR(optimizer, lr_lambda)
+
+
+def get_cosine_lr_scheduler(
+    optimizer: torch.optim.Optimizer, total_steps: int
+) -> LambdaLR:
+    def cos_lambda(current_step: int) -> float:
+        progress = current_step / total_steps
+        return max(0.0, 0.5 * (1 + math.cos(math.pi * progress)))
+
+    return LambdaLR(optimizer, cos_lambda)

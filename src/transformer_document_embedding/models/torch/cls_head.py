@@ -1,6 +1,6 @@
 import torch
 
-import transformer_document_embedding.utils.torch as torch_utils
+from transformer_document_embedding.utils.torch.net_helpers import get_activation
 
 
 class ClsHead(torch.nn.Sequential):
@@ -16,7 +16,7 @@ class ClsHead(torch.nn.Sequential):
         layers = []
         if hidden_features > 0:
             layers.append(torch.nn.Linear(in_features, hidden_features))
-            layers.append(torch_utils.get_activation(hidden_activation)())
+            layers.append(get_activation(hidden_activation)())
             if hidden_dropout > 0:
                 layers.append(torch.nn.Dropout(hidden_dropout))
 

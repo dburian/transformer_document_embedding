@@ -8,7 +8,7 @@ import numpy as np
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any, Optional, Union
     from datasets.dataset_dict import DatasetDict
     from datasets.arrow_dataset import Dataset
 
@@ -17,7 +17,7 @@ class HFTask(ExperimentalTask):
     def __init__(
         self,
         *,
-        data_size_limit: Optional[int] = None,
+        data_size_limit: Optional[Union[int, dict]] = None,
         add_ids: bool = False,
         validation_source_fraction: Optional[float] = None,
         validation_source: Optional[str] = None,
@@ -58,9 +58,15 @@ class HFTask(ExperimentalTask):
         if self._data_size_limit is None:
             return dataset
 
+        if not isinstance(self._data_size_limit, dict):
+            self._data_size_limit = {
+                split_name: self._data_size_limit for split_name in dataset.keys()
+            }
+
         for name, split in dataset.items():
-            if len(split) > self._data_size_limit:
-                dataset[name] = split.select(range(self._data_size_limit))
+            limit = self._data_size_limit.get(name, None)
+            if limit is not None and len(split) > limit:
+                dataset[name] = split.select(range(limit))
 
         return dataset
 

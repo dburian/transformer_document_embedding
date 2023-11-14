@@ -1,0 +1,26 @@
+tde_version: 0.0.2
+model:
+  module: paragraph_vector.pair_classification:PairClassifier
+  kwargs:
+    dbow_kwargs:
+      vector_size: 100
+      min_count: 2
+      negative: 5
+      sample: 0
+      workers: 6
+    dm_kwargs: null
+    cls_head_kwargs:
+      batch_size: 64
+      hidden_features: 64
+      hidden_activation: relu
+      hidden_dropout: 0.5
+  train_kwargs:
+    pv_epochs: 1
+    cls_head_epochs: 10
+    log_every_step: 10
+    save_best: False
+
+task:
+  module: pan:Pan
+  kwargs:
+    path: ./data/MDA/PAN

@@ -1,11 +1,13 @@
 from __future__ import annotations
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterable
 
 import logging
 import torch
 from torch.cuda.amp.grad_scaler import GradScaler
-from torcheval.metrics import Mean, Metric, toolkit
+from torcheval.metrics import Metric, toolkit
 from tqdm.auto import tqdm
+from transformer_document_embedding.utils.metrics import WindowedMean
 
 import transformer_document_embedding.utils.torch.training as train_utils
 
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
     from torch.utils.tensorboard.writer import SummaryWriter
     from typing import Optional
     from typing import Any
-    from typing import Callable
+    from typing import Callable, Iterator
 
     DictGetter = Callable[[dict[str, torch.Tensor]], Any]
 
@@ -28,13 +30,14 @@ class LongformerTrainer:
         model: torch.nn.Module,
         train_data: DataLoader,
         optimizer: torch.optim.Optimizer,
-        metrics: dict[str, Metric],
+        metrics: Optional[dict[str, Metric]] = None,
         main_metric: str = "loss",
         lower_is_better: bool = True,
+        device: Optional[torch.device] = None,
         val_data: Optional[DataLoader] = None,
         summary_writer: Optional[SummaryWriter] = None,
         val_summary_writer: Optional[SummaryWriter] = None,
-        fp16: bool = True,
+        fp16: bool = False,
         max_grad_norm: Optional[float] = None,
         grad_accumulation_steps: int = 1,
         lr_scheduler=None,
@@ -47,10 +50,10 @@ class LongformerTrainer:
         self._train_data = train_data
         self._val_data = val_data
 
-        self._metrics = metrics
+        self._metrics = metrics if metrics is not None else {}
         self._special_metrics: dict[str, Metric] = {
-            "loss": Mean(),
-            "learning_rate": Mean(),
+            "loss": WindowedMean(max_window_size=100),
+            "learning_rate": WindowedMean(max_window_size=100),
         }
         self._log_every_step = (
             log_every_step if log_every_step is not None else grad_accumulation_steps
@@ -60,14 +63,19 @@ class LongformerTrainer:
             name: toolkit.clone_metric(metric) for name, metric in self._metrics.items()
         }
         self._val_special_metrics: dict[str, Metric] = {
-            "loss": Mean(),
+            "loss": WindowedMean(max_window_size=100),
         }
 
         self._summary_writer = summary_writer
         self._val_summary_writer = val_summary_writer
 
+        self._device = device if device is not None else self.get_default_device()
+        logger.info("Using %s for training.", self._device.type)
+
         self._optim = optimizer
         self._lr_scheduler = lr_scheduler
+
+        # Use either float16 for cuda or bfloat16 for cpu
         self._fp16 = fp16
         self._max_grad_norm = max_grad_norm
         self._grad_accumulation_steps = grad_accumulation_steps
@@ -79,13 +87,18 @@ class LongformerTrainer:
             else default_validation_frequency
         )
         self._patience = patience
-        self._main_metric = main_metric
+        self._main_metric_name = main_metric
         self._lower_is_better = lower_is_better
         self._save_model_callback = save_model_callback
 
+    @classmethod
+    def get_default_device(cls) -> torch.device:
+        return (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
+
     def _init_train(self) -> None:
         """Resets variables for training."""
-        self._device = torch.device("cuda")
         self._model.to(self._device)
         self._model.train()
 
@@ -143,7 +156,13 @@ class LongformerTrainer:
                 ):
                     self._validate(total_step=total_step)
 
-                    new_score = self._val_metrics[self._main_metric].compute()
+                    # TODO: Option to not do this at all?
+                    main_metric = self._val_metrics.get(
+                        self._main_metric_name,
+                        self._val_special_metrics.get(self._main_metric_name, None),
+                    )
+                    assert main_metric is not None, "Main metric cannot be found."
+                    new_score = main_metric.compute()
                     is_better = (
                         (new_score < self._best_val_score)
                         if self._lower_is_better
@@ -154,7 +173,10 @@ class LongformerTrainer:
                         self._val_steps_without_improvement = 0
 
                         if self._save_model_callback is not None:
-                            self._save_model_callback(self._model)
+                            logger.info(
+                                "Saving checkpoint of model at step %d", total_step
+                            )
+                            self._save_model_callback(self._model, total_step)
                     else:
                         self._val_steps_without_improvement += 1
 
@@ -187,7 +209,10 @@ class LongformerTrainer:
         self._model.eval()
         self._reset_metrics((self._val_metrics, self._val_special_metrics))
 
-        for batch in self._val_data:
+        # TODO: Progress bar to global options
+        for batch in tqdm(
+            self._val_data, total=len(self._val_data), desc="Validation batches"
+        ):
             self._validation_step(batch=batch)
 
         if self._val_summary_writer is not None:
@@ -202,23 +227,19 @@ class LongformerTrainer:
     def _validation_step(self, batch: dict[str, torch.Tensor]) -> None:
         train_utils.batch_to_device(batch, self._device)
 
-        with torch.autocast(
-            device_type=self._device.type, dtype=torch.float16, enabled=self._fp16
-        ):
+        with self._autocast():
             with torch.no_grad():
                 outputs = self._model(**batch)
                 loss = outputs["loss"]
 
-        self._special_metrics["loss"].update(loss)
+        self._val_special_metrics["loss"].update(loss)
         for metric in self._val_metrics.values():
             metric.update(outputs, batch)
 
     def _training_step(self, batch: dict[str, torch.Tensor], step: int) -> None:
         train_utils.batch_to_device(batch, self._device)
 
-        with torch.autocast(
-            device_type=self._device.type, dtype=torch.float16, enabled=self._fp16
-        ):
+        with self._autocast():
             outputs = self._model(**batch)
             loss = outputs["loss"] / self._grad_accumulation_steps
 
@@ -273,3 +294,14 @@ class LongformerTrainer:
                 self._lr_scheduler.step()
 
             self._optim.zero_grad()
+
+    @contextmanager
+    def _autocast(self) -> Iterator[None]:
+        """Enables optional autocast.
+
+        Note that `enabled` param in torch's autocast doesn't do that."""
+        if self._fp16:
+            with torch.autocast(device_type=self._device.type):
+                yield
+        else:
+            yield
