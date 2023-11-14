@@ -12,20 +12,25 @@ from datasets import Dataset, DatasetDict, concatenate_datasets
 import datasets.utils.logging as hf_logging
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.scripts.args import add_common_args
+from transformer_document_embedding.scripts.pipelines import TrainingPipeline
 
 from transformer_document_embedding.utils.evaluation import smart_unbatch
+
+training_pipeline = TrainingPipeline()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--train",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to train the model before generating embeddings.",
+        "-n",
+        "--name",
+        type=str,
+        default=None,
+        help="Name of the experiment. If no name is given, one is generated.",
     )
+
+    training_pipeline.add_args(parser)
 
     parser.add_argument(
         "--splits",
@@ -51,29 +56,6 @@ def parse_args() -> argparse.Namespace:
     )
 
     add_common_args(parser)
-    parser.add_argument(
-        "--load_model_path",
-        type=str,
-        default=None,
-        help=(
-            "Path from which to load the fitted model instead of fitting it (which is"
-            " the default behaviour)."
-        ),
-    )
-
-    parser.add_argument(
-        "--save_trained",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to save trained model.",
-    )
-    parser.add_argument(
-        "--embed_fragment_length",
-        type=int,
-        default=10e5,
-        help="Number of embeddings stored in one file.",
-    )
 
     return parser.parse_args()
 
@@ -90,30 +72,7 @@ def generate_embeddings(
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
-    # TODO: Common training pipeline (in evaluate)
-    if args.load_model_path is not None:
-        logging.info("Loading model from %s.", args.load_model_path)
-        model.load(args.load_model_path)
-
-    if args.train:
-        logging.info("Training model...")
-
-        model.train(
-            task,
-            log_dir=config.experiment_path,
-            model_dir=config.model_path,
-            **config.values["model"].get("train_kwargs", {}),
-        )
-        logging.info("Training done.")
-
-        if args.save_trained:
-            trained_path = os.path.join(config.model_path, "trained")
-            logging.info(
-                "Saving trained model to %s.",
-                trained_path,
-            )
-            os.makedirs(trained_path, exist_ok=True)
-            model.save(trained_path)
+    training_pipeline.run(model=model, task=task, args=args, config=config)
 
     # The gymnastics with generators, new dataset and concatenation is not
     # straightforward, but:
@@ -163,7 +122,9 @@ def main():
     )
 
     for config_file in args.config:
-        exp_config = ExperimentConfig.from_yaml(config_file, args.output_base_path)
+        exp_config = ExperimentConfig.from_yaml(
+            config_file, args.output_base_path, name=args.name
+        )
 
         generate_embeddings(config=exp_config, args=args)
 

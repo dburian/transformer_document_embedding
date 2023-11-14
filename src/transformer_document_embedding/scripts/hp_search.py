@@ -10,8 +10,11 @@ import pprint
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.experiments.search import GridSearch, OneSearch
 from transformer_document_embedding.scripts.args import add_common_args
+from transformer_document_embedding.scripts.pipelines import TrainingPipeline
 
 EXPERIMENTS_DIR = "./results"
+
+training_pipeline = TrainingPipeline(train=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,11 +42,12 @@ def parse_args() -> argparse.Namespace:
     )
 
     add_common_args(parser)
+    training_pipeline.add_args(parser)
 
     return parser.parse_args()
 
 
-def run_single(config: ExperimentConfig) -> None:
+def run_single(config: ExperimentConfig, args: argparse.Namespace) -> None:
     logging.info(
         "Starting experiment with config:\n%s",
         pprint.pformat(config.values, indent=1),
@@ -52,14 +56,7 @@ def run_single(config: ExperimentConfig) -> None:
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
-    logging.info("Training model...")
-
-    model.train(
-        task,
-        log_dir=config.experiment_path,
-        **config.values["model"].get("train_kwargs", {}),
-    )
-    logging.info("Training done.")
+    training_pipeline.run(model, task, args, config)
 
     config.log_hparams()
 
@@ -83,7 +80,7 @@ def main() -> None:
             exp_config = ExperimentConfig.from_yaml(exp_file, args.output_base_path)
 
             for experiment_instance in search.based_on(exp_config):
-                run_single(experiment_instance)
+                run_single(experiment_instance, args)
 
 
 if __name__ == "__main__":

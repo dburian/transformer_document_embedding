@@ -16,30 +16,24 @@ from transformer_document_embedding.scripts.args import (
 
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.experiments.result import save_csv_results
+from transformer_document_embedding.scripts.pipelines import TrainingPipeline
+
+training_pipeline = TrainingPipeline(train=True)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
-    add_common_args(parser)
-
     parser.add_argument(
-        "--load_model_path",
+        "-n",
+        "--name",
         type=str,
         default=None,
-        help=(
-            "Path from which to load the fitted model instead of fitting it (which is"
-            " the default behaviour)."
-        ),
+        help="Name of the experiment. If no name is given, one is generated.",
     )
 
-    parser.add_argument(
-        "--save_trained",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to save trained model.",
-    )
+    add_common_args(parser)
+    training_pipeline.add_args(parser)
 
     return parser.parse_args()
 
@@ -68,28 +62,7 @@ def evaluate_best(
     model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
     task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
 
-    if args.load_model_path is not None:
-        logging.info("Loading model from %s.", args.load_model_path)
-        model.load(args.load_model_path)
-    else:
-        logging.info("Training model...")
-
-        model.train(
-            task,
-            log_dir=config.experiment_path,
-            model_dir=config.model_path,
-            **config.values["model"].get("train_kwargs", {}),
-        )
-        logging.info("Training done.")
-
-        if args.save_trained:
-            trained_path = os.path.join(config.model_path, "trained")
-            logging.info(
-                "Saving trained model to %s.",
-                trained_path,
-            )
-            os.makedirs(trained_path, exist_ok=True)
-            model.save(trained_path)
+    training_pipeline.run(model=model, task=task, args=args, config=config)
 
     logging.info("Evaluating on test data...")
     test_predictions = model.predict(task.test)

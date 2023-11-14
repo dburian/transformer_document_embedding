@@ -27,13 +27,6 @@ def add_common_args(
         required=True,
     )
     parser.add_argument(
-        "-n",
-        "--name",
-        type=str,
-        default=None,
-        help="Name of the experiment. If no name is given, one is generated.",
-    )
-    parser.add_argument(
         "--output_base_path",
         type=str,
         default=RESULTS_DIR,
