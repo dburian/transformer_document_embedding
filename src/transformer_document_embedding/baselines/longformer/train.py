@@ -45,6 +45,12 @@ class LongformerTrainer:
         log_every_step: Optional[int] = None,
         validate_every_step: Optional[int] = None,
     ) -> None:
+        """
+        Parameters:
+        - patience: int, optional
+            Maximum number of validation rounds without improvement. If
+            patience is reached, the training is stopped.
+        """
         self._model = model
         self._train_data = train_data
         self._val_data = val_data
@@ -102,7 +108,7 @@ class LongformerTrainer:
         self._model.train()
 
         self._best_val_score = float("inf") if self._lower_is_better else float("-inf")
-        self._val_steps_without_improvement = 0
+        self._validations_without_improvement = 0
 
         self._scaler = GradScaler() if self._fp16 else None
 
@@ -126,6 +132,7 @@ class LongformerTrainer:
         self._init_train()
 
         steps_in_epoch = len(self._train_data)
+        step_count = steps_in_epoch * epochs
 
         for epoch in tqdm(range(epochs), desc="Epoch", disable=not progress_bar):
             for step, batch in tqdm(
@@ -138,10 +145,10 @@ class LongformerTrainer:
 
                 total_step = epoch * steps_in_epoch + step
 
-                if (
-                    self._summary_writer is not None
-                    and (total_step + 1) % self._log_every_step == 0
-                ):
+                should_log_train = ((total_step + 1) % self._log_every_step == 0) or (
+                    total_step + 1 == step_count
+                )
+                if self._summary_writer is not None and should_log_train:
                     self._log_and_reset(
                         total_step=total_step,
                         writer=self._summary_writer,
@@ -149,46 +156,27 @@ class LongformerTrainer:
                     )
 
                 if (
-                    self._val_data is not None
-                    and self._validate_every_step is not None
+                    self._validate_every_step is not None
                     and (1 + total_step) % self._validate_every_step == 0
                 ):
                     self._validate(total_step=total_step)
 
-                    # TODO: Option to not do this at all?
-                    main_metric = self._val_metrics.get(
-                        self._main_metric_name,
-                        self._val_special_metrics.get(self._main_metric_name, None),
-                    )
-                    assert main_metric is not None, "Main metric cannot be found."
-                    new_score = main_metric.compute()
-                    is_better = (
-                        (new_score < self._best_val_score)
-                        if self._lower_is_better
-                        else (new_score > self._best_val_score)
-                    )
-                    if is_better:
-                        self._best_val_score = new_score
-                        self._val_steps_without_improvement = 0
-
-                        if self._save_model_callback is not None:
-                            logger.info(
-                                "Saving checkpoint of model at step %d", total_step
-                            )
-                            self._save_model_callback(self._model, total_step)
-                    else:
-                        self._val_steps_without_improvement += 1
-
                     # TODO: Too much indentation
                     if (
                         self._patience is not None
-                        and self._val_steps_without_improvement >= self._patience
+                        and self._validations_without_improvement >= self._patience
                     ):
                         logger.info(
-                            "%n epochs without improvement. Stopping training...",
-                            self._val_steps_without_improvement,
+                            "%n validations without improvement. Stopping training...",
+                            self._validations_without_improvement,
                         )
                         return
+
+        if (
+            self._validate_every_step is None
+            or step_count % self._validate_every_step != 0
+        ):
+            self._validate(total_step=step_count - 1)
 
     def _log_and_reset(
         self,
@@ -204,7 +192,8 @@ class LongformerTrainer:
         writer.flush()
 
     def _validate(self, total_step: int) -> None:
-        assert self._val_data is not None
+        if self._val_data is None:
+            return
 
         self._model.eval()
         self._reset_metrics((self._val_metrics, self._val_special_metrics))
@@ -223,6 +212,28 @@ class LongformerTrainer:
             )
 
         self._model.train()
+
+        # TODO: Option to not do this at all?
+        main_metric = self._val_metrics.get(
+            self._main_metric_name,
+            self._val_special_metrics.get(self._main_metric_name, None),
+        )
+        assert main_metric is not None, "Main metric cannot be found."
+        new_score = main_metric.compute()
+        is_better = (
+            (new_score < self._best_val_score)
+            if self._lower_is_better
+            else (new_score > self._best_val_score)
+        )
+        if is_better:
+            self._best_val_score = new_score
+            self._validations_without_improvement = 0
+
+            if self._save_model_callback is not None:
+                logger.info("Saving checkpoint of model at step %d", total_step)
+                self._save_model_callback(self._model, total_step)
+        else:
+            self._validations_without_improvement += 1
 
     def _validation_step(self, batch: dict[str, torch.Tensor]) -> None:
         train_utils.batch_to_device(batch, self._device)
