@@ -1,5 +1,27 @@
 # Hyperparameter logging
 
+Implementation-wise there are some gotchas. I will describe not-so-working
+approaches to hp logging which I've tried below the division line. What is above
+is relevant to the current implementation.
+
+## Updates:
+
+### Only logging the currently searched over hyperparameters
+
+I've decided to only log the hyperparameters which are different from the base
+configuration. This may turn out to be a mistake, so here is my reasoning:
+
+- Too many parameters over-crowds the 'HPARAMS' screen in tensorboard.
+- All the parameters are visible in the experiment config, so they are
+  recoverable.
+- In almost all the cases I am only interested in the hyperparameters I am
+  searching over.
+- The only disadvantage is one-search. In current version only the one parameter
+  that is different is logged. I may want to see all that will be changed (in
+  other experiments in the current search). But that may be easily implemented.
+
+---
+
 This turned out to be quite a problem. I've tried fairly advanced approach,
 which did not work at the end (due to some unexplicable inconsistencies in
 `tensorboard`). So here I'll explain the approaches I tried and reasons why they

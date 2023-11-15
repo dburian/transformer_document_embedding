@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from coolname import generate
+import re
 import importlib
 import sys
 import logging
@@ -35,19 +36,18 @@ logger = logging.getLogger(__name__)
 class ExperimentConfig:
     @staticmethod
     def from_yaml(
-        config_file: str, base_results_dir: str, name: Optional[str] = None
+        config_file: str, output_base_path: str, **kwargs
     ) -> ExperimentConfig:
-        with open(config_file, mode="r", encoding="utf8") as file:
-            values = yaml.safe_load(file)
-
-            return ExperimentConfig(
-                values, base_results_dir=base_results_dir, name=name
-            )
+        return ExperimentConfig(
+            load_config_values(config_file),
+            output_base_path,
+            **kwargs,
+        )
 
     def __init__(
         self,
         config_values: dict[str, Any],
-        base_results_dir: str,
+        output_base_path: str,
         name: Optional[str] = None,
     ) -> None:
         def _check_field_exist(values: dict[str, Any], field_path: list[str]) -> bool:
@@ -78,7 +78,7 @@ class ExperimentConfig:
 
         self._name = name if name is not None else "_".join(generate(2))
         self.values = config_values
-        self.base_results_dir = base_results_dir
+        self.output_base_path = output_base_path
         self._model_path = None
         self._exp_path = None
 
@@ -89,12 +89,7 @@ class ExperimentConfig:
     @property
     def experiment_path(self) -> str:
         if self._exp_path is None:
-            self._exp_path = os.path.join(
-                self.base_results_dir,
-                self.values["task"]["module"],
-                self.values["model"]["module"],
-                self._name,
-            )
+            self._exp_path = self._construct_experiment_path()
             if os.path.exists(self._exp_path):
                 logger.error(
                     "Experiment with the given name already exists at %s",
@@ -129,24 +124,13 @@ class ExperimentConfig:
         with open(save_path, mode="w", encoding="utf8") as file:
             yaml.dump(self.values, file)
 
-    def log_hparams(self) -> None:
-        import tensorflow as tf
-        from tensorboard.plugins.hparams import api as hp
-
-        with tf.summary.create_file_writer(self.experiment_path).as_default():
-            hparams = flatten_dict(self.values)
-
-            # tf is unable to log NoneTypes
-            for key, value in hparams.items():
-                if value is None:
-                    hparams[key] = "None"
-
-            hp.hparams(
-                hparams,
-                os.path.relpath(self.experiment_path, start=self.base_results_dir),
-            )
-
-            tf.summary.flush()
+    def _construct_experiment_path(self) -> str:
+        return os.path.join(
+            self.output_base_path,
+            self.values["task"]["module"],
+            self.values["model"]["module"],
+            self._name,
+        )
 
     @classmethod
     def _import_type(
@@ -168,6 +152,51 @@ class ExperimentConfig:
             ) from exc
 
 
+class HPSearchExperimentConfig(ExperimentConfig):
+    """For experiments that are part of hp search."""
+
+    @classmethod
+    def _generate_name_from_params(cls, flatten_params: dict[str, Any]) -> str:
+        name_parts = []
+        for key, value in flatten_params.items():
+            short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
+            name_parts.append(f"{short_key}={value}")
+
+        return "-".join(name_parts)
+
+    def __init__(
+        self,
+        config_values: dict[str, Any],
+        output_base_path: str,
+        flatten_hparams: dict[str, Any],
+    ) -> None:
+        super().__init__(
+            config_values,
+            output_base_path,
+            self._generate_name_from_params(flatten_hparams),
+        )
+        self._flatten_hparams = flatten_hparams
+
+    def _construct_experiment_path(self) -> str:
+        return os.path.join(self.output_base_path, self.name)
+
+    def log_hparams(self) -> None:
+        import tensorflow as tf
+        from tensorboard.plugins.hparams import api as hp
+
+        with tf.summary.create_file_writer(self.experiment_path).as_default():
+            # tf is unable to log NoneTypes
+            for key, value in self._flatten_hparams.items():
+                if value is None:
+                    self._flatten_hparams[key] = "None"
+                if isinstance(value, list) or isinstance(value, dict):
+                    self._flatten_hparams[key] = str(value)
+
+            hp.hparams(self._flatten_hparams, self.name)
+
+            tf.summary.flush()
+
+
 def flatten_dict(structure: dict[str, Any]) -> dict[str, Any]:
     flatten = {}
     for key, value in structure.items():
@@ -178,3 +207,8 @@ def flatten_dict(structure: dict[str, Any]) -> dict[str, Any]:
             flatten[key] = value
 
     return flatten
+
+
+def load_config_values(yaml_path: str) -> dict[str, Any]:
+    with open(yaml_path, mode="r", encoding="utf8") as file:
+        return yaml.safe_load(file)

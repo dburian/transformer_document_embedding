@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pprint
 import os
 import logging
 from abc import abstractmethod
@@ -24,9 +25,8 @@ class Pipeline:
     @abstractmethod
     def run(
         self,
-        model: Baseline,
-        task: ExperimentalTask,
-        args: argparse.Namespace,
+        *args,
+        **kwargs,
     ) -> None:
         raise NotImplementedError()
 
@@ -70,9 +70,9 @@ class TrainingPipeline(Pipeline):
 
     def run(
         self,
+        args: argparse.Namespace,
         model: Baseline,
         task: ExperimentalTask,
-        args: argparse.Namespace,
         config: ExperimentConfig,
     ) -> None:
         if args.load_model_path is not None:
@@ -98,3 +98,21 @@ class TrainingPipeline(Pipeline):
                 )
                 os.makedirs(trained_path, exist_ok=True)
                 model.save(trained_path)
+
+
+class InitializeModelAndTask(Pipeline):
+    def add_args(self, _: argparse.ArgumentParser) -> None:
+        pass
+
+    def run(
+        self,
+        config: ExperimentConfig,
+    ) -> tuple[Baseline, ExperimentalTask]:
+        logging.info(
+            "Starting experiment with config:\n%s",
+            pprint.pformat(config.values, indent=1),
+        )
+        config.save()
+        model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
+        task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
+        return model, task

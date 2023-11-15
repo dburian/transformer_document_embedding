@@ -7,7 +7,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import pprint
 
 from transformer_document_embedding.scripts.args import (
     add_common_args,
@@ -16,24 +15,21 @@ from transformer_document_embedding.scripts.args import (
 
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.experiments.result import save_csv_results
-from transformer_document_embedding.scripts.pipelines import TrainingPipeline
+from transformer_document_embedding.scripts.pipelines import (
+    InitializeModelAndTask,
+    TrainingPipeline,
+)
 
 training_pipeline = TrainingPipeline(train=True)
+initialization_pipeline = InitializeModelAndTask()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "-n",
-        "--name",
-        type=str,
-        default=None,
-        help="Name of the experiment. If no name is given, one is generated.",
-    )
-
     add_common_args(parser)
     training_pipeline.add_args(parser)
+    initialization_pipeline.add_args(parser)
 
     return parser.parse_args()
 
@@ -51,18 +47,10 @@ def log_results(log_path: str, results: dict[str, float]) -> None:
 def evaluate_best(
     config: ExperimentConfig,
     args: argparse.Namespace,
-) -> None:
-    logging.info(
-        "Starting experiment '%s', with config:\n%s",
-        config.name,
-        pprint.pformat(config.values, indent=1),
-    )
-    config.save()
+) -> dict[str, float]:
+    model, task = initialization_pipeline.run(config)
 
-    model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
-    task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
-
-    training_pipeline.run(model=model, task=task, args=args, config=config)
+    training_pipeline.run(args, model, task, config)
 
     logging.info("Evaluating on test data...")
     test_predictions = model.predict(task.test)
@@ -84,10 +72,11 @@ def main() -> None:
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
-    for exp_file in args.config:
-        config = ExperimentConfig.from_yaml(exp_file, args.output_base_path, args.name)
+    config = ExperimentConfig.from_yaml(
+        args.config, args.output_base_path, name=args.name
+    )
 
-        evaluate_best(config, args)
+    evaluate_best(config, args)
 
 
 if __name__ == "__main__":

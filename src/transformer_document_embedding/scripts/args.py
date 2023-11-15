@@ -6,32 +6,35 @@ if TYPE_CHECKING:
     import argparse
 
 
-RESULTS_DIR = "./results"
+OUTPUT_DIR = "./results"
 
 
 def add_common_args(
     parser: argparse.ArgumentParser,
+    *,
+    output_base_path: str = OUTPUT_DIR,
 ) -> None:
     parser.add_argument(
         "-c",
         "--config",
         type=str,
-        action="extend",
-        help=(
-            "Experiment configurations to be run described by YAML files. Required"
-            " syntax to be found here:"
-            " github.com/dburian/transformer_document_embedding/"
-            "blob/master/log/experiment_files.md."
-        ),
-        nargs="+",
+        help="Path to yaml experiment file.",
         required=True,
     )
     parser.add_argument(
         "--output_base_path",
         type=str,
-        default=RESULTS_DIR,
+        default=output_base_path,
         help=(
             "Path to directory containing all experiment results. Default:"
-            f" '{RESULTS_DIR}'."
+            f" '{output_base_path}'."
         ),
+    )
+
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        default=None,
+        help="Name of the experiment. If no name is given, one is generated.",
     )
