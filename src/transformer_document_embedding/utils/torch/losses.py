@@ -12,13 +12,13 @@ if TYPE_CHECKING:
 class StaticContextualLoss(torch.nn.Module):
     def __init__(
         self,
+        contextual_max_length: Optional[int],
         lam: Optional[float] = None,
         static_loss: Optional[torch.nn.Module] = None,
         contextual_loss: Optional[torch.nn.Module] = None,
         contextual_key: str = "sbert",
         static_key: str = "dbow",
         len_key: str = "length",
-        contextual_max_length: int = 512,
         *args,
         **kwargs,
     ) -> None:
@@ -33,7 +33,7 @@ class StaticContextualLoss(torch.nn.Module):
         self._lam = lam
 
     @property
-    def contextual_max_length(self) -> int:
+    def contextual_max_length(self) -> Optional[int]:
         return self._contextual_max_length
 
     def forward(
@@ -42,18 +42,29 @@ class StaticContextualLoss(torch.nn.Module):
         outputs = {"loss": torch.tensor(0, device=inputs.device, dtype=inputs.dtype)}
 
         if self.contextual_loss is not None:
-            contextual_mask = (
-                targets[self._len_key] < self._contextual_max_length
-            ).unsqueeze(1)
-            # Multiply the inputs, as mse outputs a single number. MSE(zeros) = zero
-            contextual_loss = torch.nn.functional.mse_loss(
-                inputs * contextual_mask,
-                targets[self._contextual_key] * contextual_mask,
+            mask = (
+                targets[self._len_key] <= self._contextual_max_length
+                if self.contextual_max_length is not None
+                else torch.ones_like(targets[self._len_key])
             )
+
+            # We expect shape (batch_size,), i.e. a number for each input
+            contextual_loss = self.contextual_loss(
+                inputs, targets[self._contextual_key]
+            )
+            if contextual_loss.ndim == 2:
+                contextual_loss = contextual_loss.sum(dim=1)
+            contextual_loss *= mask
+            contextual_loss = contextual_loss.sum()
+
+            weight_sum = mask.sum()
+            if weight_sum > 0:
+                contextual_loss /= weight_sum
 
             if self._lam is not None:
                 contextual_loss *= self._lam
 
+            outputs["contextual_mask"] = mask
             outputs["contextual_loss"] = contextual_loss
             outputs["loss"] += contextual_loss
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from functools import partial
+from math import floor
 import os
 import torch
 import logging
@@ -20,7 +21,6 @@ from transformer_document_embedding.utils.metrics import (
     WindowedNonResetableCCAMetric,
     CosineDistanceWithSBERT,
     MSEWithSBERT,
-    PercentLengthBelowThres,
     with_accessor,
     VMemMetric,
 )
@@ -42,8 +42,9 @@ class LongformerStudent(Baseline):
         large: bool,
         batch_size: int,
         pooler_type: str,
-        contextual_loss_kwargs: Optional[dict[str, Any]] = None,
-        static_loss_kwargs: Optional[dict[str, Any]] = None,
+        contextual_max_length: Optional[int],
+        contextual_loss_kwargs: Optional[dict[str, Any]],
+        static_loss_kwargs: Optional[dict[str, Any]],
     ) -> None:
         self._batch_size = batch_size
 
@@ -59,18 +60,19 @@ class LongformerStudent(Baseline):
         )
 
         self._loss = self._construct_loss(
-            static_loss_kwargs=static_loss_kwargs,
-            contextual_loss_kwargs=contextual_loss_kwargs,
+            static_loss_kwargs, contextual_loss_kwargs, contextual_max_length
         )
 
     def _construct_loss(
         self,
         static_loss_kwargs: Optional[dict[str, Any]],
         contextual_loss_kwargs: Optional[dict[str, Any]],
+        contextual_max_length: Optional[int],
     ) -> losses.StaticContextualLoss:
         loss_kwargs: dict[str, Any] = {
             "static_loss": None,
             "contextual_loss": None,
+            "contextual_max_length": contextual_max_length,
         }
         if static_loss_kwargs is not None:
             loss_kwargs["static_key"] = static_loss_kwargs.pop("static_key")
@@ -80,7 +82,7 @@ class LongformerStudent(Baseline):
             )
 
         if contextual_loss_kwargs is not None:
-            for param_name in ["contextual_key", "contextual_max_length", "lam"]:
+            for param_name in ["contextual_key", "lam"]:
                 loss_kwargs[param_name] = contextual_loss_kwargs.pop(param_name)
 
             loss_kwargs["contextual_loss"] = self._construct_contextual_loss(
@@ -127,8 +129,8 @@ class LongformerStudent(Baseline):
                 lam=0.8,
             )
         elif static_loss_type == "mse":
-            static_loss_fn = torch.nn.MSELoss()
-        elif static_loss_type == "cos":
+            static_loss_fn = torch.nn.MSELoss(reduction="none")
+        elif static_loss_type == "cos_dist":
             static_loss_fn = losses.CosineDistanceLoss()
 
         assert static_loss_fn is not None, "Unknown `static_loss_type`."
@@ -156,8 +158,8 @@ class LongformerStudent(Baseline):
 
     def _construct_contextual_loss(self, contextual_loss_type: str) -> torch.nn.Module:
         if contextual_loss_type == "mse":
-            return torch.nn.MSELoss()
-        elif contextual_loss_type == "cos":
+            return torch.nn.MSELoss(reduction="none")
+        elif contextual_loss_type == "cos_dist":
             return losses.CosineDistanceLoss()
 
         raise ValueError(
@@ -175,6 +177,7 @@ class LongformerStudent(Baseline):
         epochs: int,
         log_every_step: int,
         save_best: bool,
+        bucket_limits: Optional[list[int]] = None,
         log_dir: Optional[str] = None,
         model_dir: Optional[str] = None,
         validate_every_step: Optional[int] = None,
@@ -199,7 +202,7 @@ class LongformerStudent(Baseline):
                 return_length=False,
                 sampler_kwargs={
                     "effective_batch_size": self._batch_size * grad_accumulation_steps,
-                    "bucket_limits": [model.loss.contextual_max_length],
+                    "bucket_limits": bucket_limits,
                 },
             )
 
@@ -218,8 +221,8 @@ class LongformerStudent(Baseline):
 
         lr_scheduler = train_utils.get_linear_lr_scheduler_with_warmup(
             optimizer,
-            warmup_steps,
-            epochs * len(train_data),
+            floor(warmup_steps / grad_accumulation_steps),
+            floor(epochs * len(train_data) / grad_accumulation_steps),
         )
 
         summary_writer = _create_summary_writer("train")
@@ -257,16 +260,18 @@ class LongformerStudent(Baseline):
     def _construct_train_metrics(
         self, model: _LongformerStudentWrapper, val_data: Optional[DataLoader]
     ) -> dict[str, Metric]:
+        contextual_len_thres = model.loss.contextual_max_length
         train_metrics = {
             "used_vmem": VMemMetric(),
             "mean_length": with_accessor(
                 Mean(),
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
-            "sbert_mse": MSEWithSBERT(),
-            "sbert_cos": CosineDistanceWithSBERT(),
-            "short_percentage": PercentLengthBelowThres(
-                model.loss.contextual_max_length
+            "sbert_mse": MSEWithSBERT(max_input_length=None),
+            "sbert_cos_dist": CosineDistanceWithSBERT(max_input_length=None),
+            "mean_contextual_mask": with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(outputs["contextual_mask"]),
             ),
             "max_abs_longformer_grad": with_accessor(
                 Max(),
@@ -278,6 +283,15 @@ class LongformerStudent(Baseline):
             ),
             **self._construct_projection_metrics(model, val_data),
         }
+
+        # If it is None, sbert_mse_None is same as sbert_mse (same for cos_dist)
+        if contextual_len_thres is not None:
+            train_metrics[f"sbert_mse_{contextual_len_thres}"] = (
+                MSEWithSBERT(max_input_length=contextual_len_thres),
+            )
+            train_metrics[f"sbert_cos_dist_{contextual_len_thres}"] = (
+                CosineDistanceWithSBERT(max_input_length=contextual_len_thres),
+            )
 
         if model.loss.contextual_loss is not None:
             train_metrics["mean_contextual_loss"] = with_accessor(

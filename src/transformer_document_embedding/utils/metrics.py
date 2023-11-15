@@ -9,7 +9,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 import numpy as np
 import torch
-from torcheval.metrics import Mean, MeanSquaredError, Metric
+from torcheval.metrics import Mean, Metric
 
 if TYPE_CHECKING:
     from typing import Iterable, Optional, Union
@@ -145,26 +145,36 @@ def with_accessor(metric: Metric, update_fn: UpdateWrapperFn) -> Metric:
 
 
 class MSEWithSBERT(AccessorMetric):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(MeanSquaredError(), self._accessor, **kwargs)
+    def __init__(self, max_input_length: Optional[int], **kwargs) -> None:
+        self.max_input_length = max_input_length
 
-    @classmethod
+        super().__init__(Mean(), self._accessor, **kwargs)
+
     def _accessor(
-        cls,
+        self,
         metric: Metric,
         outputs: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
     ) -> None:
-        metric.update(outputs["pooler_output"][-1], batch["sbert"][-1])
+        mse = (outputs["pooler_output"] - batch["sbert"]) ** 2
+        mse = mse.sum(dim=1)
+
+        if self.max_input_length is not None:
+            mask = batch["length"] <= self.max_input_length
+            # mask is 1D
+            non_masked_idxs = mask.nonzero().squeeze()
+            mse = mse.index_select(0, non_masked_idxs)
+
+        metric.update(mse)
 
 
 class CosineDistanceWithSBERT(AccessorMetric):
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, max_input_length: Optional[int], **kwargs) -> None:
+        self.max_input_length = max_input_length
         super().__init__(Mean(), self._accessor, **kwargs)
 
-    @classmethod
     def _accessor(
-        cls,
+        self,
         metric: Metric,
         outputs: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
@@ -174,6 +184,11 @@ class CosineDistanceWithSBERT(AccessorMetric):
             batch["sbert"],
             dim=1,
         )
+        if self.max_input_length is not None:
+            mask = batch["length"] <= self.max_input_length
+            # mask is 1D
+            non_masked_idxs = mask.nonzero().squeeze()
+            cos_dist = cos_dist.index_select(0, non_masked_idxs)
         metric.update(cos_dist)
 
 
