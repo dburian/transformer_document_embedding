@@ -286,12 +286,12 @@ class LongformerStudent(Baseline):
 
         # If it is None, sbert_mse_None is same as sbert_mse (same for cos_dist)
         if contextual_len_thres is not None:
-            train_metrics[f"sbert_mse_{contextual_len_thres}"] = (
-                MSEWithSBERT(max_input_length=contextual_len_thres),
+            train_metrics[f"sbert_mse_{contextual_len_thres}"] = MSEWithSBERT(
+                max_input_length=contextual_len_thres
             )
-            train_metrics[f"sbert_cos_dist_{contextual_len_thres}"] = (
-                CosineDistanceWithSBERT(max_input_length=contextual_len_thres),
-            )
+            train_metrics[
+                f"sbert_cos_dist_{contextual_len_thres}"
+            ] = CosineDistanceWithSBERT(max_input_length=contextual_len_thres)
 
         if model.loss.contextual_loss is not None:
             train_metrics["mean_contextual_loss"] = with_accessor(
