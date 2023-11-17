@@ -145,8 +145,11 @@ def with_accessor(metric: Metric, update_fn: UpdateWrapperFn) -> Metric:
 
 
 class MSEWithSBERT(AccessorMetric):
-    def __init__(self, max_input_length: Optional[int], **kwargs) -> None:
+    def __init__(
+        self, max_input_length: Optional[int], normalize: bool = False, **kwargs
+    ) -> None:
         self.max_input_length = max_input_length
+        self.normalize = normalize
 
         super().__init__(Mean(), self._accessor, **kwargs)
 
@@ -156,7 +159,13 @@ class MSEWithSBERT(AccessorMetric):
         outputs: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
     ) -> None:
-        mse = (outputs["pooler_output"] - batch["sbert"]) ** 2
+        model_embeddings = outputs["pooler_output"]
+        sbert_emebddings = batch["sbert"]
+        if self.normalize:
+            model_embeddings /= torch.linalg.vector_norm(model_embeddings)
+            sbert_emebddings /= torch.linalg.vector_norm(sbert_emebddings)
+
+        mse = (model_embeddings - sbert_emebddings) ** 2
         mse = mse.sum(dim=1)
 
         if self.max_input_length is not None:

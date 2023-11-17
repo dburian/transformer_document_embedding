@@ -268,6 +268,7 @@ class LongformerStudent(Baseline):
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
             "sbert_mse": MSEWithSBERT(max_input_length=None),
+            "sbert_mse_norm": MSEWithSBERT(max_input_length=None, normalize=True),
             "sbert_cos_dist": CosineDistanceWithSBERT(max_input_length=None),
             "mean_contextual_mask": with_accessor(
                 Mean(),
@@ -288,6 +289,10 @@ class LongformerStudent(Baseline):
         if contextual_len_thres is not None:
             train_metrics[f"sbert_mse_{contextual_len_thres}"] = MSEWithSBERT(
                 max_input_length=contextual_len_thres
+            )
+            train_metrics[f"sbert_mse_norm_{contextual_len_thres}"] = MSEWithSBERT(
+                max_input_length=contextual_len_thres,
+                normalize=True,
             )
             train_metrics[
                 f"sbert_cos_dist_{contextual_len_thres}"
