@@ -109,7 +109,8 @@ class InitializeModelAndTask(Pipeline):
         config: ExperimentConfig,
     ) -> tuple[Baseline, ExperimentalTask]:
         logging.info(
-            "Starting experiment with config:\n%s",
+            "Starting experiment '%s' with config:\n%s",
+            config.name,
             pprint.pformat(config.values, indent=1),
         )
         config.save()
