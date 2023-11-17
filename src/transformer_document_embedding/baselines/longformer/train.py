@@ -1,6 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 import logging
 import torch
@@ -13,9 +13,7 @@ import transformer_document_embedding.utils.torch.training as train_utils
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
     from torch.utils.tensorboard.writer import SummaryWriter
-    from typing import Optional
-    from typing import Any
-    from typing import Callable, Iterator
+    from typing import Callable, Iterator, Union, Any, Optional, Iterable
 
     DictGetter = Callable[[dict[str, torch.Tensor]], Any]
 
@@ -29,10 +27,11 @@ class LongformerTrainer:
         model: torch.nn.Module,
         train_data: DataLoader,
         optimizer: torch.optim.Optimizer,
+        log_every_step: int,
         metrics: Optional[dict[str, Metric]] = None,
         main_metric: str = "loss",
         lower_is_better: bool = True,
-        device: Optional[torch.device] = None,
+        device: Optional[Union[torch.device, str]] = None,
         val_data: Optional[DataLoader] = None,
         summary_writer: Optional[SummaryWriter] = None,
         val_summary_writer: Optional[SummaryWriter] = None,
@@ -42,7 +41,6 @@ class LongformerTrainer:
         lr_scheduler=None,
         save_model_callback: Optional[Callable[[torch.nn.Module, int], None]] = None,
         patience: Optional[int] = None,
-        log_every_step: Optional[int] = None,
         validate_every_step: Optional[int] = None,
     ) -> None:
         """
@@ -60,9 +58,7 @@ class LongformerTrainer:
             "loss": Mean(),
             "learning_rate": Mean(),
         }
-        self._log_every_step = (
-            log_every_step if log_every_step is not None else grad_accumulation_steps
-        )
+        self._log_every_step = log_every_step
 
         self._val_metrics = {
             name: toolkit.clone_metric(metric) for name, metric in self._metrics.items()
@@ -74,7 +70,9 @@ class LongformerTrainer:
         self._summary_writer = summary_writer
         self._val_summary_writer = val_summary_writer
 
-        self._device = device if device is not None else self.get_default_device()
+        self._device = (
+            torch.device(device) if device is not None else self.get_default_device()
+        )
         logger.info("Using %s for training.", self._device.type)
 
         self._optim = optimizer
