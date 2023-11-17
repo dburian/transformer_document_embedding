@@ -1,6 +1,6 @@
 tde_version: 0.0.2
 model:
-  module: paragraph_vector.pair_classification:PairClassifier
+  module: paragraph_vector.pair_classifier:PairClassifier
   kwargs:
     dbow_kwargs:
       vector_size: 100
@@ -9,8 +9,9 @@ model:
       sample: 0
       workers: 6
     dm_kwargs: null
+    batch_size: 64
+    label_smoothing: 0.15
     cls_head_kwargs:
-      batch_size: 64
       hidden_features: 64
       hidden_activation: relu
       hidden_dropout: 0.5
@@ -21,6 +22,10 @@ model:
     save_best: False
 
 task:
-  module: pan:Pan
+  module: document_pair_classification:DocumentPairClassification
   kwargs:
-    path: ./data/MDA/PAN
+    path: ./data/MDA/S2ORC
+    data_size_limit:
+      train: 500
+      validation: 100
+      test: 100

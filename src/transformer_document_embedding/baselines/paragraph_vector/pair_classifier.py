@@ -6,8 +6,12 @@ import logging
 import datasets
 from torch.utils.data import DataLoader, Dataset as TorchDataset
 from torch.utils.tensorboard.writer import SummaryWriter
-from torcheval.metrics import BinaryAccuracy, BinaryPrecision, WindowedBinaryAUROC
-from torcheval.metrics.classification import BinaryRecall
+from torcheval.metrics import (
+    MulticlassAUPRC,
+    MulticlassAccuracy,
+    MulticlassPrecision,
+    MulticlassRecall,
+)
 from transformer_document_embedding.baselines.baseline import Baseline
 from transformer_document_embedding.baselines.longformer.train import LongformerTrainer
 from transformer_document_embedding.models.paragraph_vector import ParagraphVector
@@ -32,17 +36,20 @@ class PairClassifier(Baseline):
         dbow_kwargs: Optional[dict[str, Any]],
         dm_kwargs: Optional[dict[str, Any]],
         cls_head_kwargs: dict[str, Any],
+        label_smoothing: float,
+        batch_size: int,
     ) -> None:
         super().__init__()
 
         self._pv = ParagraphVector(dbow_kwargs=dbow_kwargs, dm_kwargs=dm_kwargs)
 
-        self._batch_size = cls_head_kwargs.pop("batch_size")
+        self._batch_size = batch_size
+        self._label_smoothing = label_smoothing
 
         self._cls_head = ClsHead(
             **cls_head_kwargs,
             in_features=2 * self._pv.vector_size,
-            num_classes=2,
+            out_features=2,
         )
 
     def train(
@@ -50,7 +57,7 @@ class PairClassifier(Baseline):
         task: ExperimentalTask,
         pv_epochs: int,
         cls_head_epochs: int,
-        log_every_step: Optional[int],
+        log_every_step: int,
         save_best: bool,
         log_dir: Optional[str] = None,
         model_dir: Optional[str] = None,
@@ -86,8 +93,8 @@ class PairClassifier(Baseline):
         save_model_callback = None
         if save_best and model_dir is not None:
 
-            def save_cb(_, total_step: int) -> None:
-                self.save(os.path.join(model_dir, f"checkpoint_{total_step}"))
+            def save_cb(*_) -> None:
+                self.save(os.path.join(model_dir, "checkpoint"))
 
             save_model_callback = save_cb
 
@@ -97,11 +104,14 @@ class PairClassifier(Baseline):
                 batch["labels"].round().type(torch.int32),
             )
 
-        # TODO: Move and call it Pytorch trainer
         optim = torch.optim.Adam(
             params=train_utils.get_optimizer_params(self._cls_head, 0), lr=3e-5
         )
-        model = _ModelWithLoss(self._cls_head, torch.nn.BCELoss())
+        model = _ModelWithLoss(
+            self._cls_head,
+            torch.nn.CrossEntropyLoss(label_smoothing=self._label_smoothing),
+        )
+        # TODO: Move and call it Pytorch trainer
         trainer = LongformerTrainer(
             model=model,
             train_data=cls_head_train_data,
@@ -116,14 +126,16 @@ class PairClassifier(Baseline):
             save_model_callback=save_model_callback,
             metrics={
                 "accuracy": with_accessor(
-                    BinaryAccuracy(), _update_outputs_with_labels
+                    MulticlassAccuracy(), _update_outputs_with_labels
                 ),
                 "precision": with_accessor(
-                    BinaryPrecision(), _update_outputs_with_labels
+                    MulticlassPrecision(), _update_outputs_with_labels
                 ),
-                "recall": with_accessor(BinaryRecall(), _update_outputs_with_labels),
+                "recall": with_accessor(
+                    MulticlassRecall(), _update_outputs_with_labels
+                ),
                 "auprc": with_accessor(
-                    WindowedBinaryAUROC(), _update_outputs_with_labels
+                    MulticlassAUPRC(num_classes=2), _update_outputs_with_labels
                 ),
             },
         )
@@ -133,11 +145,12 @@ class PairClassifier(Baseline):
     @torch.inference_mode()
     def predict(self, inputs: datasets.Dataset) -> Iterable[np.ndarray]:
         cls_head_test = self._create_features_dataloader(inputs, training=False)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._cls_head.to(device)
 
         for batch in cls_head_test:
-            yield self._cls_head(batch["embeddings"]).squeeze().numpy(
-                force=True
-            ).round()
+            logits = self._cls_head(batch["embeddings"].to(device))
+            yield torch.argmax(logits, dim=1).numpy(force=True)
 
     def _create_features_dataloader(
         self, dataset: datasets.Dataset, training: bool = True
@@ -214,11 +227,9 @@ class FeaturesDataset(TorchDataset):
             )
             embeddings.append(torch.tensor(key_embed))
 
-        features_item = {
-            "embeddings": torch.cat(embeddings),
-        }
+        features_item = {"embeddings": torch.cat(embeddings)}
         if "label" in item:
-            features_item["labels"] = torch.tensor(item["label"], dtype=torch.float)
+            features_item["labels"] = torch.tensor(item["label"])
 
         return features_item
 

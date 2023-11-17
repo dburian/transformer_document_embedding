@@ -23,13 +23,43 @@ if TYPE_CHECKING:
     from typing import Optional, Union, Any, Iterable
     import numpy as np
 
+KINDS_TO_FILES = {
+    "pan": {
+        "validation": "pla_dev.csv",
+        "train": "pla_train.csv",
+        "test": "pla_test.csv",
+    },
+    "s2orc": {
+        "validation": "dev_ai2_gorc.csv",
+        "train": "train_ai2_gorc.csv",
+        "test": "test_ai2_gorc.csv",
+    },
+    "oc": {
+        "validation": "dev_ai2_ab.csv",
+        "train": "train_ai2_ab.csv",
+        "test": "test_ai2_ab.csv",
+    },
+    "aan": {
+        "validation": "dev_cite.csv",
+        "train": "train_cite.csv",
+        "test": "test_cite.csv",
+    },
+}
 
-class Pan(HFTask):
+
+class DocumentPairClassification(HFTask):
     def __init__(
         self,
         path: str,
+        kind: Optional[str] = None,
         data_size_limit: Optional[Union[int, dict]] = None,
     ) -> None:
+        kind = kind if kind is not None else os.path.split(path)[-1].lower()
+
+        assert kind in KINDS_TO_FILES, "`kind` must be one of {}".format(
+            ",".join(KINDS_TO_FILES.keys())
+        )
+
         super().__init__(
             data_size_limit=data_size_limit,
             add_ids=True,
@@ -37,10 +67,10 @@ class Pan(HFTask):
             validation_source=None,
         )
 
+        filenames = KINDS_TO_FILES[kind]
         self._split_paths = {
-            "train": os.path.join(path, "pla_train.csv"),
-            "validation": os.path.join(path, "pla_dev.csv"),
-            "test": os.path.join(path, "pla_test.csv"),
+            split: os.path.join(path, filenames[split])
+            for split in ["train", "validation", "test"]
         }
 
     def _retrieve_dataset(self) -> DatasetDict:

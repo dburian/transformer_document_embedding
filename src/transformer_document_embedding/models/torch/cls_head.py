@@ -11,7 +11,7 @@ class ClsHead(torch.nn.Sequential):
         hidden_features: int,
         hidden_activation: str,
         hidden_dropout: float,
-        num_classes: int,
+        out_features: int,
     ) -> None:
         layers = []
         if hidden_features > 0:
@@ -21,10 +21,6 @@ class ClsHead(torch.nn.Sequential):
                 layers.append(torch.nn.Dropout(hidden_dropout))
 
         last_in_features = in_features if hidden_features == 0 else hidden_features
-        if num_classes == 2:
-            layers.append(torch.nn.Linear(last_in_features, 1))
-            layers.append(torch.nn.Sigmoid())
-        else:
-            layers.append(torch.nn.Linear(last_in_features, num_classes))
+        layers.append(torch.nn.Linear(last_in_features, out_features))
 
         super().__init__(*layers)
