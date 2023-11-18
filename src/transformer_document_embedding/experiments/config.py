@@ -129,7 +129,7 @@ class ExperimentConfig:
             self.output_base_path,
             self.values["task"]["module"],
             self.values["model"]["module"],
-            self._name,
+            self._name.replace("/", "-"),
         )
 
     @classmethod
@@ -178,7 +178,10 @@ class HPSearchExperimentConfig(ExperimentConfig):
         self._flatten_hparams = flatten_hparams
 
     def _construct_experiment_path(self) -> str:
-        return os.path.join(self.output_base_path, self.name)
+        return os.path.join(
+            self.output_base_path,
+            self._name.replace("/", "-"),
+        )
 
     def log_hparams(self) -> None:
         import tensorflow as tf
@@ -192,7 +195,10 @@ class HPSearchExperimentConfig(ExperimentConfig):
                 if isinstance(value, list) or isinstance(value, dict):
                     self._flatten_hparams[key] = str(value)
 
-            hp.hparams(self._flatten_hparams, self.name)
+            hp.hparams(
+                self._flatten_hparams,
+                os.path.join(os.path.basename(self.output_base_path), self.name),
+            )
 
             tf.summary.flush()
 
