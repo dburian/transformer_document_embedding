@@ -83,12 +83,7 @@ class LongformerTrainer:
         self._max_grad_norm = max_grad_norm
         self._grad_accumulation_steps = grad_accumulation_steps
 
-        default_validation_frequency = len(val_data) if val_data is not None else 1
-        self._validate_every_step = (
-            validate_every_step
-            if validate_every_step is not None
-            else default_validation_frequency
-        )
+        self._validate_every_step = validate_every_step
         self._patience = patience
         self._main_metric_name = main_metric
         self._lower_is_better = lower_is_better
