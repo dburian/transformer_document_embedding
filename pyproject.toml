@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "transformer_document_embedding"
-version = "0.0.2"
+version = "0.0.3"
 authors = [{name = "David Burian", email = "david.burian@me.com"}]
 dependencies = [
   "tokenizers>=0.13",
@@ -17,7 +17,7 @@ dependencies = [
   "faiss-cpu",
   "protobuf==3.20.3",
   "coolname",
-  "sklearn",
+  "scikit-learn",
 ]
 
 [project.optional-dependencies]
