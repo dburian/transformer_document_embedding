@@ -1,0 +1,48 @@
+tde_version: 0.0.3
+model:
+  module: transformer.student:TransformerStudent
+  kwargs:
+    transformer_model: allenai/longformer-base-4096
+    pooler_type: mean
+    batch_size: 3
+    contextual_max_length: 384
+    contextual_loss_kwargs: #null
+      contextual_key: sbert
+      lam: 1000
+      contextual_loss_type: mse
+    static_loss_kwargs:
+      static_key: dbow
+      static_embed_dim: 100
+      static_loss_type: soft_cca
+      projection_norm: null
+      cca_output_dim: null
+      # cca_output_dim: 50
+      transformer_projection_layers: [768]
+      static_projection_layers: [512, 768]
+      soft_cca_lam: 1
+
+  train_kwargs:
+    save_best: False
+    epochs: 1
+    warmup_steps: 10
+    grad_accumulation_steps: 8
+    weight_decay: 0.01
+    lr: 3.0e-5
+    fp16: True
+    max_grad_norm: 1.0
+    log_every_step: 5
+    validate_every_step: null
+    patience: null
+    device: cuda
+    dataloader_sampling: consistent
+    bucket_limits: [1024, 2048, 3072, 4096]
+
+
+
+task:
+  module: teacher_embedding:TeacherEmbedding
+  kwargs:
+    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    data_size_limit:
+      train: 102
+      validation: 12

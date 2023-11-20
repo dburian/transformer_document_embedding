@@ -54,6 +54,9 @@ class FastDataCollator:
         # Convert from list of dicts to dict of lists
         batch = {}
         for key in features[0].keys():
+            if isinstance(features[0][key], str) and key != "text":
+                continue
+
             batch[key] = [example[key] for example in features]
 
             # Prefer 2d tensors over list of tensors
@@ -416,6 +419,8 @@ def batch_to_device(batch: dict[str, torch.Tensor], device: torch.device) -> Non
     for k, v in batch.items():
         if isinstance(v, torch.Tensor):
             batch[k] = v.to(device)
+        elif isinstance(v, dict):
+            batch_to_device(v, device)
 
 
 def get_optimizer_params(

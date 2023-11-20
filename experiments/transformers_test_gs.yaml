@@ -1,0 +1,4 @@
+model.kwargs.transformer_model:
+  - allenai/longformer-base-4096
+  - sentence-transformers/all-mpnet-base-v2
+  - google/bigbird-roberta-base

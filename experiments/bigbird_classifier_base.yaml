@@ -1,0 +1,37 @@
+tde_version: 0.0.3
+model:
+  module: transformer.classifier:TransformerClassifier
+  kwargs:
+    transformer_model: google/bigbird-roberta-base
+    transformer_model_kwargs:
+      attention_type: block_sparse
+      block_size: 64
+      num_random_blocks: 2
+    cls_head_kwargs:
+      hidden_features: 50
+      hidden_dropout: 0.5
+      hidden_activation: relu
+    pooler_type: mean
+    batch_size: 3
+    label_smoothing: 0.1
+
+  train_kwargs:
+    epochs: 1
+    warmup_steps: 10
+    grad_accumulation_steps: 2
+    weight_decay: 0.01
+    fp16: True
+    max_grad_norm: 1.0
+    log_every_step: 1
+    validate_every_step: 100
+    patience: null
+    device: cuda
+
+
+task:
+  module: imdb:IMDBClassification
+  kwargs:
+    data_size_limit:
+      train: 1000
+      validation: 200
+      test: 200
