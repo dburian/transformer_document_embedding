@@ -160,7 +160,10 @@ class HPSearchExperimentConfig(ExperimentConfig):
         name_parts = []
         for key, value in flatten_params.items():
             short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
-            name_parts.append(f"{short_key}={value}")
+            value_str = value
+            if isinstance(value, list):
+                value_str = f"[{','.join(map(str, value))}]"
+            name_parts.append(f"{short_key}={value_str}")
 
         return "-".join(name_parts)
 
