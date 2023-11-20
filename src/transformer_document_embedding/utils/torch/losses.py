@@ -314,8 +314,8 @@ class SoftCCALoss(torch.nn.Module):
     ) -> dict[str, torch.Tensor]:
         sdl1, sdl2 = self.sdl1(view1), self.sdl2(view2)
 
-        # TODO: Is this correct?
-        l2 = torch.linalg.norm(view1 - view2, dim=(0, 1))
+        # MSE is squared l2 norm
+        l2 = torch.nn.functional.mse_loss(view1, view2)
 
         return {
             "sdl1": sdl1,
@@ -353,6 +353,8 @@ class StochasticDecorrelationLoss(torch.nn.Module):
 
         # Batch size
         m = inputs.size(0)
+        # Dimension of projections
+        n = inputs.size(1)
 
         new_sigma = (1 / (m - 1)) * inputs.T @ inputs
         self.sigma = self.alpha * self.sigma.detach() + new_sigma
@@ -362,6 +364,9 @@ class StochasticDecorrelationLoss(torch.nn.Module):
         apprx_sigma = apprx_sigma.abs()
 
         loss = apprx_sigma.sum() - apprx_sigma.trace()
+
+        # My addition: mean instead of sum, to help with fine-tuning SDL vs L2 norm
+        loss /= (n * n) - n
 
         return loss
 
