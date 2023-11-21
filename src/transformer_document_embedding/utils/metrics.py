@@ -5,7 +5,6 @@ import warnings
 from typing import TYPE_CHECKING, Any, Callable
 from sklearn.cross_decomposition import CCA
 
-from sklearn.exceptions import ConvergenceWarning
 
 import numpy as np
 import torch
@@ -304,7 +303,8 @@ class WindowedNonResetableCCAMetric(Metric):
 
         cca = CCA(n_components=self.n_components, max_iter=5000)
         try:
-            with warnings.catch_warnings(category=ConvergenceWarning):
+            # No category keyword for python 3.10 compatibility
+            with warnings.catch_warnings():
                 views1_, views2_ = cca.fit_transform(
                     self.views1.numpy(force=True),
                     self.views2.numpy(force=True),

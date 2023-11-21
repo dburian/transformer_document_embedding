@@ -432,8 +432,13 @@ class ProjectionLoss(torch.nn.Module):
         projected_view1 = self.net1(view1) if self.net1 is not None else view1
         projected_view2 = self.net2(view2) if self.net2 is not None else view2
 
+        loss_outputs = self.loss_fn(projected_view1, projected_view2)
+        # For MSE and CosineDistanceLoss
+        if isinstance(loss_outputs, torch.Tensor):
+            loss_outputs = {"loss": loss_outputs}
+
         return {
-            **self.loss_fn(projected_view1, projected_view2),
+            **loss_outputs,
             "projected_view1": projected_view1,
             "projected_view2": projected_view2,
         }

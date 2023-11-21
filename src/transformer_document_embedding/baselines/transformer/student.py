@@ -225,6 +225,7 @@ class TransformerStudent(TransformerBase):
 
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()
+
         trainer = LongformerTrainer(
             model=self._model,
             train_data=train_data,
