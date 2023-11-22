@@ -88,8 +88,11 @@ class TransformerBase(Baseline):
 
         return _cb
 
+    def _model_save_file_path(self, dir_path: str) -> str:
+        return path.join(dir_path, "model")
+
     def save(self, dir_path: str) -> None:
-        torch.save(self._model.state_dict(), dir_path)
+        torch.save(self._model.state_dict(), self._model_save_file_path(dir_path))
 
     def load(self, dir_path: str) -> None:
-        self._model.load_state_dict(torch.load(dir_path))
+        self._model.load_state_dict(torch.load(self._model_save_file_path(dir_path)))
