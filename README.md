@@ -1,4 +1,4 @@
-[./d/baselines]: ./doc/baselines.md
+[./d/models]: ./doc/models.md
 [./d/related_work]: ./doc/related_work.md
 [d/timeline]: doc/timeline.md
 [d/approach]: doc/approach.md
@@ -29,7 +29,7 @@ progress.**
 - [Timeline][d/timeline]
 - [Related work][./d/related_work] - collection of articles that might be useful
   in the future
-- [Baselines][./d/baselines] - list of baseline models considered
+- [Models][./d/models] - list of models models considered
 
 
 ## Links

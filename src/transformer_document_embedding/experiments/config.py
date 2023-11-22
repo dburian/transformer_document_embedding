@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 import pkg_resources
 import yaml
 
-MODEL_MODULE_PREFIX = "transformer_document_embedding.baselines"
+MODEL_MODULE_PREFIX = "transformer_document_embedding.models"
 TASK_MODULE_PREFIX = "transformer_document_embedding.tasks"
 CONF_REQUIRED_FIELDS = [
     (["tde_version"], "version of transformer_document_embedding package"),

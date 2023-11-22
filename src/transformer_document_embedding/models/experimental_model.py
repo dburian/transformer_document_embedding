@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
-class Baseline:
+class ExperimentalModel:
     """Defines the minimal interface for models."""
 
     def train(

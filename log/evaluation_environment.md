@@ -30,7 +30,7 @@ There are three types of entities:
 - `task` -- defines data, splits, evaluation metrics
 - `model` -- takes care of building the model, minimal as can be (pure
   `torch.nn.Module` or `tf.keras.Model`)
-- `baseline` -- takes care of getting the best out of given `model` and `task`,
+- `ExperimentalModel` -- takes care of getting the best out of given `model` and `task`,
   so mainly training
 
 ## Scripts
@@ -56,11 +56,11 @@ used for the purpose it was designed.
 The main goal is to write experiments, not code. Do not over-optimize for stuff
 that you'll never need.
 
-- Separating pure models and baselines
+- Separating pure models and experimental models
 
-Pure models are easily portable. Baselines are not. This is the main reason why
-the code is separated as so. Models can be written in pytorch or tensorflow,
-baselines also act as an adaptors.
+Pure models are easily portable. ExperimentalModels are not. This is the main
+reason why the code is separated as so. Models can be written in pytorch or
+tensorflow, ExperimentalModels also act as an adaptors.
 
 - importing models and tasks by package path
 
@@ -88,3 +88,10 @@ HF dataset is great because:
     - it should work with all transformers in HF out of the box
     - it has documentation (though hard to navigate)
     - caching
+
+- Naming: baseline vs experimental_model
+
+I've came back and forth on this. Experimental model is more descriptive. It
+says right away it is a model that is experimented with. Baseline has additional
+meaning that it serves as a basic threshold which is supposed to be surpassed by
+another model. Which does not really make sense.

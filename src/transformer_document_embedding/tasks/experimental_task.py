@@ -5,7 +5,6 @@ if TYPE_CHECKING:
     from typing import Any, Optional
 
 
-# TODO: Rename to just task?
 class ExperimentalTask:
     """Defines the minimal interface for tasks.
 

@@ -3,15 +3,12 @@ from __future__ import annotations
 import os
 import logging
 from typing import TYPE_CHECKING
-from typing import Any, Iterable, Optional
 
 from gensim.models.callbacks import CallbackAny2Vec
 
 import transformer_document_embedding.tasks.wikipedia_similarities as wiki_sims_task
-from transformer_document_embedding.baselines.baseline import (
-    Baseline,
-)
-from transformer_document_embedding.models.paragraph_vector import ParagraphVector
+from ..experimental_model import ExperimentalModel
+from .paragraph_vector import ParagraphVector
 from transformer_document_embedding.utils.evaluation import evaluate_ir_metrics
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
 
@@ -19,6 +16,7 @@ if TYPE_CHECKING:
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
     from datasets.arrow_dataset import Dataset
     from gensim.models import Doc2Vec
+    from typing import Any, Iterable, Optional
     import numpy as np
 
 
@@ -31,7 +29,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
     def __init__(
         self,
         *,
-        baseline: ParagraphVectorEmbed,
+        model: ParagraphVectorEmbed,
         val_dataset: Dataset,
         eval_every: int,
         log_dir: str,
@@ -42,7 +40,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
     ):
         if hits_thresholds is None:
             hits_thresholds = [10, 100]
-        self._baseline = baseline
+        self._model = model
         self._true_dataset = val_dataset
         self._eval_every = eval_every
 
@@ -72,7 +70,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
     def evaluate(self, log_name_prefix: str) -> None:
         logger.info("Evaluating %s model.", log_name_prefix)
 
-        pred_embeddings = self._baseline.predict(self._true_dataset)
+        pred_embeddings = self._model.predict(self._true_dataset)
         true_pred_ids_iter = wiki_sims_task.get_nearest_ids_from_faiss(
             self._true_dataset, pred_embeddings
         )
@@ -90,7 +88,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
             )
 
             self._best_score = score
-            self._baseline.save(self._save_best_path)
+            self._model.save(self._save_best_path)
 
         import tensorflow as tf
 
@@ -125,7 +123,7 @@ class CheckpointSave(CallbackAny2Vec):
         self._epoch += 1
 
 
-class ParagraphVectorEmbed(Baseline):
+class ParagraphVectorEmbed(ExperimentalModel):
     def __init__(
         self,
         dm_kwargs: Optional[dict[str, Any]] = None,
@@ -147,7 +145,7 @@ class ParagraphVectorEmbed(Baseline):
         if log_dir is not None and task.validation is not None:
             callbacks.append(
                 EvaluateIRMetrics(
-                    baseline=self,
+                    model=self,
                     val_dataset=task.validation,
                     eval_every=10,
                     save_best_path=model_dir

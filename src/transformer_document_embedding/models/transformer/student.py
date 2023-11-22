@@ -8,10 +8,8 @@ from torcheval.metrics import Max, Mean
 from tqdm.auto import tqdm
 
 
-from transformer_document_embedding.baselines.transformer.base import TransformerBase
-from transformer_document_embedding.baselines.trainer import (
-    TorchTrainer,
-)
+from transformer_document_embedding.models.transformer.base import TransformerBase
+from transformer_document_embedding.models.trainer import TorchTrainer
 from transformer_document_embedding.utils.metrics import (
     CosineDistanceWithSBERT,
     MSEWithSBERT,

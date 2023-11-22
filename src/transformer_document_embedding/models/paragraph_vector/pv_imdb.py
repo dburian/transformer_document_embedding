@@ -6,18 +6,35 @@ import numpy as np
 import tensorflow as tf
 from datasets.arrow_dataset import Dataset
 
-from transformer_document_embedding.baselines.baseline import (
-    Baseline,
-)
-from transformer_document_embedding.models.paragraph_vector import ParagraphVector
+from transformer_document_embedding.models.experimental_model import ExperimentalModel
+from .paragraph_vector import ParagraphVector
 
-# TODO: Transition to Torch classification head
-from transformer_document_embedding.models.tf.cls_head import ClsHead
 from transformer_document_embedding.tasks.imdb import IMDBClassification
 from transformer_document_embedding.utils.gensim.data import GensimCorpus
 
 
-class ParagraphVectorIMDB(Baseline):
+# TODO: Transition to Torch classification head
+class ClsHead(tf.keras.Sequential):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        hidden_activation: str | tf.keras.layers.Layer,
+        hidden_dropout: float,
+        output_activation: str | tf.keras.layers.Layer,
+    ) -> None:
+        super().__init__(
+            [
+                tf.keras.layers.Input(input_dim),
+                tf.keras.layers.Dense(hidden_dim, activation=hidden_activation),
+                tf.keras.layers.Dropout(hidden_dropout),
+                tf.keras.layers.Dense(output_dim, activation=output_activation),
+            ]
+        )
+
+
+class ParagraphVectorIMDB(ExperimentalModel):
     def __init__(
         self,
         cls_head_kwargs: Optional[dict[str, Any]] = None,

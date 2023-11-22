@@ -6,13 +6,11 @@ from gensim.corpora import Dictionary
 from gensim.matutils import sparse2full
 from gensim.models import TfidfModel
 
-from transformer_document_embedding.baselines.experimental_model import (
-    Baseline,
-)
+from transformer_document_embedding.models.experimental_model import ExperimentalModel
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
-class TFIDF(Baseline):
+class TFIDF(ExperimentalModel):
     def __init__(
         self,
         word_filter_no_below: int = 10,

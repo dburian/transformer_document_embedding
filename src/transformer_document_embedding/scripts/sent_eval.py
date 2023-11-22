@@ -7,7 +7,7 @@ from typing import Any, Optional, TYPE_CHECKING
 
 from datasets import Dataset, disable_progress_bar, enable_progress_bar
 import senteval
-from transformer_document_embedding.baselines.baseline import Baseline
+from transformer_document_embedding.models.experimental_model import ExperimentalModel
 from transformer_document_embedding.experiments.config import ExperimentConfig
 from transformer_document_embedding.experiments.result import save_csv_results
 from transformer_document_embedding.scripts.args import add_common_args
@@ -132,7 +132,7 @@ def batcher(params: dotdict, batch: list[list[str]]) -> np.ndarray:
         )
         enable_progress_bar()
 
-    assert isinstance(params.model, Baseline)
+    assert isinstance(params.model, ExperimentalModel)
     pred_batches = params.model.predict(ds)
     return np.vstack(list(smart_unbatch(pred_batches, 1)))
 

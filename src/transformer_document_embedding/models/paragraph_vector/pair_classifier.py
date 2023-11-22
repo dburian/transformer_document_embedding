@@ -12,11 +12,9 @@ from torcheval.metrics import (
     MulticlassPrecision,
     MulticlassRecall,
 )
-from transformer_document_embedding.baselines.baseline import Baseline
-from transformer_document_embedding.baselines.trainer import (
-    TorchTrainer,
-)
-from transformer_document_embedding.models.paragraph_vector import ParagraphVector
+from ..experimental_model import ExperimentalModel
+from ..trainer import TorchTrainer
+from .paragraph_vector import ParagraphVector
 from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.gensim.data import PairedGensimCorpus
 from transformer_document_embedding.utils.metrics import with_accessor
@@ -32,7 +30,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class PairClassifier(Baseline):
+class PairClassifier(ExperimentalModel):
     def __init__(
         self,
         dbow_kwargs: Optional[dict[str, Any]],

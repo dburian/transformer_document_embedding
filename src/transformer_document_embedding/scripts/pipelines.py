@@ -12,7 +12,9 @@ import argparse
 
 if TYPE_CHECKING:
     from transformer_document_embedding.experiments.config import ExperimentConfig
-    from transformer_document_embedding.baselines.baseline import Baseline
+    from transformer_document_embedding.models.experimental_model import (
+        ExperimentalModel,
+    )
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
     from typing import Optional
 
@@ -71,7 +73,7 @@ class TrainingPipeline(Pipeline):
     def run(
         self,
         args: argparse.Namespace,
-        model: Baseline,
+        model: ExperimentalModel,
         task: ExperimentalTask,
         config: ExperimentConfig,
     ) -> None:
@@ -107,7 +109,7 @@ class InitializeModelAndTask(Pipeline):
     def run(
         self,
         config: ExperimentConfig,
-    ) -> tuple[Baseline, ExperimentalTask]:
+    ) -> tuple[ExperimentalModel, ExperimentalTask]:
         logging.info(
             "Starting experiment '%s' with config:\n%s",
             config.name,
