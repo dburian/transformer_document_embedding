@@ -15,11 +15,13 @@ from torcheval.metrics import (
 from tqdm.auto import tqdm
 
 
-from transformer_document_embedding.baselines.longformer.train import LongformerTrainer
 from transformer_document_embedding.baselines.transformer.base import TransformerBase
-from transformer_document_embedding.models.torch.cls_head import ClsHead
+from transformer_document_embedding.baselines.trainer import (
+    TorchTrainer,
+)
+from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.metrics import VMemMetric, with_accessor
-import transformer_document_embedding.utils.torch.training as train_utils
+import transformer_document_embedding.utils.training as train_utils
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel
@@ -98,7 +100,7 @@ class TransformerPairClassifier(TransformerBase):
 
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()
-        trainer = LongformerTrainer(
+        trainer = TorchTrainer(
             model=self._model,
             train_data=train_data,
             val_data=val_data,

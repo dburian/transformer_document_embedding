@@ -25,7 +25,7 @@ model.load(exp_path + "/model/checkpoint")
 # ### Testing just DCCA
 
 # %%
-import transformer_document_embedding.utils.torch.losses as losses
+import transformer_document_embedding.utils.losses as losses
 import torch
 from torchviz import make_dot
 

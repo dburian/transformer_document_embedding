@@ -6,8 +6,8 @@ from torch.utils.tensorboard.writer import SummaryWriter
 
 from transformers import AutoModel, AutoTokenizer
 from transformer_document_embedding.baselines.baseline import Baseline
-from transformer_document_embedding.models.hf_layers import AVAILABLE_POOLERS
-from transformer_document_embedding.utils.torch.training import (
+from transformer_document_embedding.models.poolers import AVAILABLE_POOLERS
+from transformer_document_embedding.utils.training import (
     create_tokenized_data_loader,
 )
 

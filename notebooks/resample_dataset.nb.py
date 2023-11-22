@@ -9,7 +9,7 @@
 # %%
 from __future__ import annotations
 from datasets import load_from_disk, Dataset, DatasetDict
-import transformer_document_embedding.utils.torch.training as train_utils
+import transformer_document_embedding.utils.training as train_utils
 
 from typing import TYPE_CHECKING
 

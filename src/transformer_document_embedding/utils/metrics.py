@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from torcheval.metrics import Mean, Metric
 
-from transformer_document_embedding.utils.torch.losses import CCALoss
+from transformer_document_embedding.utils.losses import CCALoss
 
 if TYPE_CHECKING:
     from typing import Iterable, Optional, Union

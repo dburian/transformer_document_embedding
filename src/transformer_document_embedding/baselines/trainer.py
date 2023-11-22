@@ -8,7 +8,7 @@ from torch.cuda.amp.grad_scaler import GradScaler
 from torcheval.metrics import Mean, Metric, toolkit
 from tqdm.auto import tqdm
 
-import transformer_document_embedding.utils.torch.training as train_utils
+import transformer_document_embedding.utils.training as train_utils
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LongformerTrainer:
+class TorchTrainer:
     def __init__(
         self,
         model: torch.nn.Module,

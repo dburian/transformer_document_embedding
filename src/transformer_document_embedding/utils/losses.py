@@ -3,7 +3,7 @@ import torch
 from typing import TYPE_CHECKING
 
 
-from transformer_document_embedding.utils.torch.net_helpers import get_activation
+from transformer_document_embedding.utils.net_helpers import get_activation
 
 if TYPE_CHECKING:
     from typing import Optional

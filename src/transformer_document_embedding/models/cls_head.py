@@ -1,6 +1,6 @@
 import torch
 
-from transformer_document_embedding.utils.torch.net_helpers import get_activation
+from transformer_document_embedding.utils.net_helpers import get_activation
 
 
 class ClsHead(torch.nn.Sequential):

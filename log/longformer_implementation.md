@@ -4,43 +4,16 @@
 
 ### How to create custom models?
 
-It is better to create custom specialized models such as `LongformerFor...`:
-- With custom Longformers the pretrained weights (saved as `state_dict`s) might
-  not align.
-- Put `LongformerModel` under `self.longformer`. The merging downloaded
-  `state_dict` and current `state_dict` is in
-  `PreTrainedModel._load_pretrained_model` where the key prefix 'longformer' is
-  gotten from `LongformerPreTrainedModel.base_model_prefix`.
+At the end I decided to rely solely on `torch.nn.Module`. This got rid of a lot
+of HF code, which IMHO is great for storing the model, learning about it and
+quickly using it but not for experimentation. This is because to write HF models
+one needs to do a lot of copying and writing very verbose code.
 
-
-### PreTrainedConfig
-
-Approaches:
-
-- Stick to HF code: no autocompletion for config values, need to check values
-  (for `None`s) twice (in baseline init and in config's init)
-    1. Create custom class, inheriting from `LongformerConfig`.
-    2. Call `.from_pretrained` on the custom class, with custom config values as
-       kwargs.
-    3. If those kwargs are attributes on the initiated custom config, the values
-       get assigned. From `configuration_utils`:
-```python
-config = cls(**config_dict)
-
-for key, value in kwargs.items():
-    if hasattr(config, key):
-        setattr(config, key, value)
-```
-
-- Brute force **BEST**: we're maybe ignoring what should happen in `from_dict`
-```python
-config = CustomConfig(
-    my_custom_key=my_custom_value,
-    **CustomConfig.get_config_dict('pretrained/config/path')[0]
-)
-```
-
-
+So the steps are:
+- download HF model
+- put it inside custom `torch.nn.Module`
+- work only with the custom module
+- save only the state dict
 
 # Evaluation
 

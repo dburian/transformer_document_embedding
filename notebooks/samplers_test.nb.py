@@ -2,7 +2,7 @@
 # # Testing of samplers
 
 # %%
-import transformer_document_embedding.utils.torch.training as train_utils
+import transformer_document_embedding.utils.training as train_utils
 import torch
 from datasets import load_from_disk
 from transformers import AutoTokenizer

@@ -5,7 +5,7 @@
 import numpy as np
 from tqdm.auto import tqdm
 import torch
-import transformer_document_embedding.utils.torch.losses as losses
+import transformer_document_embedding.utils.losses as losses
 from sklearn.cross_decomposition import CCA
 
 # %%

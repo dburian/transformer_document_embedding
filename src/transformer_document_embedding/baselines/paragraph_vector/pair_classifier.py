@@ -13,12 +13,14 @@ from torcheval.metrics import (
     MulticlassRecall,
 )
 from transformer_document_embedding.baselines.baseline import Baseline
-from transformer_document_embedding.baselines.longformer.train import LongformerTrainer
+from transformer_document_embedding.baselines.trainer import (
+    TorchTrainer,
+)
 from transformer_document_embedding.models.paragraph_vector import ParagraphVector
-from transformer_document_embedding.models.torch.cls_head import ClsHead
+from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.gensim.data import PairedGensimCorpus
 from transformer_document_embedding.utils.metrics import with_accessor
-import transformer_document_embedding.utils.torch.training as train_utils
+import transformer_document_embedding.utils.training as train_utils
 import torch
 
 
@@ -111,8 +113,7 @@ class PairClassifier(Baseline):
             self._cls_head,
             torch.nn.CrossEntropyLoss(label_smoothing=self._label_smoothing),
         )
-        # TODO: Move and call it Pytorch trainer
-        trainer = LongformerTrainer(
+        trainer = TorchTrainer(
             model=model,
             train_data=cls_head_train_data,
             val_data=cls_head_val_data,
@@ -189,7 +190,6 @@ class _ModelWithLoss(torch.nn.Module):
         self,
         cls_head: torch.nn.Module,
         loss_fn: torch.nn.Module,
-        # TODO: Label smoothing?
         *args,
         **kwargs,
     ) -> None:
