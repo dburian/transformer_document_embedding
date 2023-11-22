@@ -38,6 +38,7 @@ wikipedia = [
 evaluate = "transformer_document_embedding.scripts.evaluate:main"
 hp_search = "transformer_document_embedding.scripts.hp_search:main"
 generate_embeddings = "transformer_document_embedding.scripts.generate_embeddings:main"
+sent_eval = "transformer_document_embedding.scripts.sent_eval:main"
 
 [project.urls]
 homepage = "https://github.com/dburian/transformer_document_embedding"

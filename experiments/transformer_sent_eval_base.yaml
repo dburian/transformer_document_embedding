@@ -1,0 +1,32 @@
+tde_version: 0.0.3
+model:
+  module: transformer.student:TransformerStudent
+  kwargs:
+    transformer_model: sentence-transformers/all-mpnet-base-v2
+    # transformer_model: allenai/longformer-base-4096
+    batch_size: 24
+    pooler_type: mean
+    contextual_max_length: null
+    contextual_loss_kwargs: null
+    static_loss_kwargs: null
+
+task:
+  module: sent_eval:SentEval
+  kwargs:
+    path: ./data/SentEval/data
+    params: debug
+    tasks:
+      - STS12
+      - STS13
+      - STS14
+      - STS15
+      - STS16
+      - STSBenchmark
+      - SICKRelatedness
+      - MR
+      - CR
+      - SUBJ
+      - MPQA
+      - SST2
+      - TREC
+      - MRPC
