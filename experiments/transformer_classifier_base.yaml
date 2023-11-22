@@ -2,6 +2,7 @@ tde_version: 0.0.3
 model:
   module: transformer.classifier:TransformerClassifier
   kwargs:
+    transformer_model: allenai/longformer-base-4096
     cls_head_kwargs:
       hidden_features: 50
       hidden_dropout: 0.5
@@ -19,6 +20,7 @@ model:
     max_grad_norm: 1.0
     log_every_step: 1
     validate_every_step: 100
+    save_best: False
     patience: null
     device: cuda
 
