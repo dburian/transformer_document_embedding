@@ -356,7 +356,7 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
     ) -> None:
         super().__init__(n_components, device)
 
-        self._cca_loss = CCALoss(output_dimension=n_components, device=device)
+        self._cca_loss = CCALoss(output_dimension=n_components)
 
     @torch.inference_mode()
     def compute(self) -> float:

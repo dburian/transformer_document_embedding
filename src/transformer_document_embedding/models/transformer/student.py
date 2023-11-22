@@ -205,7 +205,6 @@ class TransformerStudent(TransformerBase):
 
         train_data = to_dataloader(task.train)
 
-        val_summary_writer = None
         val_data = None
         if task.validation is not None:
             val_data = to_dataloader(task.validation, training=False)
