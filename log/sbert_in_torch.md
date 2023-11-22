@@ -31,6 +31,9 @@ Overall I think it is better to move away from `st`. I will drop a bunch of
 code, maybe the code will start to resamble models based on longformer (and
 other models from `transformers`) which could cause less code duplication.
 
+**I've confirmed that using my 'mean' pooler on top of HF transformer equals
+using `SentenceTransformer('model_name')`.**
+
 ## Difference from `longformer/*.py` and `sbert/*.py` and `bigbird/*.py`
 
 Currently I have three different models for the same task for each architecture:
