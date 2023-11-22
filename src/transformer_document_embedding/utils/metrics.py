@@ -10,6 +10,8 @@ import numpy as np
 import torch
 from torcheval.metrics import Mean, Metric
 
+from transformer_document_embedding.utils.torch.losses import CCALoss
+
 if TYPE_CHECKING:
     from typing import Iterable, Optional, Union
 
@@ -344,3 +346,30 @@ class WindowedNonResetableCCAMetric(Metric):
             self.views1 = self.views1[-self.window_size :, :]
         if self.views2.size(0) > self.window_size:
             self.views2 = self.views2[-self.window_size :, :]
+
+
+class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
+    def __init__(
+        self,
+        n_components: int,
+        device: Optional[torch.device] = None,
+    ) -> None:
+        super().__init__(n_components, device)
+
+        self._cca_loss = CCALoss(output_dimension=n_components, device=device)
+
+    @torch.inference_mode()
+    def compute(self) -> float:
+        samples = self.views1.size(0)
+
+        if samples != self.window_size:
+            return torch.nan
+
+        view1_dim = self.views1.size(1)
+        view2_dim = self.views2.size(1)
+
+        # There is a upper bound on the number of dimensions found
+        if self.n_components > min(view1_dim, view2_dim, samples):
+            return torch.nan
+
+        return -self._cca_loss(self.views1, self.views2)["loss"]

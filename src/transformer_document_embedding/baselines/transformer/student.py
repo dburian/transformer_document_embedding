@@ -14,7 +14,7 @@ from transformer_document_embedding.utils.metrics import (
     CosineDistanceWithSBERT,
     MSEWithSBERT,
     VMemMetric,
-    WindowedNonResetableCCAMetric,
+    WindowedNonResetableCCAMetricTorch,
     with_accessor,
 )
 import transformer_document_embedding.utils.torch.training as train_utils
@@ -344,7 +344,7 @@ class TransformerStudent(TransformerBase):
             metric.update(outputs["projected_view1"], outputs["projected_view2"])
 
         for n_components in [64, 128, 256, 512]:
-            inner_metric = WindowedNonResetableCCAMetric(n_components=n_components)
+            inner_metric = WindowedNonResetableCCAMetricTorch(n_components=n_components)
             metric_name = f"cca_{n_components}x{inner_metric.window_size}"
             if (
                 val_data is not None
