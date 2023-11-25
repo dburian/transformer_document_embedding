@@ -9,13 +9,15 @@ import logging
 
 from datasets import Dataset, DatasetDict, concatenate_datasets
 import datasets.utils.logging as hf_logging
-from transformer_document_embedding.experiments.config import ExperimentConfig
-from transformer_document_embedding.scripts.args import add_common_args
+from transformer_document_embedding.scripts.config_specs import ExperimentSpec
 from transformer_document_embedding.scripts.pipelines import (
     InitializeModelAndTask,
     TrainingPipeline,
+    add_common_args,
 )
-
+from transformer_document_embedding.scripts.utils import (
+    load_yaml,
+)
 from transformer_document_embedding.utils.evaluation import smart_unbatch
 
 training_pipeline = TrainingPipeline()
@@ -57,12 +59,20 @@ def parse_args() -> argparse.Namespace:
 
 
 def generate_embeddings(
-    config: ExperimentConfig,
+    config: ExperimentSpec,
     args: argparse.Namespace,
 ) -> None:
-    model, task = initialization_pipeline.run(config)
+    exp_path = os.path.join(
+        args.output_base_path,
+        config.task.module,
+        config.model.module,
+        args.name,
+    )
+    os.makedirs(exp_path, exist_ok=True)
 
-    training_pipeline.run(args, model, task, config)
+    model, task = initialization_pipeline.run(args.name, exp_path, config)
+
+    training_pipeline.run(args, model, task, exp_path, config)
 
     # The gymnastics with generators, new dataset and concatenation is not
     # straightforward, but:
@@ -99,7 +109,7 @@ def generate_embeddings(
         embeddings[split_name] = concatenate_datasets([split, split_embeddings], axis=1)
     hf_logging.enable_progress_bar()
 
-    embed_dataset_path = os.path.join(config.experiment_path, "embeddings")
+    embed_dataset_path = os.path.join(exp_path, "embeddings")
     logging.info("Saving the embeddings dataset to '%s'", embed_dataset_path)
     embeddings.save_to_disk(embed_dataset_path, max_shard_size=args.max_shard_size)
 
@@ -111,11 +121,9 @@ def main():
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
-    exp_config = ExperimentConfig.from_yaml(
-        args.config, args.output_base_path, name=args.name
-    )
+    config = ExperimentSpec.from_dict(load_yaml(args.config))
 
-    generate_embeddings(config=exp_config, args=args)
+    generate_embeddings(config, args)
 
 
 if __name__ == "__main__":

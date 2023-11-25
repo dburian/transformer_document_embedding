@@ -378,6 +378,8 @@ class TransformerStudent(TransformerBase):
 
         data = self._to_dataloader(inputs, training=False)
         for batch in tqdm(data, desc="Predicting batches"):
+            if "labels" in batch:
+                del batch["labels"]
             train_utils.batch_to_device(batch, device)
             embeddings = self._model(**batch)["embeddings"]
             yield embeddings.numpy(force=True)
@@ -428,7 +430,7 @@ class _SequenceEmbeddingModel(torch.nn.Module):
             **outputs,
             attention_mask=attention_mask,
         )
-        loss_outputs = self.loss(pooled_output, kwargs)
+        loss_outputs = self.loss(pooled_output, kwargs) if len(kwargs) > 0 else {}
 
         return {
             **outputs,

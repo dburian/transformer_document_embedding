@@ -104,7 +104,7 @@ class TransformerBase(ExperimentalModel):
             return None, None
 
         return SummaryWriter(path.join(log_dir, "train")), SummaryWriter(
-            path.join(log_dir), "val"
+            path.join(log_dir, "val")
         )
 
     def _get_save_model_callback(

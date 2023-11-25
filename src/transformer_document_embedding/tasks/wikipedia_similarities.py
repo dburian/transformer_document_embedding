@@ -22,7 +22,7 @@ class WikipediaSimilarities(HFTask):
     def __init__(
         self,
         dataset: str,
-        path: str = "./data/wikipedia_similarities.py",
+        path: str,
         **kwargs,
     ) -> None:
         assert (

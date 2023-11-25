@@ -1,5 +1,6 @@
 from __future__ import annotations
 import argparse
+import os
 from functools import partial
 import logging
 import pprint
@@ -8,11 +9,18 @@ from typing import Any, Optional, TYPE_CHECKING
 from datasets import Dataset, disable_progress_bar, enable_progress_bar
 import senteval
 from transformer_document_embedding.models.experimental_model import ExperimentalModel
-from transformer_document_embedding.experiments.config import ExperimentConfig
-from transformer_document_embedding.experiments.result import save_csv_results
-from transformer_document_embedding.scripts.args import add_common_args
 
-from transformer_document_embedding.scripts.pipelines import InitializeModelAndTask
+from transformer_document_embedding.scripts.pipelines import (
+    InitializeModelAndTask,
+    add_common_args,
+)
+from transformer_document_embedding.scripts.utils import (
+    ExperimentSpec,
+    init_type,
+    load_yaml,
+    save_config,
+    save_results,
+)
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 
 
@@ -66,12 +74,9 @@ def words_to_dataset(word_batch: list[list[str]]) -> Dataset:
 
 def reduce_results(all_results: dict[str, Any]) -> dict[str, float]:
     """Leaves only comparative results."""
-    print("Reducing")
-    pprint.pprint(all_results)
     reduced_results = {}
     for task, task_results in all_results.items():
         if task.startswith("STS") and task != "STSBenchmark":
-            print(f"task: {task}, task_results: {task_results}")
             reduced_results[f"{task}_spearman"] = task_results["all"]["spearman"][
                 "wmean"
             ]
@@ -90,11 +95,11 @@ def generic_prepare(
     params: dotdict,
     samples: list[list[str]],
     *,
-    config: ExperimentConfig,
+    config: ExperimentSpec,
     args: argparse.Namespace,
 ) -> None:
-    model = config.get_model_type()(**config.values["model"].get("kwargs", {}))
-    task = config.get_task_type()(**config.values["task"].get("kwargs", {}))
+    model: ExperimentalModel = init_type(config.model)
+    task: SentEval = init_type(config.task)
 
     if args.load_model_path is not None:
         logging.info("Loading model from %s.", args.load_model_path)
@@ -113,10 +118,7 @@ def generic_prepare(
         params.sent_to_id = {sent["text"]: sent["id"] for sent in ds}
 
     if args.train:
-        model.train(
-            DummyTask(ds),
-            **config.values["model"].get("train_kwargs", {}),
-        )
+        model.train(DummyTask(ds), **config.model.train_kwargs)
 
     params.model = model
 
@@ -137,8 +139,19 @@ def batcher(params: dotdict, batch: list[list[str]]) -> np.ndarray:
     return np.vstack(list(smart_unbatch(pred_batches, 1)))
 
 
-def evaluate(config: ExperimentConfig, args: argparse.Namespace) -> None:
-    _, task = initialization_pipeline.run(config)
+def evaluate(config: ExperimentSpec, args: argparse.Namespace) -> None:
+    exp_path = os.path.join(
+        args.output_base_path, config.task.module, config.model.module, args.name
+    )
+    os.makedirs(exp_path, exist_ok=True)
+    logging.info(
+        "Starting experiment '%s' with config:\n%s",
+        args.name,
+        pprint.pformat(config, indent=1),
+    )
+    save_config(config, exp_path)
+
+    task = init_type(config.task)
     assert isinstance(task, SentEval), "SentEval can be only run with `SentEval` task."
 
     prepare = partial(generic_prepare, config=config, args=args)
@@ -150,7 +163,7 @@ def evaluate(config: ExperimentConfig, args: argparse.Namespace) -> None:
     results = reduce_results(results)
     logging.info("Results: %s", pprint.pformat(results, indent=1))
 
-    save_csv_results(results, config.experiment_path)
+    save_results(results, exp_path)
 
 
 def main() -> None:
@@ -160,9 +173,7 @@ def main() -> None:
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
-    config = ExperimentConfig.from_yaml(
-        args.config, args.output_base_path, name=args.name
-    )
+    config = ExperimentSpec.from_dict(load_yaml(args.config))
 
     evaluate(config, args)
 

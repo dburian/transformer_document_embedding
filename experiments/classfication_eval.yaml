@@ -1,0 +1,2 @@
+tasks:
+  - module: imdb:IMDBClassification

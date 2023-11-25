@@ -4,23 +4,93 @@
 """
 from __future__ import annotations
 import argparse
+from copy import deepcopy
+import re
+from itertools import product
 import logging
+from transformer_document_embedding.scripts.config_specs import ExperimentSpec
 
-from transformer_document_embedding.experiments.config import (
-    HPSearchExperimentConfig,
-    load_config_values,
+
+from transformer_document_embedding.scripts.utils import (
+    load_yaml,
 )
-from transformer_document_embedding.experiments.search import GridSearch, OneSearch
-from transformer_document_embedding.scripts.args import add_common_args
 from transformer_document_embedding.scripts.pipelines import (
     InitializeModelAndTask,
     TrainingPipeline,
+    add_common_args,
 )
+
+import os
+from typing import Any, Iterable
+
 
 HS_BASE_PATH = "./hp_searches"
 
 training_pipeline = TrainingPipeline(train=True)
 initialization_pipeline = InitializeModelAndTask()
+
+
+def log_hparams(
+    flattened_hparams: dict[str, Any], trial_id: str, output_path: str
+) -> None:
+    import tensorflow as tf
+    from tensorboard.plugins.hparams import api as hp
+
+    with tf.summary.create_file_writer(output_path).as_default():
+        # tf is unable to log NoneTypes
+        for key, value in flattened_hparams.items():
+            if value is None:
+                flattened_hparams[key] = "None"
+            if isinstance(value, list) or isinstance(value, dict):
+                flattened_hparams[key] = str(value)
+
+        hp.hparams(flattened_hparams, trial_id)
+
+        tf.summary.flush()
+
+
+def unflatten_dict(flattened: dict[str, Any]) -> dict[str, Any]:
+    res = {}
+    for key, value in flattened.items():
+        # Create dict from the deepest outwards
+        for key_crumb in reversed(key.split(".")):
+            value = {key_crumb: value}
+        # Update with dict for single key
+        res.update(value)
+    return res
+
+
+def deep_merge(default: dict[Any, Any], new: dict[Any, Any]) -> dict[Any, Any]:
+    res = deepcopy(default)
+    for key, new_value in new.items():
+        default_value = default.get(key, None)
+        if isinstance(new_value, dict) and isinstance(default_value, dict):
+            res[key] = deep_merge(default_value, new_value)
+        else:
+            res[key] = new_value
+
+    return res
+
+
+def grid_search(
+    hparams: dict[str, Any], reference_values: dict[str, Any]
+) -> Iterable[tuple[dict[str, Any], ExperimentSpec]]:
+    options_per_key = (
+        [(key, value) for value in hparams[key]] for key in hparams.keys()
+    )
+    # product yields a single hparam setting as a tuple of (key, value) tuples
+    for flattened_hparams in map(dict, product(*options_per_key)):
+        new_values = deep_merge(reference_values, unflatten_dict(flattened_hparams))
+        yield flattened_hparams, ExperimentSpec.from_dict(new_values)
+
+
+def one_search(
+    hparams: dict[str, Any], reference_values: dict[str, Any]
+) -> Iterable[tuple[dict[str, Any], ExperimentSpec]]:
+    options = ({key: value} for key in hparams.keys() for value in hparams[key])
+    for flattened_hparams in options:
+        new_values = deep_merge(reference_values, unflatten_dict(flattened_hparams))
+        yield flattened_hparams, ExperimentSpec.from_dict(new_values)
 
 
 def parse_args() -> argparse.Namespace:
@@ -48,12 +118,35 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_single(config: HPSearchExperimentConfig, args: argparse.Namespace) -> None:
-    model, task = initialization_pipeline.run(config)
+def generate_name_from_dict(dct: dict[str, Any]) -> str:
+    name_parts = []
+    for key, value in dct.items():
+        short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
+        value_str = value
+        if isinstance(value, list):
+            value_str = f"[{','.join(map(str, value))}]"
+        elif isinstance(value, dict):
+            value_str = f"{{{generate_name_from_dict(value)}}}"
+        name_parts.append(f"{short_key}={value_str}")
 
-    training_pipeline.run(args, model, task, config)
+    return "-".join(name_parts)
 
-    config.log_hparams()
+
+def search_single(
+    config: ExperimentSpec,
+    flattened_hparams: dict[str, Any],
+    args: argparse.Namespace,
+) -> None:
+    exp_name = generate_name_from_dict(flattened_hparams)
+    exp_path = os.path.join(args.output_base_path, args.name, exp_name)
+    os.makedirs(exp_path, exist_ok=True)
+
+    model, task = initialization_pipeline.run(exp_name, exp_path, config)
+
+    training_pipeline.run(args, model, task, exp_path, config)
+
+    trial_id = os.path.join(args.name, exp_name.replace("/", "-"))
+    log_hparams(flattened_hparams, trial_id, exp_path)
 
 
 def main() -> None:
@@ -68,20 +161,18 @@ def main() -> None:
         "Please issue two commands instead."
     )
 
-    for search_cls, config_path in [
-        (GridSearch, args.grid_config),
-        (OneSearch, args.one_config),
+    reference_config = load_yaml(args.config)
+    for search_fn, config_path in [
+        (grid_search, args.grid_config),
+        (one_search, args.one_config),
     ]:
         if config_path is None:
             continue
 
-        search = search_cls.from_yaml(
-            config_path, args.output_base_path, name=args.name
-        )
-        base_config_values = load_config_values(args.config)
+        hparams = load_yaml(config_path)
 
-        for experiment_instance in search.based_on(base_config_values):
-            run_single(experiment_instance, args)
+        for hparam_instance, experiment_spec in search_fn(hparams, reference_config):
+            search_single(experiment_spec, hparam_instance, args)
 
 
 if __name__ == "__main__":
