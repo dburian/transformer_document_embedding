@@ -4,13 +4,16 @@ from dataclasses import dataclass, field
 
 
 from dacite import from_dict
-from typing import Any, Self
+from typing import Any, TypeVar
+
+# For compatibility with python3.10
+Self = TypeVar("Self", bound="BaseValuesSpec")
 
 
 @dataclass(kw_only=True)
 class BaseValuesSpec:
     @classmethod
-    def from_dict(cls, dct: dict[str, Any]) -> Self:
+    def from_dict(cls: type[Self], dct: dict[str, Any]) -> Self:
         try:
             return from_dict(cls, dct)
         except TypeError as e:
