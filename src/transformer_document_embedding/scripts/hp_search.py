@@ -49,27 +49,20 @@ def log_hparams(
         tf.summary.flush()
 
 
-def unflatten_dict(flattened: dict[str, Any]) -> dict[str, Any]:
-    res = {}
-    for key, value in flattened.items():
-        # Create dict from the deepest outwards
-        for key_crumb in reversed(key.split(".")):
-            value = {key_crumb: value}
-        # Update with dict for single key
-        res.update(value)
-    return res
+def deep_update_with_flatten(
+    self: dict[Any, Any], flatten: dict[Any, Any]
+) -> dict[Any, Any]:
+    for key, new_value in flatten.items():
+        crumbs = key.split(".")
+        dct = self
+        for crumb in crumbs[:-1]:
+            if crumb not in dct:
+                dct[crumb] = {}
+            dct = dct[crumb]
 
+        dct[crumbs[-1]] = new_value
 
-def deep_merge(default: dict[Any, Any], new: dict[Any, Any]) -> dict[Any, Any]:
-    res = deepcopy(default)
-    for key, new_value in new.items():
-        default_value = default.get(key, None)
-        if isinstance(new_value, dict) and isinstance(default_value, dict):
-            res[key] = deep_merge(default_value, new_value)
-        else:
-            res[key] = new_value
-
-    return res
+    return self
 
 
 def grid_search(
@@ -80,7 +73,9 @@ def grid_search(
     )
     # product yields a single hparam setting as a tuple of (key, value) tuples
     for flattened_hparams in map(dict, product(*options_per_key)):
-        new_values = deep_merge(reference_values, unflatten_dict(flattened_hparams))
+        new_values = deep_update_with_flatten(
+            deepcopy(reference_values), flattened_hparams
+        )
         yield flattened_hparams, ExperimentSpec.from_dict(new_values)
 
 
@@ -89,7 +84,9 @@ def one_search(
 ) -> Iterable[tuple[dict[str, Any], ExperimentSpec]]:
     options = ({key: value} for key in hparams.keys() for value in hparams[key])
     for flattened_hparams in options:
-        new_values = deep_merge(reference_values, unflatten_dict(flattened_hparams))
+        new_values = deep_update_with_flatten(
+            deepcopy(reference_values), flattened_hparams
+        )
         yield flattened_hparams, ExperimentSpec.from_dict(new_values)
 
 
