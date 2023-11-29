@@ -1,6 +1,7 @@
 # --------------------------------- MINE ---------------------------------
 results/**
 hp_searches/**
+evaluations/**
 *.sync.ipynb
 *.nb.ipynb
 
