@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Self
+from typing import TYPE_CHECKING, Any, Callable
 from sklearn.cross_decomposition import CCA
 
 
@@ -266,7 +266,9 @@ class WindowedNonResetableMetric(Metric):
         return samples == self.window_size
 
     @torch.inference_mode()
-    def update(self, views1: torch.Tensor, views2: torch.Tensor) -> Self:
+    def update(
+        self, views1: torch.Tensor, views2: torch.Tensor
+    ) -> WindowedNonResetableMetric:
         self.views1 = torch.cat((self.views1, views1))
         self.views2 = torch.cat((self.views2, views2))
 
@@ -276,7 +278,9 @@ class WindowedNonResetableMetric(Metric):
     def compute(self) -> Any:
         raise NotImplementedError()
 
-    def merge_state(self, metrics: Iterable[WindowedNonResetableCCAMetric]) -> Self:
+    def merge_state(
+        self, metrics: Iterable[WindowedNonResetableCCAMetric]
+    ) -> WindowedNonResetableMetric:
         views1 = [self.views1]
         views2 = [self.views2]
         for other in metrics:
@@ -290,7 +294,7 @@ class WindowedNonResetableMetric(Metric):
 
         return self
 
-    def reset(self) -> Self:
+    def reset(self) -> WindowedNonResetableMetric:
         return self
 
     def _shorten_views_to_size(self) -> None:
