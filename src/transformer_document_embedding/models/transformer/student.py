@@ -15,10 +15,15 @@ from transformer_document_embedding.utils.metrics import (
     MSEWithSBERT,
     VMemMetric,
     WindowedNonResetableCCAMetricTorch,
+    WindowedNonResetableCorrelationMetric,
     with_accessor,
 )
+from transformer_document_embedding.utils.similarity_losses import (
+    ContrastiveLoss,
+    create_sim_based_loss,
+)
 import transformer_document_embedding.utils.training as train_utils
-import transformer_document_embedding.utils.losses as losses
+from transformer_document_embedding.utils import cca_losses
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel
@@ -33,6 +38,150 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def log_max_abs_grad(
+    metric: Metric,
+    *_,
+    param_name: str,
+    model: torch.nn.Module,
+) -> None:
+    param = model.get_parameter(param_name)
+    grad = param.grad
+    if grad is None:
+        metric.update(torch.tensor([torch.nan], device=param.device))
+    else:
+        metric.update(grad.abs().max())
+
+
+class StaticContextualLoss(torch.nn.Module):
+    def __init__(
+        self,
+        contextual_max_length: Optional[int],
+        lam: Optional[float] = None,
+        static_loss: Optional[torch.nn.Module] = None,
+        contextual_loss: Optional[torch.nn.Module] = None,
+        contextual_key: str = "sbert",
+        static_key: str = "dbow",
+        len_key: str = "length",
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._contextual_key = contextual_key
+        self._static_key = static_key
+        self._contextual_max_length = contextual_max_length
+        self._len_key = len_key
+        self.static_loss = static_loss
+        self.contextual_loss = contextual_loss
+        self._lam = lam
+
+    @property
+    def contextual_max_length(self) -> Optional[int]:
+        return self._contextual_max_length
+
+    def forward(
+        self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
+        outputs = {"loss": torch.tensor(0, device=inputs.device, dtype=inputs.dtype)}
+
+        if self.contextual_loss is not None:
+            mask = (
+                targets[self._len_key] <= self._contextual_max_length
+                if self.contextual_max_length is not None
+                else torch.ones_like(targets[self._len_key])
+            ).unsqueeze(-1)
+
+            contextual_loss = self.contextual_loss(
+                inputs, targets[self._contextual_key], mask=mask
+            )
+            if isinstance(contextual_loss, dict):
+                just_contextual_loss = contextual_loss.pop("loss")
+                outputs.update(
+                    {
+                        f"contextual_{key}": value
+                        for key, value in contextual_loss.items()
+                    }
+                )
+                contextual_loss = just_contextual_loss
+
+            weight_sum = mask.sum()
+            if weight_sum > 0:
+                contextual_loss /= weight_sum
+
+            if self._lam is not None:
+                contextual_loss *= self._lam
+
+            outputs["contextual_mask"] = mask
+            outputs["contextual_loss"] = contextual_loss
+            outputs["loss"] += contextual_loss
+
+        if self.static_loss is not None:
+            static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
+            static_loss = torch.mean(static_loss_outputs.pop("loss"))
+
+            outputs.update(
+                {f"static_{key}": value for key, value in static_loss_outputs.items()}
+            )
+            outputs["static_loss"] = static_loss
+            outputs["loss"] += static_loss
+
+        return outputs
+
+
+class _SequenceEmbeddingModel(torch.nn.Module):
+    def __init__(
+        self,
+        transformer: PreTrainedModel,
+        pooler: torch.nn.Module,
+        loss: StaticContextualLoss,
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.transformer = transformer
+        self.pooler = pooler
+        self.loss = loss
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> dict[str, torch.Tensor]:
+        input_kws = {}
+        # Needed for Longformer
+        if "global_attention_mask" in kwargs:
+            input_kws["global_attention_mask"] = kwargs.pop("global_attention_mask")
+
+        outputs = self.transformer(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            output_attentions=False,
+            output_hidden_states=False,
+            return_dict=True,
+            inputs_embeds=None,
+            **input_kws,
+        )
+        pooled_output = self.pooler(
+            **outputs,
+            attention_mask=attention_mask,
+        )
+        loss_outputs = self.loss(pooled_output, kwargs) if len(kwargs) > 0 else {}
+
+        return {
+            **outputs,
+            **loss_outputs,
+            "embeddings": pooled_output,
+        }
 
 
 class TransformerStudent(TransformerBase):
@@ -69,7 +218,7 @@ class TransformerStudent(TransformerBase):
         contextual_loss_kwargs: Optional[dict[str, Any]],
         contextual_max_length: Optional[int],
         transformer_hidden_size: int,
-    ) -> losses.StaticContextualLoss:
+    ) -> StaticContextualLoss:
         loss_kwargs: dict[str, Any] = {
             "static_loss": None,
             "contextual_loss": None,
@@ -91,7 +240,7 @@ class TransformerStudent(TransformerBase):
                 **contextual_loss_kwargs,
             )
 
-        return losses.StaticContextualLoss(**loss_kwargs)
+        return StaticContextualLoss(**loss_kwargs)
 
     def _construct_static_loss(
         self,
@@ -102,8 +251,9 @@ class TransformerStudent(TransformerBase):
         static_embed_dim: int,
         cca_output_dim: Optional[int],
         transformer_hidden_size: int,
-        soft_cca_lam: Optional[float],
-    ) -> losses.ProjectionLoss:
+        soft_cca_lam: Optional[float] = None,
+        contrastive_lam: Optional[float] = None,
+    ) -> cca_losses.ProjectionLoss:
         view1_dim = (
             transformer_projection_layers[-1]
             if len(transformer_projection_layers) > 0
@@ -117,9 +267,9 @@ class TransformerStudent(TransformerBase):
 
         static_loss_fn = None
         if static_loss_type == "cca":
-            static_loss_fn = losses.CCALoss(output_dimension=cca_output_dim)
+            static_loss_fn = cca_losses.CCALoss(output_dimension=cca_output_dim)
         elif static_loss_type == "running_cca":
-            static_loss_fn = losses.RunningCCALoss(
+            static_loss_fn = cca_losses.RunningCCALoss(
                 view1_dimension=view1_dim,
                 view2_dimension=view2_dim,
                 output_dimension=cca_output_dim,
@@ -128,25 +278,23 @@ class TransformerStudent(TransformerBase):
             assert (
                 soft_cca_lam is not None
             ), "To use soft_cca, `soft_cca_lam` must be set"
-            static_loss_fn = losses.SoftCCALoss(
-                sdl1=losses.StochasticDecorrelationLoss(view1_dim),
-                sdl2=losses.StochasticDecorrelationLoss(view2_dim),
+            static_loss_fn = cca_losses.SoftCCALoss(
+                sdl1=cca_losses.StochasticDecorrelationLoss(view1_dim),
+                sdl2=cca_losses.StochasticDecorrelationLoss(view2_dim),
                 lam=soft_cca_lam,
             )
-        elif static_loss_type == "mse":
-            static_loss_fn = torch.nn.MSELoss(reduction="none")
-        elif static_loss_type == "cos_dist":
-            static_loss_fn = losses.CosineDistanceLoss()
-
-        assert static_loss_fn is not None, "Unknown `static_loss_type`."
+        else:
+            static_loss_fn = create_sim_based_loss(
+                static_loss_type, contrastive_lam=contrastive_lam
+            )
 
         def _construct_net(
             layers: list[int], input_features: int
-        ) -> Optional[losses.DeepNet]:
+        ) -> Optional[cca_losses.DeepNet]:
             if len(layers) == 0:
                 return None
 
-            return losses.DeepNet(
+            return cca_losses.DeepNet(
                 layer_features=layers,
                 input_features=input_features,
                 norm=projection_norm,
@@ -155,20 +303,17 @@ class TransformerStudent(TransformerBase):
         net1 = _construct_net(transformer_projection_layers, transformer_hidden_size)
         net2 = _construct_net(static_projection_layers, static_embed_dim)
 
-        return losses.ProjectionLoss(
+        return cca_losses.ProjectionLoss(
             net1=net1,
             net2=net2,
             loss_fn=static_loss_fn,
         )
 
-    def _construct_contextual_loss(self, contextual_loss_type: str) -> torch.nn.Module:
-        if contextual_loss_type == "mse":
-            return torch.nn.MSELoss(reduction="none")
-        elif contextual_loss_type == "cos_dist":
-            return losses.CosineDistanceLoss()
-
-        raise ValueError(
-            "Unknown contextual `loss_type`: {}".format(contextual_loss_type)
+    def _construct_contextual_loss(
+        self, contextual_loss_type: str, contrastive_lam: Optional[float]
+    ) -> torch.nn.Module:
+        return create_sim_based_loss(
+            contextual_loss_type, contrastive_lam=contrastive_lam
         )
 
     def train(
@@ -267,7 +412,37 @@ class TransformerStudent(TransformerBase):
             **self._construct_projection_metrics(self._model, val_data),
         }
 
-        # If it is None, sbert_mse_None is same as sbert_mse (same for cos_dist)
+        if isinstance(self._model.loss.contextual_loss, ContrastiveLoss):
+            train_metrics["contextual_contrastive_positive"] = with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(
+                    outputs["contextual_contrastive_positive"]
+                ),
+            )
+            train_metrics["contextual_contrastive_negative"] = with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(
+                    outputs["contextual_contrastive_negative"]
+                ),
+            )
+
+        if isinstance(
+            self._model.loss.static_loss, cca_losses.ProjectionLoss
+        ) and isinstance(self._model.loss.static_loss.loss_fn, ContrastiveLoss):
+            train_metrics["static_contrastive_positive"] = with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(
+                    outputs["static_contrastive_positive"]
+                ),
+            )
+            train_metrics["static_contrastive_negative"] = with_accessor(
+                Mean(),
+                lambda metric, outputs, _: metric.update(
+                    outputs["static_contrastive_negative"]
+                ),
+            )
+
+        # sbert_mse_None would be equal to sbert_mse, same for cos_dist
         if contextual_len_thres is not None:
             train_metrics[f"sbert_mse_{contextual_len_thres}"] = MSEWithSBERT(
                 max_input_length=contextual_len_thres
@@ -296,18 +471,18 @@ class TransformerStudent(TransformerBase):
                 lambda metric, outputs, _: metric.update(outputs["static_loss"]),
             )
 
-            if isinstance(self._model.loss.static_loss.loss_fn, losses.SoftCCALoss):
+            if isinstance(self._model.loss.static_loss.loss_fn, cca_losses.SoftCCALoss):
                 train_metrics["mean_projection_l2_norm"] = with_accessor(
                     Mean(),
-                    lambda metric, outputs, _: metric.update(outputs["l2"]),
+                    lambda metric, outputs, _: metric.update(outputs["static_l2"]),
                 )
                 train_metrics["mean_projection_sdl1"] = with_accessor(
                     Mean(),
-                    lambda metric, outputs, _: metric.update(outputs["sdl1"]),
+                    lambda metric, outputs, _: metric.update(outputs["static_sdl1"]),
                 )
                 train_metrics["mean_projection_sdl2"] = with_accessor(
                     Mean(),
-                    lambda metric, outputs, _: metric.update(outputs["sdl2"]),
+                    lambda metric, outputs, _: metric.update(outputs["static_sdl2"]),
                 )
 
         return train_metrics
@@ -318,7 +493,7 @@ class TransformerStudent(TransformerBase):
         val_data: Optional[DataLoader],
     ) -> dict[str, Metric]:
         if model.loss.static_loss is None or not isinstance(
-            model.loss.static_loss, losses.ProjectionLoss
+            model.loss.static_loss, cca_losses.ProjectionLoss
         ):
             return {}
 
@@ -345,25 +520,32 @@ class TransformerStudent(TransformerBase):
             )
 
         def _update_with_projected_views(metric, outputs, _):
-            metric.update(outputs["projected_view1"], outputs["projected_view2"])
+            metric.update(
+                outputs["static_projected_view1"], outputs["static_projected_view2"]
+            )
 
-        for n_components in [64, 128, 256, 512]:
-            inner_metric = WindowedNonResetableCCAMetricTorch(n_components=n_components)
-            metric_name = f"cca_{n_components}x{inner_metric.window_size}"
+        for n_components in [128, 256, 512, 768]:
+            cca_metric = WindowedNonResetableCCAMetricTorch(n_components=n_components)
+            metric_name = f"cca_{n_components}x{cca_metric.window_size}"
             if (
                 val_data is not None
                 and (val_size := len(val_data) * (val_data.batch_size or 1))
-                < inner_metric.window_size
+                < cca_metric.window_size
             ):
                 logger.warn(
                     "Validation data smaller than CCA window. "
                     "Metric '%s' will be outdated by %d inputs.",
                     metric_name,
-                    inner_metric.window_size - val_size,
+                    cca_metric.window_size - val_size,
                 )
 
             train_metrics[metric_name] = with_accessor(
-                inner_metric,
+                cca_metric,
+                _update_with_projected_views,
+            )
+            # Add simple correlation with same dimension
+            train_metrics[f"corr_x{cca_metric.window_size}"] = with_accessor(
+                WindowedNonResetableCorrelationMetric(cca_metric.window_size),
                 _update_with_projected_views,
             )
 
@@ -383,71 +565,3 @@ class TransformerStudent(TransformerBase):
             train_utils.batch_to_device(batch, device)
             embeddings = self._model(**batch)["embeddings"]
             yield embeddings.numpy(force=True)
-
-
-class _SequenceEmbeddingModel(torch.nn.Module):
-    def __init__(
-        self,
-        transformer: PreTrainedModel,
-        pooler: torch.nn.Module,
-        loss: losses.StaticContextualLoss,
-        *args,
-        **kwargs,
-    ) -> None:
-        super().__init__(*args, **kwargs)
-
-        self.transformer = transformer
-        self.pooler = pooler
-        self.loss = loss
-
-    def forward(
-        self,
-        input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        head_mask: Optional[torch.Tensor] = None,
-        token_type_ids: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.Tensor] = None,
-        **kwargs,
-    ) -> dict[str, torch.Tensor]:
-        input_kws = {}
-        # Needed for Longformer
-        if "global_attention_mask" in kwargs:
-            input_kws["global_attention_mask"] = kwargs.pop("global_attention_mask")
-
-        outputs = self.transformer(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            head_mask=head_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            output_attentions=False,
-            output_hidden_states=False,
-            return_dict=True,
-            inputs_embeds=None,
-            **input_kws,
-        )
-        pooled_output = self.pooler(
-            **outputs,
-            attention_mask=attention_mask,
-        )
-        loss_outputs = self.loss(pooled_output, kwargs) if len(kwargs) > 0 else {}
-
-        return {
-            **outputs,
-            **loss_outputs,
-            "embeddings": pooled_output,
-        }
-
-
-def log_max_abs_grad(
-    metric: Metric,
-    *_,
-    param_name: str,
-    model: torch.nn.Module,
-) -> None:
-    param = model.get_parameter(param_name)
-    grad = param.grad
-    if grad is None:
-        metric.update(torch.tensor([torch.nan], device=param.device))
-    else:
-        metric.update(grad.abs().max())

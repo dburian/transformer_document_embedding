@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 
 import warnings
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Self
 from sklearn.cross_decomposition import CCA
 
 
@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from torcheval.metrics import Mean, Metric
 
-from transformer_document_embedding.utils.losses import CCALoss
+from transformer_document_embedding.utils.cca_losses import CCALoss
 
 if TYPE_CHECKING:
     from typing import Iterable, Optional, Union
@@ -243,8 +243,65 @@ class PercentLengthBelowThres(AccessorMetric):
         metric.update(batch["length"] < self._len_thres)
 
 
-class WindowedNonResetableCCAMetric(Metric):
-    """CCA computed by sklearn. The metric does not reset and has fixed window.
+class WindowedNonResetableMetric(Metric):
+    """Base class for all metrics that need fixed window in order to be comparable."""
+
+    def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
+        super().__init__(device=device)
+
+        self._add_state("views1", torch.tensor([], device=device))
+        self.views1: torch.Tensor
+        self._add_state("views2", torch.tensor([], device=device))
+        self.views2: torch.Tensor
+
+        self._window_size = window_size
+
+    @property
+    def window_size(self) -> int:
+        return self._window_size
+
+    @property
+    def has_full_window(self) -> int:
+        samples = self.views1.size(0)
+        return samples == self.window_size
+
+    @torch.inference_mode()
+    def update(self, views1: torch.Tensor, views2: torch.Tensor) -> Self:
+        self.views1 = torch.cat((self.views1, views1))
+        self.views2 = torch.cat((self.views2, views2))
+
+        self._shorten_views_to_size()
+        return self
+
+    def compute(self) -> Any:
+        raise NotImplementedError()
+
+    def merge_state(self, metrics: Iterable[WindowedNonResetableCCAMetric]) -> Self:
+        views1 = [self.views1]
+        views2 = [self.views2]
+        for other in metrics:
+            views1.append(other.views1)
+            views2.append(other.views2)
+
+        self.views1 = torch.cat(views1)
+        self.views2 = torch.cat(views2)
+
+        self._shorten_views_to_size()
+
+        return self
+
+    def reset(self) -> Self:
+        return self
+
+    def _shorten_views_to_size(self) -> None:
+        if self.views1.size(0) > self.window_size:
+            self.views1 = self.views1[-self.window_size :, :]
+        if self.views2.size(0) > self.window_size:
+            self.views2 = self.views2[-self.window_size :, :]
+
+
+class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
+    """CCA computed by sklearn.
 
     Does not reset because it is assumed that to have enough elements to
     compute CCA this metric will need much more updates than regular metric.
@@ -253,49 +310,28 @@ class WindowedNonResetableCCAMetric(Metric):
     It has a fixed window because the size of window influences the result. By
     having fixed window we make sure that the values are always informative and
     comparable.
-
     """
 
     # How many n_components will fit in window
-    WINDOW_MULT_FACTOR = 3
+    WINDOW_MULT_FACTOR = 5
 
     def __init__(
         self,
         n_components: int,
         device: Optional[torch.device] = None,
     ) -> None:
-        super().__init__(device=device)
-
-        self._add_state("views1", torch.tensor([], device=device))
-        self.views1: torch.Tensor
-        self._add_state("views2", torch.tensor([], device=device))
-        self.views2: torch.Tensor
-
-        self._window_size = self.WINDOW_MULT_FACTOR * n_components
+        super().__init__(
+            window_size=self.WINDOW_MULT_FACTOR * n_components, device=device
+        )
 
         self.n_components = n_components
 
-    @property
-    def window_size(self) -> int:
-        return self._window_size
-
-    @torch.inference_mode()
-    def update(
-        self, views1: torch.Tensor, views2: torch.Tensor
-    ) -> WindowedNonResetableCCAMetric:
-        self.views1 = torch.cat((self.views1, views1))
-        self.views2 = torch.cat((self.views2, views2))
-
-        self._shorten_views_to_size()
-        return self
-
     @torch.inference_mode()
     def compute(self) -> float:
-        samples = self.views1.size(0)
-
-        if samples != self.window_size:
+        if not self.has_full_window:
             return torch.nan
 
+        samples = self.views1.size(0)
         view1_dim = self.views1.size(1)
         view2_dim = self.views2.size(1)
 
@@ -322,31 +358,6 @@ class WindowedNonResetableCCAMetric(Metric):
             logger.warn("Error when computing CCA: %s", e)
             return np.nan
 
-    def merge_state(
-        self, metrics: Iterable[WindowedNonResetableCCAMetric]
-    ) -> WindowedNonResetableCCAMetric:
-        views1 = [self.views1]
-        views2 = [self.views2]
-        for other in metrics:
-            views1.append(other.views1)
-            views2.append(other.views2)
-
-        self.views1 = torch.cat(views1)
-        self.views2 = torch.cat(views2)
-
-        self._shorten_views_to_size()
-
-        return self
-
-    def reset(self) -> WindowedNonResetableCCAMetric:
-        return self
-
-    def _shorten_views_to_size(self) -> None:
-        if self.views1.size(0) > self.window_size:
-            self.views1 = self.views1[-self.window_size :, :]
-        if self.views2.size(0) > self.window_size:
-            self.views2 = self.views2[-self.window_size :, :]
-
 
 class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
     def __init__(
@@ -356,15 +367,17 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
     ) -> None:
         super().__init__(n_components, device)
 
-        self._cca_loss = CCALoss(output_dimension=n_components)
+        self._cca_loss = CCALoss(
+            output_dimension=n_components,
+            regularization_constant=0,  # For much better accuracy
+        )
 
     @torch.inference_mode()
     def compute(self) -> float:
-        samples = self.views1.size(0)
-
-        if samples != self.window_size:
+        if not self.has_full_window:
             return torch.nan
 
+        samples = self.views1.size(0)
         view1_dim = self.views1.size(1)
         view2_dim = self.views2.size(1)
 
@@ -373,3 +386,17 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
             return torch.nan
 
         return -self._cca_loss(self.views1, self.views2)["loss"]
+
+
+class WindowedNonResetableCorrelationMetric(WindowedNonResetableMetric):
+    def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
+        super().__init__(window_size=window_size, device=device)
+
+    def compute(self) -> float:
+        if not self.has_full_window:
+            return torch.nan
+
+        all_vars = torch.concat((self.views1.T, self.views2.T), dim=0)
+        view1_dim = self.views1.size(1)
+
+        return torch.corrcoef(all_vars).diagonal(offset=view1_dim).sum().item()

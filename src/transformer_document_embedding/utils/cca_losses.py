@@ -9,76 +9,6 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
-class StaticContextualLoss(torch.nn.Module):
-    def __init__(
-        self,
-        contextual_max_length: Optional[int],
-        lam: Optional[float] = None,
-        static_loss: Optional[torch.nn.Module] = None,
-        contextual_loss: Optional[torch.nn.Module] = None,
-        contextual_key: str = "sbert",
-        static_key: str = "dbow",
-        len_key: str = "length",
-        *args,
-        **kwargs,
-    ) -> None:
-        super().__init__(*args, **kwargs)
-
-        self._contextual_key = contextual_key
-        self._static_key = static_key
-        self._contextual_max_length = contextual_max_length
-        self._len_key = len_key
-        self.static_loss = static_loss
-        self.contextual_loss = contextual_loss
-        self._lam = lam
-
-    @property
-    def contextual_max_length(self) -> Optional[int]:
-        return self._contextual_max_length
-
-    def forward(
-        self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
-    ) -> dict[str, torch.Tensor]:
-        outputs = {"loss": torch.tensor(0, device=inputs.device, dtype=inputs.dtype)}
-
-        if self.contextual_loss is not None:
-            mask = (
-                targets[self._len_key] <= self._contextual_max_length
-                if self.contextual_max_length is not None
-                else torch.ones_like(targets[self._len_key])
-            )
-
-            # We expect shape (batch_size,), i.e. a number for each input
-            contextual_loss = self.contextual_loss(
-                inputs, targets[self._contextual_key]
-            )
-            if contextual_loss.ndim == 2:
-                contextual_loss = contextual_loss.sum(dim=1)
-            contextual_loss *= mask
-            contextual_loss = contextual_loss.sum()
-
-            weight_sum = mask.sum()
-            if weight_sum > 0:
-                contextual_loss /= weight_sum
-
-            if self._lam is not None:
-                contextual_loss *= self._lam
-
-            outputs["contextual_mask"] = mask
-            outputs["contextual_loss"] = contextual_loss
-            outputs["loss"] += contextual_loss
-
-        if self.static_loss is not None:
-            static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
-            static_loss = torch.mean(static_loss_outputs.pop("loss"))
-
-            outputs.update(static_loss_outputs)
-            outputs["static_loss"] = static_loss
-            outputs["loss"] += static_loss
-
-        return outputs
-
-
 class CCALoss(torch.nn.Module):
     def __init__(
         self,
@@ -442,26 +372,3 @@ class ProjectionLoss(torch.nn.Module):
             "projected_view1": projected_view1,
             "projected_view2": projected_view2,
         }
-
-
-# Here just as a reminder how to do it in case I need to
-def get_cross_corr(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    # All variables as rows, observations as columns
-    var_obs = torch.cat([x.T, y.T]).detach()
-    corr = torch.corrcoef(var_obs)
-    x_vars = x.size(1)
-    cross_corr = corr[x_vars:, :x_vars]
-    return torch.sum(cross_corr)
-
-
-class CosineDistanceLoss(torch.nn.Module):
-    def __init__(self, dim: int = 1, eps: float = 1e-8, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        self.dim = dim
-        self.eps = eps
-
-    def forward(self, inputs: torch.Tensor, outputs: torch.Tensor) -> torch.Tensor:
-        return 1 - torch.nn.functional.cosine_similarity(
-            inputs, outputs, self.dim, self.eps
-        )

@@ -42,7 +42,7 @@ def import_type(type_spec: str, *, module_prefix: Optional[str] = None) -> type:
         module = importlib.import_module(module_path)
         return getattr(module, type_name)
     except Exception as exc:
-        raise ValueError(f"invalid type path '{type_spec}'.") from exc
+        raise ValueError(f"invalid type path '{module_path}:{type_name}'.") from exc
 
 
 def init_type(spec: ModuleSpec) -> Any:
