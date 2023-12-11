@@ -6,15 +6,15 @@ import numpy as np
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, Mapping, MutableMapping, TypeVar
 
 import torch
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Sampler
-from transformers import BatchEncoding, PreTrainedTokenizerBase
 from transformers.trainer_pt_utils import get_parameter_names
 
 if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerBase
     from transformers.utils import PaddingStrategy
     from transformers.tokenization_utils import TruncationStrategy
     import datasets
@@ -41,6 +41,7 @@ class FastDataCollator:
     min_length: Optional[int] = None
     truncation: Union[bool, str, TruncationStrategy] = "longest_first"
     return_length: bool = False
+    global_attention_type: str = "none"
 
     def __post_init__(self):
         self._max_special_token_id = max(
@@ -66,49 +67,28 @@ class FastDataCollator:
         texts = batch["text"]
         del batch["text"]
 
-        tokenized_batch = cast(
-            BatchEncoding,
-            self.tokenizer(
-                texts,
-                padding=self.padding,
-                max_length=self.max_length,
-                pad_to_multiple_of=self.pad_to_multiple_of,
-                return_tensors=None,
-                truncation=self.truncation,
-                return_length=False,  # Here return_length returns length after padding
-            ),
+        tokenized_batch = self.tokenizer(
+            texts,
+            padding=self.padding,
+            max_length=self.max_length,
+            pad_to_multiple_of=self.pad_to_multiple_of,
+            return_tensors=None,
+            truncation=self.truncation,
+            return_length=False,  # Here return_length returns length after padding
         )
 
-        if self.min_length:
-            batch_size = len(tokenized_batch["input_ids"])
-            for i in range(batch_size):
-                input_length = len(tokenized_batch["input_ids"][i])
-                if input_length >= self.min_length:
-                    continue
-                difference = self.min_length - input_length
-
-                if "attention_mask" in tokenized_batch:
-                    tokenized_batch["attention_mask"][i] += [0] * difference
-
-                if "token_type_ids" in tokenized_batch:
-                    tokenized_batch["token_type_ids"][i] += [
-                        self.tokenizer.pad_token_type_id
-                    ] * difference
-                if "special_tokens_mask" in tokenized_batch:
-                    tokenized_batch["special_tokens_mask"][i] += [1] * difference
-
-                tokenized_batch["input_ids"][i] += [
-                    self.tokenizer.pad_token_id
-                ] * difference
-
+        self._ensure_min_length(tokenized_batch)
         tokenized_batch.convert_to_tensors(
-            self.return_tensors, prepend_batch_axis=False
+            self.return_tensors,
+            prepend_batch_axis=False,
         )
 
         if self.return_length:
             tokenized_batch["length"] = torch.sum(
                 tokenized_batch["input_ids"] > self._max_special_token_id, axis=1
             )
+
+        self._set_global_attention(tokenized_batch)
 
         batch.update(tokenized_batch)
 
@@ -119,6 +99,56 @@ class FastDataCollator:
             batch["labels"] = batch["label_ids"]
             del batch["label_ids"]
         return batch
+
+    def _ensure_min_length(
+        self, tokenized_batch: Mapping[str, list[list[int]]]
+    ) -> None:
+        if self.min_length is None:
+            return
+
+        batch_size = len(tokenized_batch["input_ids"])
+        for i in range(batch_size):
+            input_length = len(tokenized_batch["input_ids"][i])
+            if input_length >= self.min_length:
+                continue
+            difference = self.min_length - input_length
+
+            if "attention_mask" in tokenized_batch:
+                tokenized_batch["attention_mask"][i] += [0] * difference
+
+            if "token_type_ids" in tokenized_batch:
+                tokenized_batch["token_type_ids"][i] += [
+                    self.tokenizer.pad_token_type_id
+                ] * difference
+            if "special_tokens_mask" in tokenized_batch:
+                tokenized_batch["special_tokens_mask"][i] += [1] * difference
+
+            assert self.tokenizer.pad_token_id is not None
+            tokenized_batch["input_ids"][i] += [
+                self.tokenizer.pad_token_id
+            ] * difference
+
+    def _set_global_attention(
+        self, tokenized_batch: MutableMapping[str, torch.Tensor]
+    ) -> None:
+        if self.global_attention_type == "none":
+            return
+
+        if self.global_attention_type == "cls":
+            tokenized_batch["global_attention_mask"] = (
+                tokenized_batch["input_ids"] == self.tokenizer.cls_token_id
+            ).to(torch.float32)
+        elif self.global_attention_type == "cls_and_sep":
+            tokenized_batch["global_attention_mask"] = (
+                (tokenized_batch["input_ids"] == self.tokenizer.cls_token_id)
+                + (tokenized_batch["input_ids"] == self.tokenizer.sep_token_id)
+            ).to(torch.float32)
+        else:
+            raise ValueError(
+                "Unknown type of global attention: '{}'".format(
+                    self.global_attention_type
+                )
+            )
 
 
 class ConsistentNumberOfTokensSampler(Sampler):
