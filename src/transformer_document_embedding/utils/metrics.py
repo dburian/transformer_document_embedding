@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+from time import time
 
 import warnings
 from typing import TYPE_CHECKING, Any, Callable
@@ -95,9 +96,7 @@ class VMemMetric(Metric):
         return self
 
 
-UpdateWrapperFn = Callable[
-    [Metric, dict[str, torch.Tensor], dict[str, torch.Tensor]], Any
-]
+UpdateWrapperFn = Callable[[Metric, Any, Any], Any]
 
 
 class AccessorMetric(Metric):
@@ -145,6 +144,7 @@ def with_accessor(metric: Metric, update_fn: UpdateWrapperFn) -> Metric:
     return AccessorMetric(metric, update_fn)
 
 
+# TODO: Get rid of AccessorMetric, replace it by `TrainingMetric`
 class MSEWithSBERT(AccessorMetric):
     def __init__(
         self, max_input_length: Optional[int], normalize: bool = False, **kwargs
@@ -322,10 +322,14 @@ class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
     def __init__(
         self,
         n_components: int,
+        window_size: Optional[int] = None,
         device: Optional[torch.device] = None,
     ) -> None:
         super().__init__(
-            window_size=self.WINDOW_MULT_FACTOR * n_components, device=device
+            window_size=window_size
+            if window_size is not None
+            else self.WINDOW_MULT_FACTOR * n_components,
+            device=device,
         )
 
         self.n_components = n_components
@@ -343,7 +347,8 @@ class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
         if self.n_components > min(view1_dim, view2_dim, samples):
             return torch.nan
 
-        cca = CCA(n_components=self.n_components, max_iter=5000)
+        start_time = time()
+        cca = CCA(n_components=self.n_components, tol=1e-2, max_iter=100000)
         try:
             # No category keyword for python 3.10 compatibility
             with warnings.catch_warnings():
@@ -357,9 +362,24 @@ class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
                 .diagonal(offset=self.n_components)
                 .sum()
             )
+            end_time = time()
+            logger.info(
+                "CCA: dim %d, window size %d, seconds: %f",
+                self.n_components,
+                self.window_size,
+                end_time - start_time,
+            )
+
             return correlation
         except np.linalg.LinAlgError as e:
             logger.warn("Error when computing CCA: %s", e)
+            end_time = time()
+            logger.info(
+                "CCA: dim %d, window size %d, seconds: %f",
+                self.n_components,
+                self.window_size,
+                end_time - start_time,
+            )
             return np.nan
 
 
@@ -367,9 +387,10 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
     def __init__(
         self,
         n_components: int,
+        window_size: Optional[int] = None,
         device: Optional[torch.device] = None,
     ) -> None:
-        super().__init__(n_components, device)
+        super().__init__(n_components, window_size, device)
 
         self._cca_loss = CCALoss(
             output_dimension=n_components,

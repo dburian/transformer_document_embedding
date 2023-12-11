@@ -5,7 +5,6 @@ import logging
 
 import datasets
 from torch.utils.data import DataLoader, Dataset as TorchDataset
-from torch.utils.tensorboard.writer import SummaryWriter
 from torcheval.metrics import (
     MulticlassAUPRC,
     MulticlassAccuracy,
@@ -13,11 +12,10 @@ from torcheval.metrics import (
     MulticlassRecall,
 )
 from ..experimental_model import ExperimentalModel
-from ..trainer import TorchTrainer
+from ..trainer import MetricLogger, TorchTrainer, TrainingMetric
 from .paragraph_vector import ParagraphVector
 from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.gensim.data import PairedGensimCorpus
-from transformer_document_embedding.utils.metrics import with_accessor
 import transformer_document_embedding.utils.training as train_utils
 import torch
 
@@ -81,15 +79,6 @@ class PairClassifier(ExperimentalModel):
                 task.validation, training=False
             )
 
-        def _create_summary_writer(name: str) -> Optional[SummaryWriter]:
-            if log_dir is None:
-                return None
-
-            return SummaryWriter(log_dir=os.path.join(log_dir, name))
-
-        summary_writer = _create_summary_writer("train")
-        val_summary_writer = _create_summary_writer("val")
-
         save_model_callback = None
         if save_best and model_dir is not None:
 
@@ -111,6 +100,44 @@ class PairClassifier(ExperimentalModel):
             self._cls_head,
             torch.nn.CrossEntropyLoss(label_smoothing=self._label_smoothing),
         )
+
+        train_logger = None
+        val_logger = None
+        if log_dir is not None:
+            metrics = [
+                TrainingMetric(
+                    "accuracy",
+                    MulticlassAccuracy(),
+                    log_every_step,
+                    _update_outputs_with_labels,
+                ),
+                TrainingMetric(
+                    "precision",
+                    MulticlassPrecision(),
+                    log_every_step,
+                    _update_outputs_with_labels,
+                ),
+                TrainingMetric(
+                    "recall",
+                    MulticlassRecall(),
+                    log_every_step,
+                    _update_outputs_with_labels,
+                ),
+                TrainingMetric(
+                    "auprc",
+                    MulticlassAUPRC(num_classes=2),
+                    log_every_step,
+                    _update_outputs_with_labels,
+                ),
+            ]
+            train_logger = MetricLogger("train", metrics, log_dir=log_dir)
+            val_logger = MetricLogger(
+                "val",
+                [m.clone() for m in metrics],
+                log_dir=log_dir,
+                log_lr=False,
+            )
+
         trainer = TorchTrainer(
             model=model,
             train_data=cls_head_train_data,
@@ -119,24 +146,9 @@ class PairClassifier(ExperimentalModel):
             lr_scheduler=train_utils.get_cosine_lr_scheduler(
                 optim, cls_head_epochs * len(cls_head_train_data)
             ),
-            log_every_step=log_every_step,
-            summary_writer=summary_writer,
-            val_summary_writer=val_summary_writer,
+            train_logger=train_logger,
+            val_logger=val_logger,
             save_model_callback=save_model_callback,
-            metrics={
-                "accuracy": with_accessor(
-                    MulticlassAccuracy(), _update_outputs_with_labels
-                ),
-                "precision": with_accessor(
-                    MulticlassPrecision(), _update_outputs_with_labels
-                ),
-                "recall": with_accessor(
-                    MulticlassRecall(), _update_outputs_with_labels
-                ),
-                "auprc": with_accessor(
-                    MulticlassAUPRC(num_classes=2), _update_outputs_with_labels
-                ),
-            },
         )
 
         trainer.train(epochs=cls_head_epochs)

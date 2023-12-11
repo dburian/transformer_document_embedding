@@ -9,14 +9,17 @@ from tqdm.auto import tqdm
 
 
 from transformer_document_embedding.models.transformer.base import TransformerBase
-from transformer_document_embedding.models.trainer import TorchTrainer
+from transformer_document_embedding.models.trainer import (
+    MetricLogger,
+    TorchTrainer,
+    TrainingMetric,
+)
 from transformer_document_embedding.utils.metrics import (
     CosineDistanceWithSBERT,
     MSEWithSBERT,
     VMemMetric,
     WindowedNonResetableCCAMetricTorch,
     WindowedNonResetableCorrelationMetric,
-    with_accessor,
 )
 from transformer_document_embedding.utils.similarity_losses import (
     ContrastiveLoss,
@@ -174,6 +177,7 @@ class _SequenceEmbeddingModel(torch.nn.Module):
         pooled_output = self.pooler(
             **outputs,
             attention_mask=attention_mask,
+            **input_kws,
         )
         loss_outputs = self.loss(pooled_output, kwargs) if len(kwargs) > 0 else {}
 
@@ -332,16 +336,17 @@ class TransformerStudent(TransformerBase):
         lr: float,
         bucket_limits: list[int],
         save_best: bool,
+        global_attention_type: str,
         device: Optional[str] = None,
         log_dir: Optional[str] = None,
         model_dir: Optional[str] = None,
         **_,
     ) -> None:
-        summary_writer, val_summary_writer = self._get_train_val_writers(log_dir)
         to_dataloader = partial(
             self._to_dataloader,
             sampling=dataloader_sampling,
             return_length=False,
+            global_attention_type=global_attention_type,
             sampler_kwargs={
                 "effective_batch_size": self._batch_size * grad_accumulation_steps,
                 "bucket_limits": bucket_limits,
@@ -370,19 +375,26 @@ class TransformerStudent(TransformerBase):
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()
 
+        train_logger = None
+        val_logger = None
+        if log_dir is not None:
+            metrics = self._get_train_metrics(val_data, log_every_step)
+            train_logger = MetricLogger("train", metrics, log_dir)
+            val_logger = MetricLogger(
+                "val", [m.clone() for m in metrics], log_dir, log_lr=False
+            )
+
         trainer = TorchTrainer(
             model=self._model,
             train_data=train_data,
             val_data=val_data,
             optimizer=optimizer,
-            metrics=self._get_train_metrics(val_data),
-            summary_writer=summary_writer,
-            val_summary_writer=val_summary_writer,
+            train_logger=train_logger,
+            val_logger=val_logger,
             fp16=fp16,
             max_grad_norm=max_grad_norm,
             grad_accumulation_steps=grad_accumulation_steps,
             lr_scheduler=lr_scheduler,
-            log_every_step=log_every_step,
             validate_every_step=validate_every_step,
             save_model_callback=save_model_callback,
             patience=patience,
@@ -390,114 +402,191 @@ class TransformerStudent(TransformerBase):
         )
         trainer.train(epochs=epochs)
 
-    def _get_train_metrics(self, val_data: Optional[DataLoader]) -> dict[str, Metric]:
+    def _get_train_metrics(
+        self, val_data: Optional[DataLoader], default_log_freq: int
+    ) -> list[TrainingMetric]:
         contextual_len_thres = self._model.loss.contextual_max_length
-        train_metrics = {
-            "used_vmem": VMemMetric(),
-            "mean_length": with_accessor(
+        train_metrics = [
+            TrainingMetric("used_vmem", VMemMetric(), default_log_freq),
+            TrainingMetric(
+                "mean_length",
                 Mean(),
+                default_log_freq,
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
-            "sbert_mse": MSEWithSBERT(max_input_length=None),
-            "sbert_mse_norm": MSEWithSBERT(max_input_length=None, normalize=True),
-            "sbert_cos_dist": CosineDistanceWithSBERT(max_input_length=None),
-            "max_abs_transformer_grad": with_accessor(
+            TrainingMetric(
+                "sbert_mse", MSEWithSBERT(max_input_length=None), default_log_freq
+            ),
+            TrainingMetric(
+                "sbert_mse_norm",
+                MSEWithSBERT(max_input_length=None, normalize=True),
+                default_log_freq,
+            ),
+            TrainingMetric(
+                "sbert_cos_dist",
+                CosineDistanceWithSBERT(max_input_length=None),
+                default_log_freq,
+            ),
+            TrainingMetric(
+                "max_abs_transformer_grad",
                 Max(),
+                default_log_freq,
                 partial(
                     log_max_abs_grad,
                     param_name="transformer.encoder.layer.11.output.dense.weight",
                     model=self._model,
                 ),
             ),
-            **self._construct_projection_metrics(self._model, val_data),
-        }
+            *self._get_projection_metrics(self._model, val_data, default_log_freq),
+        ]
 
         if isinstance(self._model.loss.contextual_loss, ContrastiveLoss):
-            train_metrics["contextual_contrastive_positive"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(
-                    outputs["contextual_contrastive_positive"]
-                ),
-            )
-            train_metrics["contextual_contrastive_negative"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(
-                    outputs["contextual_contrastive_negative"]
-                ),
+            train_metrics.extend(
+                [
+                    TrainingMetric(
+                        "contextual_contrastive_positive",
+                        Mean(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(
+                            outputs["contextual_contrastive_positive"]
+                        ),
+                    ),
+                    TrainingMetric(
+                        "contextual_contrastive_negative",
+                        Mean(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(
+                            outputs["contextual_contrastive_negative"]
+                        ),
+                    ),
+                ]
             )
 
         if isinstance(
             self._model.loss.static_loss, cca_losses.ProjectionLoss
         ) and isinstance(self._model.loss.static_loss.loss_fn, ContrastiveLoss):
-            train_metrics["static_contrastive_positive"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(
-                    outputs["static_contrastive_positive"]
-                ),
-            )
-            train_metrics["static_contrastive_negative"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(
-                    outputs["static_contrastive_negative"]
-                ),
+            train_metrics.extend(
+                [
+                    TrainingMetric(
+                        "static_contrastive_positive",
+                        Mean(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(
+                            outputs["static_contrastive_positive"]
+                        ),
+                    ),
+                    TrainingMetric(
+                        "static_contrastive_negative",
+                        Mean(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(
+                            outputs["static_contrastive_negative"]
+                        ),
+                    ),
+                ]
             )
 
         # sbert_mse_None would be equal to sbert_mse, same for cos_dist
         if contextual_len_thres is not None:
-            train_metrics[f"sbert_mse_{contextual_len_thres}"] = MSEWithSBERT(
-                max_input_length=contextual_len_thres
+            train_metrics.extend(
+                [
+                    TrainingMetric(
+                        f"sbert_mse_{contextual_len_thres}",
+                        MSEWithSBERT(max_input_length=contextual_len_thres),
+                        default_log_freq,
+                    ),
+                    TrainingMetric(
+                        f"sbert_mse_norm_{contextual_len_thres}",
+                        MSEWithSBERT(
+                            max_input_length=contextual_len_thres,
+                            normalize=True,
+                        ),
+                        default_log_freq,
+                    ),
+                    TrainingMetric(
+                        f"sbert_cos_dist_{contextual_len_thres}",
+                        CosineDistanceWithSBERT(max_input_length=contextual_len_thres),
+                        default_log_freq,
+                    ),
+                ]
             )
-            train_metrics[f"sbert_mse_norm_{contextual_len_thres}"] = MSEWithSBERT(
-                max_input_length=contextual_len_thres,
-                normalize=True,
-            )
-            train_metrics[
-                f"sbert_cos_dist_{contextual_len_thres}"
-            ] = CosineDistanceWithSBERT(max_input_length=contextual_len_thres)
 
         if self._model.loss.contextual_loss is not None:
-            train_metrics["mean_contextual_loss"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(outputs["contextual_loss"]),
-            )
-            train_metrics["mean_contextual_mask"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(outputs["contextual_mask"]),
+            train_metrics.extend(
+                [
+                    TrainingMetric(
+                        "mean_contextual_loss",
+                        Mean(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(
+                            outputs["contextual_loss"]
+                        ),
+                    ),
+                    TrainingMetric(
+                        "mean_contextual_mask",
+                        Mean(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(
+                            outputs["contextual_mask"]
+                        ),
+                    ),
+                ]
             )
 
         if self._model.loss.static_loss is not None:
-            train_metrics["mean_static_loss"] = with_accessor(
-                Mean(),
-                lambda metric, outputs, _: metric.update(outputs["static_loss"]),
+            train_metrics.append(
+                TrainingMetric(
+                    "mean_static_loss",
+                    Mean(),
+                    default_log_freq,
+                    lambda metric, outputs, _: metric.update(outputs["static_loss"]),
+                )
             )
 
             if isinstance(self._model.loss.static_loss.loss_fn, cca_losses.SoftCCALoss):
-                train_metrics["mean_projection_l2_norm"] = with_accessor(
-                    Mean(),
-                    lambda metric, outputs, _: metric.update(outputs["static_l2"]),
-                )
-                train_metrics["mean_projection_sdl1"] = with_accessor(
-                    Mean(),
-                    lambda metric, outputs, _: metric.update(outputs["static_sdl1"]),
-                )
-                train_metrics["mean_projection_sdl2"] = with_accessor(
-                    Mean(),
-                    lambda metric, outputs, _: metric.update(outputs["static_sdl2"]),
+                train_metrics.extend(
+                    [
+                        TrainingMetric(
+                            "mean_projection_l2_norm",
+                            Mean(),
+                            default_log_freq,
+                            lambda metric, outputs, _: metric.update(
+                                outputs["static_l2"]
+                            ),
+                        ),
+                        TrainingMetric(
+                            "mean_projection_sdl1",
+                            Mean(),
+                            default_log_freq,
+                            lambda metric, outputs, _: metric.update(
+                                outputs["static_sdl1"]
+                            ),
+                        ),
+                        TrainingMetric(
+                            "mean_projection_sdl2",
+                            Mean(),
+                            default_log_freq,
+                            lambda metric, outputs, _: metric.update(
+                                outputs["static_sdl2"]
+                            ),
+                        ),
+                    ]
                 )
 
         return train_metrics
 
-    def _construct_projection_metrics(
+    def _get_projection_metrics(
         self,
         model: _SequenceEmbeddingModel,
         val_data: Optional[DataLoader],
-    ) -> dict[str, Metric]:
+        default_log_freq: int,
+    ) -> list[TrainingMetric]:
         if model.loss.static_loss is None or not isinstance(
             model.loss.static_loss, cca_losses.ProjectionLoss
         ):
-            return {}
+            return []
 
-        train_metrics = {}
+        train_metrics = []
         sample_projection_weight_path = None
 
         for net_name in ["net1", "net2"]:
@@ -510,13 +599,17 @@ class TransformerStudent(TransformerBase):
                 break
 
         if sample_projection_weight_path is not None:
-            train_metrics["max_abs_dcca_grad"] = with_accessor(
-                Max(),
-                partial(
-                    log_max_abs_grad,
-                    param_name=sample_projection_weight_path,
-                    model=model,
-                ),
+            train_metrics.append(
+                TrainingMetric(
+                    "max_abs_dcca_grad",
+                    Max(),
+                    default_log_freq,
+                    partial(
+                        log_max_abs_grad,
+                        param_name=sample_projection_weight_path,
+                        model=model,
+                    ),
+                )
             )
 
         def _update_with_projected_views(metric, outputs, _):
@@ -539,14 +632,22 @@ class TransformerStudent(TransformerBase):
                     cca_metric.window_size - val_size,
                 )
 
-            train_metrics[metric_name] = with_accessor(
-                cca_metric,
-                _update_with_projected_views,
-            )
-            # Add simple correlation with same dimension
-            train_metrics[f"corr_x{cca_metric.window_size}"] = with_accessor(
-                WindowedNonResetableCorrelationMetric(cca_metric.window_size),
-                _update_with_projected_views,
+            log_freq = cca_metric.window_size // self._batch_size
+            train_metrics.extend(
+                [
+                    TrainingMetric(
+                        metric_name,
+                        cca_metric,
+                        log_freq,
+                        _update_with_projected_views,
+                    ),
+                    TrainingMetric(
+                        f"corr_x{cca_metric.window_size}",
+                        WindowedNonResetableCorrelationMetric(cca_metric.window_size),
+                        log_freq,
+                        _update_with_projected_views,
+                    ),
+                ]
             )
 
         return train_metrics

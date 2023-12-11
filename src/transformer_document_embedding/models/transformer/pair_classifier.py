@@ -6,7 +6,6 @@ import logging
 import torch
 from torch.utils.data import DataLoader
 from torcheval.metrics import (
-    Metric,
     MulticlassAUPRC,
     MulticlassAccuracy,
     MulticlassPrecision,
@@ -16,9 +15,13 @@ from tqdm.auto import tqdm
 
 
 from transformer_document_embedding.models.transformer.base import TransformerBase
-from transformer_document_embedding.models.trainer import TorchTrainer
+from transformer_document_embedding.models.trainer import (
+    MetricLogger,
+    TorchTrainer,
+    TrainingMetric,
+)
 from transformer_document_embedding.models.cls_head import ClsHead
-from transformer_document_embedding.utils.metrics import VMemMetric, with_accessor
+from transformer_document_embedding.utils.metrics import VMemMetric
 import transformer_document_embedding.utils.training as train_utils
 
 if TYPE_CHECKING:
@@ -98,19 +101,27 @@ class TransformerPairClassifier(TransformerBase):
 
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()
+
+        train_logger = None
+        val_logger = None
+        if log_dir is not None:
+            metrics = self._get_train_metrics(log_every_step)
+            train_logger = MetricLogger("train", metrics, log_dir)
+            val_logger = MetricLogger(
+                "val", [m.clone() for m in metrics], log_dir, log_lr=False
+            )
+
         trainer = TorchTrainer(
             model=self._model,
             train_data=train_data,
             val_data=val_data,
             optimizer=optimizer,
-            metrics=self._get_train_metrics(),
-            summary_writer=summary_writer,
-            val_summary_writer=val_summary_writer,
+            train_logger=train_logger,
+            val_logger=val_logger,
             fp16=fp16,
             max_grad_norm=max_grad_norm,
             grad_accumulation_steps=grad_accumulation_steps,
             lr_scheduler=lr_scheduler,
-            log_every_step=log_every_step,
             validate_every_step=validate_every_step,
             save_model_callback=save_model_callback,
             patience=patience,
@@ -118,17 +129,31 @@ class TransformerPairClassifier(TransformerBase):
         )
         trainer.train(epochs=epochs)
 
-    def _get_train_metrics(self) -> dict[str, Metric]:
+    def _get_train_metrics(self, default_log_freq: int) -> list[TrainingMetric]:
         def logits_accessor(metric, outputs, batch):
             metric.update(outputs["logits"], batch["labels"])
 
-        return {
-            "accuracy": with_accessor(MulticlassAccuracy(), logits_accessor),
-            "recall": with_accessor(MulticlassRecall(), logits_accessor),
-            "precision": with_accessor(MulticlassPrecision(), logits_accessor),
-            "auprc": with_accessor(MulticlassAUPRC(num_classes=2), logits_accessor),
-            "used_vmem": VMemMetric(),
-        }
+        return [
+            TrainingMetric(
+                "accuracy", MulticlassAccuracy(), default_log_freq, logits_accessor
+            ),
+            TrainingMetric(
+                "recall", MulticlassRecall(), default_log_freq, logits_accessor
+            ),
+            TrainingMetric(
+                "precision",
+                MulticlassPrecision(),
+                default_log_freq,
+                logits_accessor,
+            ),
+            TrainingMetric(
+                "auprc",
+                MulticlassAUPRC(num_classes=2),
+                default_log_freq,
+                logits_accessor,
+            ),
+            TrainingMetric("used_vmem", VMemMetric(), default_log_freq),
+        ]
 
     @torch.inference_mode()
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
