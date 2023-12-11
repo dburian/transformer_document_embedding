@@ -247,11 +247,12 @@ class SoftCCALoss(torch.nn.Module):
         # MSE is squared l2 norm
         l2 = torch.nn.functional.mse_loss(view1, view2)
 
+        correlation_part = l2 * self.lam
         return {
             "sdl1": sdl1,
             "sdl2": sdl2,
-            "l2": l2,
-            "loss": l2 * self.lam + sdl1 + sdl2,
+            "l2": correlation_part,
+            "loss": correlation_part + sdl1 + sdl2,
         }
 
 
