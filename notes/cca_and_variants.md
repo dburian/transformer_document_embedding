@@ -33,10 +33,11 @@ Soft CCA decomposes the traditional target into two losses:
 The motivation for this is the following form of CCA:
 
 $$
-argmin_{\theta_1, \theta_2} = ||P_\theta_1(X_1) - P_\theta_2(X_2)||_F^2
+argmin_{\theta_1, \theta_2} = ||P_{\theta_1(X_1)} - P_{\theta_2(X_2)}||_F^2
 $$
 
-such that $P_\theta_1(X_1)^TP_\theta_1(X_1) = I$ and $P_\theta_2(X_2)^TP_\theta_2(X_2) = I$.
+such that $P_{\theta_1(X_1)}^TP_{\theta_1(X_1)} = I$ and
+$P_{\theta_2(X_2)}^TP_{\theta_2(X_2)} = I$.
 
 Where $P_\theta(X)$ is a projection of a mini-batch $X \in
 \mathbb{R}^{batch_size \times dim}$ parametrized by $\theta$
@@ -44,8 +45,8 @@ Where $P_\theta(X)$ is a projection of a mini-batch $X \in
 The total loss is then:
 
 $
-L = L_2(P_\theta_1(X_1) - P_\theta_2(X_2)) + \lambda (
-    L_{SDL}(P_\theta_1(X_1)) +
-    L_{SDL}(P_\theta_2(X_2))
+L = L_2(P_{\theta_1(X_1)} - P_{\theta_2(X_2)}) + \lambda (
+    L_{SDL}(P_{\theta_1(X_1)}) +
+    L_{SDL}(P_{\theta_2(X_2)})
 )
 $

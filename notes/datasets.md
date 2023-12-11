@@ -115,25 +115,6 @@ paper cited by the source paper
     - available [on the article
       homepage](https://xuhuizhou.github.io/Multilevel-Text-Alignment/)
 
-- Wiki65K
-    - introduced in [Semantic Text Matching for Long-Form documents][jiang_19]
-    - used again in [Siamese Multi-depth Transformer-based Hierarchical (SMITH)
-      Encoder for Long-Form Document Matching][yang_20]
-    - pairs of wikipedia articles which are either related or not
-    - Related articles are those with Jackard similarity between outgoing links
-      above 0.5.
-    - available on [Google research
-      github](https://github.com/google-research/google-research/tree/master/gwikimatch)
-
-- AAN104K
-    - introduced in [Semantic Text Matching for Long-Form documents][jiang_19]
-    - adopts data from [The ACL anthology network corpus][radev_13] for *citation
-      prediction*
-    - used in [Siamese Multi-depth Transformer-based Hierarchical (SMITH)
-      Encoder for Long-Form Document Matching][yang_20]
-    - pairs of full paper texts
-    - in a positive pair first text cites the second one
-    - **unknown download**
 
 - [Document similarity triplets data (download)][sim_triplets_wiki_arxiv]
     - Dataset of arxiv/Wikipedia links triplets, where the first two links are more
@@ -147,6 +128,29 @@ paper cited by the source paper
 
 
 #### Rejected
+
+- Wiki65K
+    - introduced in [Semantic Text Matching for Long-Form documents][jiang_19]
+    - used again in [Siamese Multi-depth Transformer-based Hierarchical (SMITH)
+      Encoder for Long-Form Document Matching][yang_20]
+    - pairs of wikipedia articles which are either related or not
+    - Related articles are those with Jackard similarity between outgoing links
+      above 0.5.
+    - available on [Google research
+      github](https://github.com/google-research/google-research/tree/master/gwikimatch)
+    - only links are available, one has to download the articles themselves
+    - reason for rejection: the dataset was not mentioned directly in the paper
+
+- AAN104K
+    - introduced in [Semantic Text Matching for Long-Form documents][jiang_19]
+    - adopts data from [The ACL anthology network corpus][radev_13] for *citation
+      prediction*
+    - used in [Siamese Multi-depth Transformer-based Hierarchical (SMITH)
+      Encoder for Long-Form Document Matching][yang_20]
+    - pairs of full paper texts
+    - in a positive pair first text cites the second one
+    - **unknown download**
+    - reason for rejection: the dataset was not mentioned directly in the paper
 
 - [RELISH][d/relish_dataset]
     - scientific article similarity benchmark annotated by experts
