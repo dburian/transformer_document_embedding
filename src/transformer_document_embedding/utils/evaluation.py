@@ -74,8 +74,8 @@ def evaluate_ir_metrics(
         reciprocal_rank += 1 / (first_hit_ind if first_hit_ind > 0 else 1)
         total_queries += 1
 
-        for perctanges, percentages in zip(hit_percentages, query_hits, strict=True):
-            perctanges.append(percentages / len(true_ids))
+        for perctanges, num_of_hits in zip(hit_percentages, query_hits, strict=True):
+            perctanges.append(num_of_hits / len(true_ids))
 
     results = {
         "mean_reciprocal_rank": reciprocal_rank / total_queries,

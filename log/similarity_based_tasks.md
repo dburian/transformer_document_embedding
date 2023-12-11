@@ -50,10 +50,11 @@ For evaluation the currently implemented approach is to:
 
 Currently there is only a single function which computes all metrics:
 
-TODO: Today
-- Mean Reciprocal Rank --
-- Mean Percentile Rank --
-- HitRatio@k --
+- Mean Reciprocal Rank -- mean of 1/first_hit_index of predicted documents for
+  each query
+- Mean Percentile Rank -- mean of hit_index/number_of_gold_docs for each predicted,
+  gold document pair
+- HitRatio@k -- total hits with hit_index <= k divided by the number of hits
 
 ## Why's
 
