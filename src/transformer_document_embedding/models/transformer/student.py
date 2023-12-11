@@ -18,7 +18,7 @@ from transformer_document_embedding.utils.metrics import (
     CosineDistanceWithSBERT,
     MSEWithSBERT,
     VMemMetric,
-    WindowedNonResetableCCAMetricTorch,
+    WindowedNonResetableCCAMetricZoo,
     WindowedNonResetableCorrelationMetric,
 )
 from transformer_document_embedding.utils.similarity_losses import (
@@ -617,8 +617,15 @@ class TransformerStudent(TransformerBase):
                 outputs["static_projected_view1"], outputs["static_projected_view2"]
             )
 
-        for n_components in [128, 256, 512, 768]:
-            cca_metric = WindowedNonResetableCCAMetricTorch(n_components=n_components)
+        for n_components, window_size in [
+            (256, 256 * 10),
+            (512, 512 * 5),
+            (768, 768 * 5),
+        ]:
+            cca_metric = WindowedNonResetableCCAMetricZoo(
+                n_components=n_components,
+                window_size=window_size,
+            )
             metric_name = f"cca_{n_components}x{cca_metric.window_size}"
             if (
                 val_data is not None

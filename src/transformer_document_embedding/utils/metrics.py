@@ -5,6 +5,7 @@ from time import time
 import warnings
 from typing import TYPE_CHECKING, Any, Callable
 from sklearn.cross_decomposition import CCA
+from cca_zoo.linear import CCA as ZooCCA
 
 
 import numpy as np
@@ -411,6 +412,25 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
             return torch.nan
 
         return -self._cca_loss(self.views1, self.views2)["loss"]
+
+
+class WindowedNonResetableCCAMetricZoo(WindowedNonResetableCCAMetric):
+    @torch.inference_mode()
+    def compute(self) -> float:
+        if not self.has_full_window:
+            return torch.nan
+
+        samples = self.views1.size(0)
+        view1_dim = self.views1.size(1)
+        view2_dim = self.views2.size(1)
+
+        # There is a upper bound on the number of dimensions found
+        if self.n_components > min(view1_dim, view2_dim, samples):
+            return torch.nan
+
+        views = (self.views1.numpy(force=True), self.views2.numpy(force=True))
+        cca_model = ZooCCA(latent_dimensions=self.n_components)
+        return cca_model.fit(views).score(views)
 
 
 class WindowedNonResetableCorrelationMetric(WindowedNonResetableMetric):
