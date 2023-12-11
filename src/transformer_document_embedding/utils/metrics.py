@@ -1,4 +1,6 @@
 from __future__ import annotations
+from abc import abstractmethod
+from dataclasses import asdict, dataclass
 import logging
 from time import time
 
@@ -10,152 +12,88 @@ from cca_zoo.linear import CCA as ZooCCA
 
 import numpy as np
 import torch
-from torcheval.metrics import Mean, Metric
+from torcheval.metrics import Max, Mean, Metric
 
 from transformer_document_embedding.utils.cca_losses import CCALoss
 
 if TYPE_CHECKING:
-    from typing import Iterable, Optional, Union
+    from typing import Iterable, Optional
 
 logger = logging.getLogger(__name__)
 
 
-class MeanLossMetric(Metric):
-    """Metric accumulating the mean loss."""
+@dataclass
+class TrainingMetric:
+    """`torcheval` Metric wrapped with information how to handle it during training."""
 
-    def __init__(self, loss_fn: torch.nn.Module, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self._loss_fn = loss_fn
-        self._mean_loss = Mean(device=self.device)
+    @staticmethod
+    def identity_update_fn(metric: Metric, *args: Any) -> None:
+        metric.update(*args)
 
-    def to(
-        self, device: Union[str, torch.device], *args: Any, **kwargs: Any
-    ) -> MeanLossMetric:
-        self._loss_fn.to(device)
-        self._mean_loss = self._mean_loss.to(device, *args, **kwargs)
+    name: str
+    metric: Metric
+    log_frequency: Optional[int] = None
+    update_fn: Callable = identity_update_fn
+    reset_after_log: bool = True
 
-        self._device = (
-            device if isinstance(device, torch.device) else torch.device(device)
-        )
-        return self
+    @property
+    def device(self) -> torch.device:
+        return self.metric.device
 
-    @torch.inference_mode()
-    def update(
-        self,
-        outputs: torch.Tensor,
-        labels: torch.Tensor,
-    ) -> None:
-        loss = self._loss_fn(outputs, labels)
-        self._mean_loss.update(loss)
+    def update(self, *args) -> None:
+        self.update_fn(self.metric, *args)
 
-    @torch.inference_mode()
-    def compute(self) -> torch.Tensor:
-        return self._mean_loss.compute()
-
-    def reset(self) -> None:
-        self._mean_loss.reset()
-
-    @torch.inference_mode()
-    def merge_state(self, metrics: Iterable[MeanLossMetric]) -> MeanLossMetric:
-        for metric in metrics:
-            self._mean_loss.update(metric._mean_loss.compute())
-
-        return self
-
-    def state_dict(self) -> dict[str, Any]:
-        return {
-            "loss_fn": self._loss_fn.state_dict(),
-            "mean_loss": self._mean_loss.state_dict(),
-        }
-
-    def load_state_dict(self, state_dict: dict[str, Any], strict: bool = True) -> None:
-        self._loss_fn.load_state_dict(state_dict["loss_fn"], strict)
-        self._mean_loss.load_state_dict(state_dict["mean_loss"], strict)
-
-
-class VMemMetric(Metric):
-    """Metric outputting current amount of video memory used by pytorch."""
-
-    def __init__(
-        self,
-        return_MB: bool = True,
-        **kwargs,
-    ) -> None:
-        super().__init__(**kwargs)
-        self._return_MB = return_MB  # pylint: disable=invalid-name
-
-    def update(self, *args, **kwargs) -> None:
-        pass
-
-    @torch.inference_mode()
-    def compute(self) -> torch.Tensor:
-        mem_used = torch.cuda.memory_reserved(self._device)
-        mem_used = mem_used // 1024**2 if self._return_MB else mem_used
-        return torch.tensor(mem_used)
-
-    def merge_state(self, _: Iterable[VMemMetric]) -> VMemMetric:
-        return self
-
-
-UpdateWrapperFn = Callable[[Metric, Any, Any], Any]
-
-
-class AccessorMetric(Metric):
-    def __init__(
-        self, inner_metric: Metric, update_fn: UpdateWrapperFn, **kwargs
-    ) -> None:
-        self._inner_metric = inner_metric
-        self._update_fn = update_fn
-        super().__init__(**kwargs)
-
-    @torch.inference_mode()
-    def update(
-        self,
-        outputs: dict[str, torch.Tensor],
-        batch: dict[str, torch.Tensor],
-    ) -> AccessorMetric:
-        self._update_fn(self._inner_metric, outputs, batch)
-        return self
-
-    def merge_state(self, metrics: Iterable[Metric]) -> AccessorMetric:
-        self._inner_metric.merge_state(metrics)
-        return self
-
-    def state_dict(self) -> dict[str, Any]:
-        return self._inner_metric.state_dict()
+    def clone(self, **kwargs_overwrite) -> TrainingMetric:
+        kwargs = asdict(self)
+        kwargs.update(kwargs_overwrite)
+        return TrainingMetric(**kwargs)
 
     def compute(self) -> Any:
-        return self._inner_metric.compute()
+        return self.metric.compute()
 
-    def to(
-        self, device: Union[str, torch.device], *args: Any, **kwargs: Any
-    ) -> AccessorMetric:
-        self._inner_metric.to(device, *args, **kwargs)
-        return self
+    def reset(self) -> None:
+        self.metric.reset()
 
-    def load_state_dict(self, state_dict: dict[str, Any], strict: bool = True) -> None:
-        self._inner_metric.load_state_dict(state_dict, strict)
-
-    def reset(self) -> AccessorMetric:
-        self._inner_metric.reset()
+    def to(self, device: torch.device) -> TrainingMetric:
+        self.metric.to(device)
         return self
 
 
-def with_accessor(metric: Metric, update_fn: UpdateWrapperFn) -> Metric:
-    return AccessorMetric(metric, update_fn)
+class VMemMetric(TrainingMetric):
+    def __init__(self, log_frequency: int, reset_after_log: bool = False) -> None:
+        super().__init__(
+            "used_vmem", Max(), log_frequency, self._update_fn, reset_after_log
+        )
+
+    def _update_fn(self, metric: Metric, *_) -> None:
+        mem_used = torch.cuda.memory_reserved(metric.device)
+        mem_used = mem_used // 1024**2
+        metric.update(torch.tensor(mem_used))
 
 
-# TODO: Get rid of AccessorMetric, replace it by `TrainingMetric`
-class MSEWithSBERT(AccessorMetric):
+class MSEWithSBERT(TrainingMetric):
     def __init__(
-        self, max_input_length: Optional[int], normalize: bool = False, **kwargs
-    ) -> None:
-        self.max_input_length = max_input_length
+        self,
+        log_frequency: int,
+        max_input_length: Optional[int] = None,
+        normalize: bool = False,
+        reset_after_log: bool = False,
+    ):
+        name_norm_mod = "_norm" if normalize else ""
+        name_length_mod = f"_{max_input_length}" if max_input_length is not None else ""
+
+        super().__init__(
+            f"sbert_mse{name_norm_mod}{name_length_mod}",
+            Mean(),
+            log_frequency,
+            self._update_fn,
+            reset_after_log,
+        )
+
         self.normalize = normalize
+        self.max_input_length = max_input_length
 
-        super().__init__(Mean(), self._accessor, **kwargs)
-
-    def _accessor(
+    def _update_fn(
         self,
         metric: Metric,
         outputs: dict[str, torch.Tensor],
@@ -179,12 +117,28 @@ class MSEWithSBERT(AccessorMetric):
         metric.update(mse)
 
 
-class CosineDistanceWithSBERT(AccessorMetric):
-    def __init__(self, max_input_length: Optional[int], **kwargs) -> None:
-        self.max_input_length = max_input_length
-        super().__init__(Mean(), self._accessor, **kwargs)
+class CosineDistanceWithSBERT(TrainingMetric):
+    def __init__(
+        self,
+        log_frequency: int,
+        max_input_length: Optional[int] = None,
+        reset_after_log: bool = False,
+    ) -> None:
+        name_length_suffix = (
+            f"_{max_input_length}" if max_input_length is not None else ""
+        )
 
-    def _accessor(
+        super().__init__(
+            f"sbert_cos_dist{name_length_suffix}",
+            Mean(),
+            log_frequency,
+            self._update_fn,
+            reset_after_log,
+        )
+
+        self.max_input_length = max_input_length
+
+    def _update_fn(
         self,
         metric: Metric,
         outputs: dict[str, torch.Tensor],
@@ -203,48 +157,7 @@ class CosineDistanceWithSBERT(AccessorMetric):
         metric.update(cos_dist)
 
 
-class PositivesMaskPercentage(Metric):
-    def __init__(self, *, device: Optional[torch.device] = None) -> None:
-        super().__init__(device=device)
-
-        self._add_state("positives", torch.tensor(0, device=device, dtype=torch.int32))
-        self.positives: torch.Tensor
-
-        self._add_state("totals", torch.tensor(0, device=device, dtype=torch.int32))
-        self.totals: torch.Tensor
-
-    @torch.inference_mode()
-    def update(self, binary_mask: torch.Tensor) -> PositivesMaskPercentage:
-        self.totals += binary_mask.size(0)
-        self.positives += binary_mask.sum()
-        return self
-
-    @torch.inference_mode()
-    def compute(self) -> torch.Tensor:
-        return self.positives / self.totals
-
-    def merge_state(
-        self, metrics: Iterable[PositivesMaskPercentage]
-    ) -> PositivesMaskPercentage:
-        for other in metrics:
-            self.totals += other.totals
-            self.positives += other.positives
-
-        return self
-
-
-class PercentLengthBelowThres(AccessorMetric):
-    def __init__(self, length_threshold: int, **kwargs) -> None:
-        super().__init__(PositivesMaskPercentage(), self._accessor, **kwargs)
-        self._len_thres = length_threshold
-
-    def _accessor(
-        self, metric: Metric, _: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
-    ) -> None:
-        metric.update(batch["length"] < self._len_thres)
-
-
-class WindowedNonResetableMetric(Metric):
+class WindowedMetric(Metric):
     """Base class for all metrics that need fixed window in order to be comparable."""
 
     def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
@@ -267,9 +180,7 @@ class WindowedNonResetableMetric(Metric):
         return samples == self.window_size
 
     @torch.inference_mode()
-    def update(
-        self, views1: torch.Tensor, views2: torch.Tensor
-    ) -> WindowedNonResetableMetric:
+    def update(self, views1: torch.Tensor, views2: torch.Tensor) -> WindowedMetric:
         self.views1 = torch.cat((self.views1, views1))
         self.views2 = torch.cat((self.views2, views2))
 
@@ -277,11 +188,16 @@ class WindowedNonResetableMetric(Metric):
         return self
 
     def compute(self) -> Any:
-        raise NotImplementedError()
+        if not self.has_full_window:
+            return torch.nan
 
-    def merge_state(
-        self, metrics: Iterable[WindowedNonResetableCCAMetric]
-    ) -> WindowedNonResetableMetric:
+        return self._compute_with_full_window()
+
+    @abstractmethod
+    def _compute_with_full_window(self) -> Any:
+        pass
+
+    def merge_state(self, metrics: Iterable[WindowedCCAMetric]) -> WindowedMetric:
         views1 = [self.views1]
         views2 = [self.views2]
         for other in metrics:
@@ -295,9 +211,6 @@ class WindowedNonResetableMetric(Metric):
 
         return self
 
-    def reset(self) -> WindowedNonResetableMetric:
-        return self
-
     def _shorten_views_to_size(self) -> None:
         if self.views1.size(0) > self.window_size:
             self.views1 = self.views1[-self.window_size :, :]
@@ -305,12 +218,8 @@ class WindowedNonResetableMetric(Metric):
             self.views2 = self.views2[-self.window_size :, :]
 
 
-class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
+class WindowedCCAMetric(WindowedMetric):
     """CCA computed by sklearn.
-
-    Does not reset because it is assumed that to have enough elements to
-    compute CCA this metric will need much more updates than regular metric.
-    Ergo if this metric reset it would never output any values.
 
     It has a fixed window because the size of window influences the result. By
     having fixed window we make sure that the values are always informative and
@@ -336,10 +245,7 @@ class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
         self.n_components = n_components
 
     @torch.inference_mode()
-    def compute(self) -> float:
-        if not self.has_full_window:
-            return torch.nan
-
+    def _compute_with_full_window(self) -> float:
         samples = self.views1.size(0)
         view1_dim = self.views1.size(1)
         view2_dim = self.views2.size(1)
@@ -384,7 +290,7 @@ class WindowedNonResetableCCAMetric(WindowedNonResetableMetric):
             return np.nan
 
 
-class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
+class WindowedCCAMetricTorch(WindowedCCAMetric):
     def __init__(
         self,
         n_components: int,
@@ -399,10 +305,7 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
         )
 
     @torch.inference_mode()
-    def compute(self) -> float:
-        if not self.has_full_window:
-            return torch.nan
-
+    def _compute_with_full_window(self) -> float:
         samples = self.views1.size(0)
         view1_dim = self.views1.size(1)
         view2_dim = self.views2.size(1)
@@ -414,12 +317,9 @@ class WindowedNonResetableCCAMetricTorch(WindowedNonResetableCCAMetric):
         return -self._cca_loss(self.views1, self.views2)["loss"]
 
 
-class WindowedNonResetableCCAMetricZoo(WindowedNonResetableCCAMetric):
+class WindowedCCAMetricZoo(WindowedCCAMetric):
     @torch.inference_mode()
-    def compute(self) -> float:
-        if not self.has_full_window:
-            return torch.nan
-
+    def _compute_with_full_window(self) -> float:
         samples = self.views1.size(0)
         view1_dim = self.views1.size(1)
         view2_dim = self.views2.size(1)
@@ -433,14 +333,11 @@ class WindowedNonResetableCCAMetricZoo(WindowedNonResetableCCAMetric):
         return cca_model.fit(views).score(views)
 
 
-class WindowedNonResetableCorrelationMetric(WindowedNonResetableMetric):
+class WindowedCorrelationMetric(WindowedMetric):
     def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
         super().__init__(window_size=window_size, device=device)
 
-    def compute(self) -> float:
-        if not self.has_full_window:
-            return torch.nan
-
+    def _compute_with_full_window(self) -> float:
         all_vars = torch.concat((self.views1.T, self.views2.T), dim=0)
         view1_dim = self.views1.size(1)
 

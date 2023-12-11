@@ -11,8 +11,10 @@ from torcheval.metrics import (
     MulticlassPrecision,
     MulticlassRecall,
 )
+
+from transformer_document_embedding.utils.metrics import TrainingMetric
 from ..experimental_model import ExperimentalModel
-from ..trainer import MetricLogger, TorchTrainer, TrainingMetric
+from ..trainer import MetricLogger, TorchTrainer
 from .paragraph_vector import ParagraphVector
 from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.gensim.data import PairedGensimCorpus

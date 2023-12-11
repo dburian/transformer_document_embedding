@@ -12,14 +12,14 @@ from transformer_document_embedding.models.transformer.base import TransformerBa
 from transformer_document_embedding.models.trainer import (
     MetricLogger,
     TorchTrainer,
-    TrainingMetric,
 )
 from transformer_document_embedding.utils.metrics import (
     CosineDistanceWithSBERT,
     MSEWithSBERT,
+    TrainingMetric,
     VMemMetric,
-    WindowedNonResetableCCAMetricZoo,
-    WindowedNonResetableCorrelationMetric,
+    WindowedCCAMetricZoo,
+    WindowedCorrelationMetric,
 )
 from transformer_document_embedding.utils.similarity_losses import (
     ContrastiveLoss,
@@ -407,26 +407,16 @@ class TransformerStudent(TransformerBase):
     ) -> list[TrainingMetric]:
         contextual_len_thres = self._model.loss.contextual_max_length
         train_metrics = [
-            TrainingMetric("used_vmem", VMemMetric(), default_log_freq),
+            VMemMetric(default_log_freq),
             TrainingMetric(
                 "mean_length",
                 Mean(),
                 default_log_freq,
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
-            TrainingMetric(
-                "sbert_mse", MSEWithSBERT(max_input_length=None), default_log_freq
-            ),
-            TrainingMetric(
-                "sbert_mse_norm",
-                MSEWithSBERT(max_input_length=None, normalize=True),
-                default_log_freq,
-            ),
-            TrainingMetric(
-                "sbert_cos_dist",
-                CosineDistanceWithSBERT(max_input_length=None),
-                default_log_freq,
-            ),
+            MSEWithSBERT(default_log_freq),
+            MSEWithSBERT(default_log_freq, normalize=True),
+            CosineDistanceWithSBERT(default_log_freq),
             TrainingMetric(
                 "max_abs_transformer_grad",
                 Max(),
@@ -490,23 +480,16 @@ class TransformerStudent(TransformerBase):
         if contextual_len_thres is not None:
             train_metrics.extend(
                 [
-                    TrainingMetric(
-                        f"sbert_mse_{contextual_len_thres}",
-                        MSEWithSBERT(max_input_length=contextual_len_thres),
-                        default_log_freq,
+                    MSEWithSBERT(
+                        default_log_freq, max_input_length=contextual_len_thres
                     ),
-                    TrainingMetric(
-                        f"sbert_mse_norm_{contextual_len_thres}",
-                        MSEWithSBERT(
-                            max_input_length=contextual_len_thres,
-                            normalize=True,
-                        ),
+                    MSEWithSBERT(
                         default_log_freq,
+                        max_input_length=contextual_len_thres,
+                        normalize=True,
                     ),
-                    TrainingMetric(
-                        f"sbert_cos_dist_{contextual_len_thres}",
-                        CosineDistanceWithSBERT(max_input_length=contextual_len_thres),
-                        default_log_freq,
+                    CosineDistanceWithSBERT(
+                        default_log_freq, max_input_length=contextual_len_thres
                     ),
                 ]
             )
@@ -622,7 +605,7 @@ class TransformerStudent(TransformerBase):
             (512, 512 * 5),
             (768, 768 * 5),
         ]:
-            cca_metric = WindowedNonResetableCCAMetricZoo(
+            cca_metric = WindowedCCAMetricZoo(
                 n_components=n_components,
                 window_size=window_size,
             )
@@ -634,7 +617,7 @@ class TransformerStudent(TransformerBase):
             ):
                 logger.warn(
                     "Validation data smaller than CCA window. "
-                    "Metric '%s' will be outdated by %d inputs.",
+                    "Metric '%s' will be output nans.",
                     metric_name,
                     cca_metric.window_size - val_size,
                 )
@@ -647,12 +630,14 @@ class TransformerStudent(TransformerBase):
                         cca_metric,
                         log_freq,
                         _update_with_projected_views,
+                        reset_after_log=False,
                     ),
                     TrainingMetric(
                         f"corr_x{cca_metric.window_size}",
-                        WindowedNonResetableCorrelationMetric(cca_metric.window_size),
+                        WindowedCorrelationMetric(cca_metric.window_size),
                         log_freq,
                         _update_with_projected_views,
+                        reset_after_log=False,
                     ),
                 ]
             )

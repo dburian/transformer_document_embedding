@@ -1,14 +1,14 @@
 from __future__ import annotations
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
 from os import path
 from typing import TYPE_CHECKING
 
 import logging
 import torch
 from torch.cuda.amp.grad_scaler import GradScaler
-from torcheval.metrics import Mean, Metric
+from torcheval.metrics import Mean
 from tqdm.auto import tqdm
+from transformer_document_embedding.utils.metrics import TrainingMetric
 
 import transformer_document_embedding.utils.training as train_utils
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -270,43 +270,6 @@ class TorchTrainer:
                 yield
         else:
             yield
-
-
-@dataclass
-class TrainingMetric:
-    """`torcheval` Metric wrapped with information how to handle it during training."""
-
-    @staticmethod
-    def identity_update_fn(metric: Metric, *args: Any) -> None:
-        metric.update(*args)
-
-    name: str
-    metric: Metric
-    log_frequency: Optional[int] = None
-    update_fn: Callable = identity_update_fn
-    reset_after_log: bool = True
-
-    @property
-    def device(self) -> torch.device:
-        return self.metric.device
-
-    def update(self, *args) -> None:
-        self.update_fn(self.metric, *args)
-
-    def clone(self, **kwargs_overwrite) -> TrainingMetric:
-        kwargs = asdict(self)
-        kwargs.update(kwargs_overwrite)
-        return TrainingMetric(**kwargs)
-
-    def compute(self) -> Any:
-        return self.metric.compute()
-
-    def reset(self) -> None:
-        self.metric.reset()
-
-    def to(self, device: torch.device) -> TrainingMetric:
-        self.metric.to(device)
-        return self
 
 
 class MetricLogger:

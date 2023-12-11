@@ -18,10 +18,9 @@ from transformer_document_embedding.models.transformer.base import TransformerBa
 from transformer_document_embedding.models.trainer import (
     MetricLogger,
     TorchTrainer,
-    TrainingMetric,
 )
 from transformer_document_embedding.models.cls_head import ClsHead
-from transformer_document_embedding.utils.metrics import VMemMetric
+from transformer_document_embedding.utils.metrics import TrainingMetric, VMemMetric
 import transformer_document_embedding.utils.training as train_utils
 
 if TYPE_CHECKING:
@@ -152,7 +151,7 @@ class TransformerPairClassifier(TransformerBase):
                 default_log_freq,
                 logits_accessor,
             ),
-            TrainingMetric("used_vmem", VMemMetric(), default_log_freq),
+            VMemMetric(default_log_freq),
         ]
 
     @torch.inference_mode()
