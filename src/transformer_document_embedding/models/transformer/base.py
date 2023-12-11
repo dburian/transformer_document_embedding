@@ -25,6 +25,22 @@ class MeanPooler(torch.nn.Module):
         return summed / row_lengths[:, None]
 
 
+class LocalMeanPooler(torch.nn.Module):
+    """Does mean pooling from tokens without global attention."""
+
+    def forward(
+        self,
+        last_hidden_state: torch.Tensor,
+        attention_mask: torch.Tensor,
+        global_attention_mask: torch.Tensor,
+        **_,
+    ) -> torch.Tensor:
+        attn = attention_mask * (1 - global_attention_mask)
+        attn.unsqueeze_(-1)
+        masked = last_hidden_state * attn
+        return masked.sum(dim=1) / attn.sum(dim=1)
+
+
 class ClsPooler(torch.nn.Module):
     def forward(self, last_hidden_state: torch.Tensor, **_) -> torch.Tensor:
         return last_hidden_state[:, 0]
@@ -43,6 +59,7 @@ class SumPooler(torch.nn.Module):
 AVAILABLE_POOLERS = {
     "sum": SumPooler,
     "mean": MeanPooler,
+    "local_mean": LocalMeanPooler,
     "cls": ClsPooler,
 }
 
