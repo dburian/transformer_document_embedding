@@ -2,6 +2,7 @@
 results/**
 hp_searches/**
 evaluations/**
+related_papers/**
 *.sync.ipynb
 *.nb.ipynb
 
