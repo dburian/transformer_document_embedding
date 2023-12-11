@@ -21,7 +21,7 @@ class BaseValuesSpec:
 
 
 @dataclass(kw_only=True)
-class ModuleSpec:
+class ModuleSpec(BaseValuesSpec):
     module: str
     module_prefix: str
     kwargs: dict[str, Any] = field(default_factory=dict)
