@@ -1,4 +1,0 @@
-model.kwargs.cls_head_kwargs.hidden_features: [0, 25, 75]
-model.kwargs.cls_head_kwargs.hidden_dropout: [0, 0.25, 0.5]
-model.kwargs.epochs: [4]
-model.kwargs.label_smoothing: [0.2]

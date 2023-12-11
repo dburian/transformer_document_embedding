@@ -1,9 +1,0 @@
-model.kwargs.contextual_loss_kwargs.contextual_loss_type:
-  - mse
-  - cos_dist
-# model.train_kwargs.grad_accumulation_steps:
-#   - 8
-#   - 32
-model.kwargs.contextual_max_length:
-  - null
-  - 384
