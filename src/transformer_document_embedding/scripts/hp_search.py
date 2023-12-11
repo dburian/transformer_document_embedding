@@ -1,7 +1,5 @@
-"""Runs experiment for given model and task.
+"""Runs hyperparameter search on a model and a task."""
 
-# TODO: Document this module once the interface settles...
-"""
 from __future__ import annotations
 import argparse
 from copy import deepcopy

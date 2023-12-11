@@ -1,7 +1,4 @@
-"""Runs experiment for given model and task.
-
-# TODO: Document this module once the interface settles...
-"""
+"""Trains and optionally saves a model on a task."""
 from __future__ import annotations
 
 import argparse

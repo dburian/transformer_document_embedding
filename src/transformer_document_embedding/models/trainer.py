@@ -27,14 +27,12 @@ class TorchTrainer:
     def __init__(
         self,
         model: torch.nn.Module,
-        train_data: DataLoader,
         optimizer: torch.optim.Optimizer,
         train_logger: Optional[MetricLogger] = None,
         val_logger: Optional[MetricLogger] = None,
         main_metric: str = "loss",
         lower_is_better: bool = True,
         device: Optional[Union[torch.device, str]] = None,
-        val_data: Optional[DataLoader] = None,
         fp16: bool = False,
         max_grad_norm: Optional[float] = None,
         grad_accumulation_steps: int = 1,
@@ -50,9 +48,6 @@ class TorchTrainer:
             patience is reached, the training is stopped.
         """
         self._model = model
-        # TODO: Move train and validation data to train method
-        self._train_data = train_data
-        self._val_data = val_data
 
         self._logger = train_logger
         self._val_logger = val_logger
@@ -99,27 +94,37 @@ class TorchTrainer:
             self._val_logger.reset_all()
             self._val_logger.to(self._device)
 
-    def train(self, epochs: int, progress_bar: bool = True) -> None:
+    def train(
+        self,
+        epochs: int,
+        train_data: DataLoader,
+        val_data: Optional[DataLoader] = None,
+        progress_bar: bool = True,
+    ) -> None:
         self._init_train()
 
-        steps_in_epoch = len(self._train_data)
-        step_count = steps_in_epoch * epochs
+        steps_in_epoch = len(train_data)
 
         for epoch in tqdm(range(epochs), desc="Epoch", disable=not progress_bar):
             for step, batch in tqdm(
-                enumerate(self._train_data),
+                enumerate(train_data),
                 desc="Batches",
                 disable=not progress_bar,
-                total=len(self._train_data),
+                total=len(train_data),
             ):
                 total_step = epoch * steps_in_epoch + step
-                self._training_step(batch, total_step)
+                self._training_step(
+                    batch,
+                    total_step,
+                    is_last_step=(step + 1) == steps_in_epoch,
+                )
 
                 if (
-                    self._validate_every_step is not None
+                    val_data is not None
+                    and self._validate_every_step is not None
                     and (1 + total_step) % self._validate_every_step == 0
                 ):
-                    self._validate(total_step, progress_bar)
+                    self._validate(val_data, total_step, progress_bar)
 
                     # TODO: Too much indentation
                     if (
@@ -132,23 +137,26 @@ class TorchTrainer:
                         )
                         return
 
-        if (
+        step_count = steps_in_epoch * epochs
+
+        if val_data is not None and (
             self._validate_every_step is None
             or step_count % self._validate_every_step != 0
         ):
-            self._validate(total_step=step_count - 1, progress_bar=progress_bar)
+            self._validate(
+                val_data, total_step=step_count - 1, progress_bar=progress_bar
+            )
 
-    def _validate(self, total_step: int, progress_bar: bool) -> None:
-        if self._val_data is None:
-            return
-
+    def _validate(
+        self, val_data: DataLoader, total_step: int, progress_bar: bool
+    ) -> None:
         self._model.eval()
         if self._val_logger is not None:
             self._val_logger.reset_all()
 
         for batch in tqdm(
-            self._val_data,
-            total=len(self._val_data),
+            val_data,
+            total=len(val_data),
             desc="Validation batches",
             disable=not progress_bar,
         ):
@@ -197,7 +205,9 @@ class TorchTrainer:
                 auto_log=False,
             )
 
-    def _training_step(self, batch: dict[str, torch.Tensor], total_step: int) -> None:
+    def _training_step(
+        self, batch: dict[str, torch.Tensor], total_step: int, is_last_step: bool
+    ) -> None:
         train_utils.batch_to_device(batch, self._device)
 
         with self._autocast():
@@ -230,9 +240,7 @@ class TorchTrainer:
                 auto_log=True,
             )
 
-        if (total_step + 1) % self._grad_accumulation_steps == 0 or (
-            total_step + 1
-        ) == len(self._train_data):
+        if (total_step + 1) % self._grad_accumulation_steps == 0 or is_last_step:
             if self._max_grad_norm is not None:
                 if self._scaler is not None:
                     self._scaler.unscale_(self._optim)

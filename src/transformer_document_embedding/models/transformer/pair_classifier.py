@@ -79,8 +79,6 @@ class TransformerPairClassifier(TransformerBase):
         model_dir: Optional[str] = None,
         **_,
     ) -> None:
-        summary_writer, val_summary_writer = self._get_train_val_writers(log_dir)
-
         train_data = self._to_dataloader(task.train, training=True)
         val_data = None
         if task.validation is not None:
@@ -112,8 +110,6 @@ class TransformerPairClassifier(TransformerBase):
 
         trainer = TorchTrainer(
             model=self._model,
-            train_data=train_data,
-            val_data=val_data,
             optimizer=optimizer,
             train_logger=train_logger,
             val_logger=val_logger,
@@ -126,7 +122,11 @@ class TransformerPairClassifier(TransformerBase):
             patience=patience,
             device=device,
         )
-        trainer.train(epochs=epochs)
+        trainer.train(
+            epochs=epochs,
+            train_data=train_data,
+            val_data=val_data,
+        )
 
     def _get_train_metrics(self, default_log_freq: int) -> list[TrainingMetric]:
         def logits_accessor(metric, outputs, batch):

@@ -73,14 +73,6 @@ class PairClassifier(ExperimentalModel):
             module.build_vocab(pv_train)
             module.train(pv_train, total_examples=module.corpus_count, epochs=pv_epochs)
 
-        cls_head_train_data = self._create_features_dataloader(task.train)
-
-        cls_head_val_data = None
-        if task.validation is not None:
-            cls_head_val_data = self._create_features_dataloader(
-                task.validation, training=False
-            )
-
         save_model_callback = None
         if save_best and model_dir is not None:
 
@@ -140,10 +132,16 @@ class PairClassifier(ExperimentalModel):
                 log_lr=False,
             )
 
+        cls_head_train_data = self._create_features_dataloader(task.train)
+
+        cls_head_val_data = None
+        if task.validation is not None:
+            cls_head_val_data = self._create_features_dataloader(
+                task.validation, training=False
+            )
+
         trainer = TorchTrainer(
             model=model,
-            train_data=cls_head_train_data,
-            val_data=cls_head_val_data,
             optimizer=optim,
             lr_scheduler=train_utils.get_cosine_lr_scheduler(
                 optim, cls_head_epochs * len(cls_head_train_data)
@@ -153,7 +151,11 @@ class PairClassifier(ExperimentalModel):
             save_model_callback=save_model_callback,
         )
 
-        trainer.train(epochs=cls_head_epochs)
+        trainer.train(
+            epochs=cls_head_epochs,
+            train_data=cls_head_train_data,
+            val_data=cls_head_val_data,
+        )
 
     @torch.inference_mode()
     def predict(self, inputs: datasets.Dataset) -> Iterable[np.ndarray]:

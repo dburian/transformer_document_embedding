@@ -107,8 +107,6 @@ class TransformerClassifier(TransformerBase):
 
         trainer = TorchTrainer(
             model=self._model,
-            train_data=train_batches,
-            val_data=val_batches,
             optimizer=optimizer,
             train_logger=train_logger,
             val_logger=val_logger,
@@ -121,7 +119,11 @@ class TransformerClassifier(TransformerBase):
             patience=patience,
             device=device,
         )
-        trainer.train(epochs=epochs)
+        trainer.train(
+            epochs=epochs,
+            train_data=train_batches,
+            val_data=val_batches,
+        )
 
     def _get_train_metrics(self, default_log_frequency: int) -> list[TrainingMetric]:
         def logits_accessor(metric, outputs, batch):
