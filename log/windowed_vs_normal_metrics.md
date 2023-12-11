@@ -24,6 +24,15 @@ For non-windowed metrics we assume we call `reset()` after every log.
 
 I've decided that:
 
+### CCA metrics will have fixed buffer size depending on the number of components
+
+Ergo: they will produce nans before reaching the required buffer size. The
+advantage of this step is to make the CCA metrics comparable among experiments
+and among different splits. If the CCA will create a value it will have some
+informational value.
+
+The buffer size should be included in the metric name to make it evident.
+
 ### CCA metrics won't ever reset
 
 The only disadvantage is that for validation metrics it might happen that
@@ -44,12 +53,3 @@ suitable as the situation is really custom and I am bound to forget when
 creating new model. Nevertheless, I use CCA only in a single model, when I
 implement others I might realize that there is some code duplication, which also
 includes these warnings.
-
-### CCA metrics will have fixed buffer size depending on the number of components
-
-Ergo: they will produce nans before reaching the required buffer size. The
-advantage of this step is to make the CCA metrics comparable among experiments
-and among different splits. If the CCA will create a value it will have some
-informational value.
-
-The buffer size should be included in the metric name to make it evident.
