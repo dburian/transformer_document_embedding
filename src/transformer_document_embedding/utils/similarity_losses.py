@@ -63,10 +63,13 @@ class MaskedCosineDistance(torch.nn.CosineSimilarity):
     ) -> torch.Tensor:
         cos_dist = 1 - super().forward(x1, x2)
 
-        if mask is not None:
-            cos_dist *= mask
+        if mask is None:
+            return cos_dist.mean()
 
-        return cos_dist.sum()
+        # Cos dist has dimension of 1
+        cos_dist *= mask.squeeze()
+
+        return cos_dist.sum() / mask.sum()
 
 
 class MaskedMSE(torch.nn.MSELoss):
@@ -77,9 +80,13 @@ class MaskedMSE(torch.nn.MSELoss):
         self, x1: torch.Tensor, x2: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         mse = super().forward(x1, x2)
-        if mask is not None:
-            mse *= mask
-        return mse.sum()
+
+        if mask is None:
+            return mse.mean()
+
+        mse *= mask
+
+        return mse.sum() / mask.sum()
 
 
 def create_sim_based_loss(loss_type: str, **kwargs) -> torch.nn.Module:
