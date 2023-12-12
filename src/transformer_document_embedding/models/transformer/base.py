@@ -2,15 +2,16 @@ from __future__ import annotations
 from os import path
 import torch
 from typing import TYPE_CHECKING, Callable
-from torch.utils.tensorboard.writer import SummaryWriter
 
 from transformers import AutoModel, AutoTokenizer
 from transformer_document_embedding.models.experimental_model import ExperimentalModel
+from transformer_document_embedding.models.trainer import MetricLogger
 from transformer_document_embedding.utils.training import (
     create_tokenized_data_loader,
 )
 
 if TYPE_CHECKING:
+    from transformer_document_embedding.utils.metrics import TrainingMetric
     from torch.utils.data import DataLoader
     from datasets import Dataset
     from typing import Optional, Any
@@ -114,15 +115,22 @@ class TransformerBase(ExperimentalModel):
             **kwargs,
         )
 
-    def _get_train_val_writers(
-        self, log_dir: Optional[str]
-    ) -> tuple[Optional[SummaryWriter], Optional[SummaryWriter]]:
+    def _get_train_val_loggers(
+        self,
+        log_dir: Optional[str],
+        train_metrics: list[TrainingMetric],
+        val_metrics: Optional[list[TrainingMetric]] = None,
+    ) -> tuple[Optional[MetricLogger], Optional[MetricLogger]]:
         if log_dir is None:
             return None, None
 
-        return SummaryWriter(path.join(log_dir, "train")), SummaryWriter(
-            path.join(log_dir, "val")
-        )
+        if val_metrics is None:
+            val_metrics = [m.clone() for m in train_metrics]
+
+        train_logger = MetricLogger("train", train_metrics, log_dir)
+        val_logger = MetricLogger("val", val_metrics, log_dir, log_lr=False)
+
+        return train_logger, val_logger
 
     def _get_save_model_callback(
         self, save_best: bool, model_dir: Optional[str]

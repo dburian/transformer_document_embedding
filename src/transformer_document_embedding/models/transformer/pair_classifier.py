@@ -16,7 +16,6 @@ from tqdm.auto import tqdm
 
 from transformer_document_embedding.models.transformer.base import TransformerBase
 from transformer_document_embedding.models.trainer import (
-    MetricLogger,
     TorchTrainer,
 )
 from transformer_document_embedding.models.cls_head import ClsHead
@@ -99,14 +98,9 @@ class TransformerPairClassifier(TransformerBase):
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()
 
-        train_logger = None
-        val_logger = None
-        if log_dir is not None:
-            metrics = self._get_train_metrics(log_every_step)
-            train_logger = MetricLogger("train", metrics, log_dir)
-            val_logger = MetricLogger(
-                "val", [m.clone() for m in metrics], log_dir, log_lr=False
-            )
+        train_logger, val_logger = self._get_train_val_loggers(
+            log_dir, self._get_train_metrics(log_every_step)
+        )
 
         trainer = TorchTrainer(
             model=self._model,
