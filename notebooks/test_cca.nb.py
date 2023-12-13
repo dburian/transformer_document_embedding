@@ -129,13 +129,13 @@ model.load(MODEL_SAVE_PATH)
 task = utils.init_type(ExperimentalTaskSpec.from_dict(config["task"]))
 
 # %%
-from transformer_document_embedding.utils import training
+from transformer_document_embedding.utils import training, tokenizers
 import pandas as pd
 from time import time
 
 # %%
 train_kwargs = config["model"]["train_kwargs"]
-val_dataloader = training.create_tokenized_data_loader(
+val_dataloader = tokenizers.create_tokenized_data_loader(
     task.validation,
     model._batch_size,
     training=False,

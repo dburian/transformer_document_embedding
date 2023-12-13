@@ -6,9 +6,7 @@ from typing import TYPE_CHECKING, Callable
 from transformers import AutoModel, AutoTokenizer
 from transformer_document_embedding.models.experimental_model import ExperimentalModel
 from transformer_document_embedding.models.trainer import MetricLogger
-from transformer_document_embedding.utils.training import (
-    create_tokenized_data_loader,
-)
+from transformer_document_embedding.utils.tokenizers import create_tokenized_data_loader
 
 if TYPE_CHECKING:
     from transformer_document_embedding.utils.metrics import TrainingMetric

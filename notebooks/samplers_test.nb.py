@@ -2,7 +2,7 @@
 # # Testing of samplers
 
 # %%
-import transformer_document_embedding.utils.training as train_utils
+from transformer_document_embedding.utils import tokenizers
 import torch
 from datasets import load_from_disk
 from transformers import AutoTokenizer
@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 # %%
 ds = load_from_disk("/mnt/data/datasets/wikipedia_sample")["train"]
 # %%
-ds_sample = ds.select(range(min(1000, len(ds))))
+ds_sample = ds.select(range(min(100000, len(ds))))
 
 # %%
 tokenizer = AutoTokenizer.from_pretrained("allenai/longformer-base-4096")
@@ -24,8 +24,11 @@ effective_batch_size = 32
 batch_size = 4
 bucket_limits = [384, 512, 1024, 1536, 2048, 2560, 3072]
 
+# %% [markdown]
+# ### Correct lengths
+
 # %%
-dataloader = train_utils.create_tokenized_data_loader(
+dataloader = tokenizers.create_tokenized_data_loader(
     data=ds_sample,
     tokenizer=tokenizer,
     batch_size=batch_size,
@@ -33,7 +36,7 @@ dataloader = train_utils.create_tokenized_data_loader(
     sampler_kwargs={
         "effective_batch_size": effective_batch_size,
         "bucket_limits": bucket_limits,
-        "mega_batch_size": 1000,
+        "mega_batch_size": 33,
     },
 )
 
@@ -120,3 +123,35 @@ np.mean(ds_sample["length"])
 
 # %%
 np.std(ds_sample["length"])
+
+# %% [markdown]
+# ### Speed test
+
+# %%
+dataloader_default = tokenizers.create_tokenized_data_loader(
+    data=ds_sample,
+    tokenizer=tokenizer,
+    batch_size=batch_size,
+    sampling="default",
+)
+
+# %%
+dataloader_consistent = tokenizers.create_tokenized_data_loader(
+    data=ds_sample,
+    tokenizer=tokenizer,
+    batch_size=batch_size,
+    sampling="consistent",
+    sampler_kwargs={
+        "effective_batch_size": effective_batch_size,
+        "bucket_limits": bucket_limits,
+        "mega_batch_size": 1000,
+    },
+)
+
+# %%
+for name, dataloader in {
+    "default": dataloader_default,
+    "consistent": dataloader_consistent,
+}.items():
+    for _ in tqdm(dataloader, desc=name):
+        pass
