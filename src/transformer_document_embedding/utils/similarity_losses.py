@@ -38,17 +38,16 @@ class ContrastiveLoss(torch.nn.Module):
             outputs = outputs.index_select(dim=0, index=batch_idxs)
             targets = targets.index_select(dim=0, index=batch_idxs)
 
-        positive = -self.dissimilarity_fn(outputs, targets)
+        positive = self.dissimilarity_fn(outputs, targets)
 
         negative = torch.tensor(0, device=outputs.device, dtype=outputs.dtype)
         batch_size = outputs.size(0)
         for shifts in range(1, batch_size):
-            negative += self.lam * self.dissimilarity_fn(
-                outputs, targets.roll(shifts, dims=0)
-            )
+            negative -= self.dissimilarity_fn(outputs, targets.roll(shifts, dims=0))
 
         # compute mean, to be independent of batch size
         negative /= batch_size - 1
+        negative *= self.lam
 
         return {
             "loss": positive + negative,
