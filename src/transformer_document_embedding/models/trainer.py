@@ -332,12 +332,10 @@ class MetricLogger:
         auto_log: bool = False,
     ) -> None:
         for metric in self.metrics.values():
-            if metric.name == self.LOSS_NAME:
-                if loss is not None:
-                    metric.update(loss)
-            elif metric.name == self.LR_NAME:
-                if lr is not None:
-                    metric.update(lr)
+            if metric.name == self.LOSS_NAME and loss is not None:
+                metric.update(loss)
+            elif metric.name == self.LR_NAME and lr is not None:
+                metric.update(lr)
             else:
                 metric.update(outputs, batch)
 

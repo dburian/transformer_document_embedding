@@ -291,10 +291,9 @@ class StochasticDecorrelationLoss(torch.nn.Module):
         self.sigma = self.alpha * self.sigma.detach() + new_sigma
 
         self.norm_factor = self.alpha * self.norm_factor + 1
-        apprx_sigma = self.sigma / self.norm_factor
-        apprx_sigma = apprx_sigma.abs()
+        abs_sigma = (self.sigma / self.norm_factor).abs()
 
-        loss = apprx_sigma.sum() - apprx_sigma.trace()
+        loss = abs_sigma.sum() - abs_sigma.trace()
 
         # My addition: mean instead of sum, to help with fine-tuning SDL vs L2 norm
         loss /= (n * n) - n
