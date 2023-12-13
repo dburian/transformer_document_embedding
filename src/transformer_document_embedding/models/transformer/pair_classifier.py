@@ -72,6 +72,7 @@ class TransformerPairClassifier(TransformerBase):
         max_grad_norm: float,
         log_every_step: int,
         save_best: bool,
+        lr_scheduler_type: str,
         validate_every_step: Optional[int],
         device: Optional[str] = None,
         log_dir: Optional[str] = None,
@@ -87,7 +88,8 @@ class TransformerPairClassifier(TransformerBase):
             train_utils.get_optimizer_params(self._model, weight_decay), lr=3e-5
         )
 
-        lr_scheduler = train_utils.get_linear_lr_scheduler_with_warmup(
+        lr_scheduler = train_utils.get_lr_scheduler(
+            lr_scheduler_type,
             optimizer,
             warmup_steps // grad_accumulation_steps,
             epochs * len(train_data) // grad_accumulation_steps,

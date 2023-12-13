@@ -329,6 +329,7 @@ class TransformerStudent(TransformerBase):
         validate_every_step: Optional[int],
         dataloader_sampling: str,
         lr: float,
+        lr_scheduler_type: str,
         bucket_limits: list[int],
         save_best: bool,
         global_attention_type: str,
@@ -359,7 +360,8 @@ class TransformerStudent(TransformerBase):
             lr=lr,
         )
 
-        lr_scheduler = train_utils.get_linear_lr_scheduler_with_warmup(
+        lr_scheduler = train_utils.get_lr_scheduler(
+            lr_scheduler_type,
             optimizer,
             warmup_steps // grad_accumulation_steps,
             epochs * len(train_data) // grad_accumulation_steps,

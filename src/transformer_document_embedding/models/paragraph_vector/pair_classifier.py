@@ -143,8 +143,8 @@ class PairClassifier(ExperimentalModel):
         trainer = TorchTrainer(
             model=model,
             optimizer=optim,
-            lr_scheduler=train_utils.get_cosine_lr_scheduler(
-                optim, cls_head_epochs * len(cls_head_train_data)
+            lr_scheduler=train_utils.get_lr_scheduler(
+                "cos", optim, cls_head_epochs * len(cls_head_train_data)
             ),
             train_logger=train_logger,
             val_logger=val_logger,

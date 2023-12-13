@@ -8,7 +8,7 @@ exp_path = (
 )
 
 # %%
-config = ExperimentConfig.from_yaml(exp_path + "/config.yaml", "../results")
+config = ExperimentConfig.from_template(exp_path + "/config.yaml", "../results")
 
 # %%
 model = config.get_model_type()(**config.values["model"]["kwargs"])
@@ -21,8 +21,33 @@ model.save("./longformer_save")
 model.load(exp_path + "/model/checkpoint")
 
 # %% [markdown]
+# ---
+# # Testing lr schedulers
+
+# %%
+from functools import partial
+from transformer_document_embedding.utils.training import cos_lambda_lr
+import numpy as np
+import matplotlib.pyplot as plt
+
+# %%
+total_steps = 10000
+warmup_steps = 1000
+lambda_lr = partial(cos_lambda_lr, total_steps=total_steps, warmup_steps=warmup_steps)
+
+# %%
+xs = np.arange(12000)
+ys = np.array([lambda_lr(x) for x in xs])
+
+# %%
+plt.plot(xs, ys)
+
+# %%
+ys[-100:]
+
+# %% [markdown]
 # ----
-# ### Testing just DCCA
+# # Testing just DCCA
 
 # %%
 import transformer_document_embedding.utils.losses as losses
@@ -58,7 +83,7 @@ make_dot(
 
 # %% [markdown]
 # ---
-# ## Creating true wikipedia dbow correlation matrix
+# # Creating true wikipedia dbow correlation matrix
 
 # %%
 from datasets import load_from_disk

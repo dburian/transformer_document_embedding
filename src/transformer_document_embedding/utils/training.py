@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import partial
 
 import math
 
@@ -42,26 +43,42 @@ def get_optimizer_params(
     ]
 
 
-def get_linear_lr_scheduler_with_warmup(
-    optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int
+def linear_lambda_lr(
+    current_step: int, /, total_steps: int, warmup_steps: int
+) -> float:
+    if current_step < warmup_steps:
+        return float(current_step) / float(max(1, warmup_steps))
+    return max(
+        0.0,
+        float(total_steps - current_step) / float(max(1, total_steps - warmup_steps)),
+    )
+
+
+def cos_lambda_lr(current_step: int, /, total_steps: int, warmup_steps: int) -> float:
+    if current_step < warmup_steps:
+        return float(current_step) / float(max(1, warmup_steps))
+
+    # Set the lr to 0 after total_steps
+    progress = min((current_step - warmup_steps) / (total_steps - warmup_steps), 1)
+    return max(0.0, 0.5 * (1 + math.cos(math.pi * progress)))
+
+
+def get_lr_scheduler(
+    scheduler_type: str,
+    optimizer: torch.optim.Optimizer,
+    total_steps: int,
+    warmup_steps: int = 0,
 ) -> LambdaLR:
-    def lr_lambda(current_step: int):
-        if current_step < warmup_steps:
-            return float(current_step) / float(max(1, warmup_steps))
-        return max(
-            0.0,
-            float(total_steps - current_step)
-            / float(max(1, total_steps - warmup_steps)),
+    scheduler_lambda = None
+    if scheduler_type == "linear":
+        scheduler_lambda = partial(
+            linear_lambda_lr, total_steps=total_steps, warmup_steps=warmup_steps
+        )
+    elif scheduler_type == "cos":
+        scheduler_lambda = partial(
+            cos_lambda_lr, total_steps=total_steps, warmup_steps=warmup_steps
         )
 
-    return LambdaLR(optimizer, lr_lambda)
+    assert scheduler_lambda is not None, f"scheduler type '{scheduler_type}' unknown"
 
-
-def get_cosine_lr_scheduler(
-    optimizer: torch.optim.Optimizer, total_steps: int
-) -> LambdaLR:
-    def cos_lambda(current_step: int) -> float:
-        progress = current_step / total_steps
-        return max(0.0, 0.5 * (1 + math.cos(math.pi * progress)))
-
-    return LambdaLR(optimizer, cos_lambda)
+    return LambdaLR(optimizer, scheduler_lambda)
