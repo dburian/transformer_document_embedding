@@ -242,17 +242,17 @@ class SoftCCALoss(torch.nn.Module):
     def forward(
         self, view1: torch.Tensor, view2: torch.Tensor
     ) -> dict[str, torch.Tensor]:
-        sdl1, sdl2 = self.sdl1(view1), self.sdl2(view2)
+        sdl1 = self.sdl1(view1) * self.lam
+        sdl2 = self.sdl2(view2) * self.lam
 
         # MSE is squared l2 norm
         l2 = torch.nn.functional.mse_loss(view1, view2)
 
-        correlation_part = l2 * self.lam
         return {
             "sdl1": sdl1,
             "sdl2": sdl2,
-            "l2": correlation_part,
-            "loss": correlation_part + sdl1 + sdl2,
+            "l2": l2,
+            "loss": l2 + sdl1 + sdl2,
         }
 
 
