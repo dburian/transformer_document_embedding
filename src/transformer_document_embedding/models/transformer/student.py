@@ -108,10 +108,6 @@ class StaticContextualLoss(torch.nn.Module):
                 )
                 contextual_loss = just_contextual_loss
 
-            weight_sum = mask.sum()
-            if weight_sum > 0:
-                contextual_loss /= weight_sum
-
             if self._lam is not None:
                 contextual_loss *= self._lam
 
@@ -618,20 +614,19 @@ class TransformerStudent(TransformerBase):
                     cca_metric.window_size - val_size,
                 )
 
-            log_freq = cca_metric.window_size // self._batch_size
             train_metrics.extend(
                 [
                     TrainingMetric(
                         metric_name,
                         cca_metric,
-                        log_freq,
+                        default_log_freq,
                         _update_with_projected_views,
                         reset_after_log=False,
                     ),
                     TrainingMetric(
                         f"corr_x{cca_metric.window_size}",
                         WindowedCorrelationMetric(cca_metric.window_size),
-                        log_freq,
+                        default_log_freq,
                         _update_with_projected_views,
                         reset_after_log=False,
                     ),
