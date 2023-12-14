@@ -40,6 +40,7 @@ class TrainingMetric:
     def device(self) -> torch.device:
         return self.metric.device
 
+    @torch.inference_mode()
     def update(self, *args) -> None:
         self.update_fn(self.metric, *args)
 
@@ -326,6 +327,18 @@ class WindowedCCAMetricZoo(WindowedCCAMetric):
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
+            problematic_vars = []
+            for var_name, val in zip(
+                ["view1 dimension", "view2 dimension", "number of samples"],
+                [view1_dim, view2_dim, samples],
+                strict=True,
+            ):
+                if val < self.n_components:
+                    problematic_vars.append(f"{var_name} ({val})")
+            logger.warn(
+                f"CCA computed with {','.join(problematic_vars)} smaller than "
+                f"n_components ({self.n_components})"
+            )
             return torch.nan
 
         views = (self.views1.numpy(force=True), self.views2.numpy(force=True))
