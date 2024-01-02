@@ -106,6 +106,7 @@ class MSEWithSBERT(TrainingMetric):
             model_embeddings /= torch.linalg.vector_norm(model_embeddings)
             sbert_emebddings /= torch.linalg.vector_norm(sbert_emebddings)
 
+        # TODO: Mean instead of sum
         mse = (model_embeddings - sbert_emebddings) ** 2
         mse = mse.sum(dim=1)
 
@@ -182,8 +183,8 @@ class WindowedMetric(Metric):
 
     @torch.inference_mode()
     def update(self, views1: torch.Tensor, views2: torch.Tensor) -> WindowedMetric:
-        self.views1 = torch.cat((self.views1, views1))
-        self.views2 = torch.cat((self.views2, views2))
+        self.views1 = torch.cat((self.views1, views1.detach()))
+        self.views2 = torch.cat((self.views2, views2.detach()))
 
         self._shorten_views_to_size()
         return self
