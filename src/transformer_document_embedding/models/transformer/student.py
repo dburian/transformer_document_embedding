@@ -597,7 +597,9 @@ class TransformerStudent(TransformerBase):
         for n_components, window_size in [
             (256, 256 * 10),
             (512, 512 * 5),
+            (512, 512 * 10),
             (768, 768 * 5),
+            (768, 768 * 10),
         ]:
             cca_metric = WindowedCCAMetricZoo(
                 n_components=n_components,
@@ -606,14 +608,12 @@ class TransformerStudent(TransformerBase):
             metric_name = f"cca_{n_components}x{cca_metric.window_size}"
             if (
                 val_data is not None
-                and (val_size := len(val_data) * (val_data.batch_size or 1))
-                < cca_metric.window_size
+                and len(val_data) * (val_data.batch_size or 1) < cca_metric.window_size
             ):
                 logger.warn(
                     "Validation data smaller than CCA window. "
                     "Metric '%s' will be output nans.",
                     metric_name,
-                    cca_metric.window_size - val_size,
                 )
 
             train_metrics.extend(
