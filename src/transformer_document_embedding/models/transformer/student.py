@@ -250,6 +250,7 @@ class TransformerStudent(TransformerBase):
         static_embed_dim: int,
         cca_output_dim: Optional[int],
         transformer_hidden_size: int,
+        soft_cca_sdl_alpha: float,
         soft_cca_lam: Optional[float] = None,
         contrastive_lam: Optional[float] = None,
     ) -> cca_losses.ProjectionLoss:
@@ -278,8 +279,14 @@ class TransformerStudent(TransformerBase):
                 soft_cca_lam is not None
             ), "To use soft_cca, `soft_cca_lam` must be set"
             static_loss_fn = cca_losses.SoftCCALoss(
-                sdl1=cca_losses.StochasticDecorrelationLoss(view1_dim),
-                sdl2=cca_losses.StochasticDecorrelationLoss(view2_dim),
+                sdl1=cca_losses.StochasticDecorrelationLoss(
+                    view1_dim,
+                    alpha=soft_cca_sdl_alpha,
+                ),
+                sdl2=cca_losses.StochasticDecorrelationLoss(
+                    view2_dim,
+                    alpha=soft_cca_sdl_alpha,
+                ),
                 lam=soft_cca_lam,
             )
         else:
