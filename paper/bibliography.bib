@@ -11,6 +11,7 @@
 %
 %  ===========================================================================
 
+% IMDB
 @inproceedings{maas11,
     title = "Learning Word Vectors for Sentiment Analysis",
     author = "Maas, Andrew L.  and
@@ -27,6 +28,8 @@
     url = "https://aclanthology.org/P11-1015",
     pages = "142--150",
 }
+
+% Paragraph Vector
 @inproceedings{le2014distributed,
   title={Distributed representations of sentences and documents},
   author={Le, Quoc and Mikolov, Tomas},
@@ -35,24 +38,32 @@
   year={2014},
   organization={PMLR}
 }
+
+% Word2Vec
 @article{mikolov2013efficient,
   title={Efficient estimation of word representations in vector space},
   author={Mikolov, Tomas and Chen, Kai and Corrado, Greg and Dean, Jeffrey},
   journal={arXiv preprint arXiv:1301.3781},
   year={2013}
 }
+
+% SBERT
 @article{reimers2019sentence,
   title={Sentence-bert: Sentence embeddings using siamese bert-networks},
   author={Reimers, Nils and Gurevych, Iryna},
   journal={arXiv preprint arXiv:1908.10084},
   year={2019}
 }
+
+% Longformer
 @article{beltagy2020longformer,
   title={Longformer: The long-document transformer},
   author={Beltagy, Iz and Peters, Matthew E and Cohan, Arman},
   journal={arXiv preprint arXiv:2004.05150},
   year={2020}
 }
+
+% BigBird
 @article{zaheer2020big,
   title={Big bird: Transformers for longer sequences},
   author={Zaheer, Manzil and Guruganesh, Guru and Dubey, Kumar Avinava and Ainslie, Joshua and Alberti, Chris and Ontanon, Santiago and Pham, Philip and Ravula, Anirudh and Wang, Qifan and Yang, Li and others},
@@ -60,4 +71,114 @@
   volume={33},
   pages={17283--17297},
   year={2020}
+}
+
+% Long Range Arena
+@article{tay2020long,
+  title={Long range arena: A benchmark for efficient transformers},
+  author={Tay, Yi and Dehghani, Mostafa and Abnar, Samira and Shen, Yikang and Bahri, Dara and Pham, Philip and Rao, Jinfeng and Yang, Liu and Ruder, Sebastian and Metzler, Donald},
+  journal={arXiv preprint arXiv:2011.04006},
+  year={2020}
+}
+
+@article{song2020mpnet,
+  title={Mpnet: Masked and permuted pre-training for language understanding},
+  author={Song, Kaitao and Tan, Xu and Qin, Tao and Lu, Jianfeng and Liu, Tie-Yan},
+  journal={Advances in Neural Information Processing Systems},
+  volume={33},
+  pages={16857--16867},
+  year={2020}
+}
+
+% SDR
+@article{ginzburg2021self,
+  title={Self-supervised document similarity ranking via contextualized language models and hierarchical inference},
+  author={Ginzburg, Dvir and Malkiel, Itzik and Barkan, Oren and Caciularu, Avi and Koenigstein, Noam},
+  journal={arXiv preprint arXiv:2106.01186},
+  year={2021}
+}
+
+% Specter
+@article{cohan2020specter,
+  title={Specter: Document-level representation learning using citation-informed transformers},
+  author={Cohan, Arman and Feldman, Sergey and Beltagy, Iz and Downey, Doug and Weld, Daniel S},
+  journal={arXiv preprint arXiv:2004.07180},
+  year={2020}
+}
+
+@article{caciularu2021cdlm,
+  title={CDLM: Cross-document language modeling},
+  author={Caciularu, Avi and Cohan, Arman and Beltagy, Iz and Peters, Matthew E and Cattan, Arie and Dagan, Ido},
+  journal={arXiv preprint arXiv:2101.00406},
+  year={2021}
+}
+
+% SMITH
+@inproceedings{yang2020beyond,
+  title={Beyond 512 tokens: Siamese multi-depth transformer-based hierarchical encoder for long-form document matching},
+  author={Yang, Liu and Zhang, Mingyang and Li, Cheng and Bendersky, Michael and Najork, Marc},
+  booktitle={Proceedings of the 29th ACM International Conference on Information \& Knowledge Management},
+  pages={1725--1734},
+  year={2020}
+}
+
+% Transformer version of LASER
+@article{li2020transformer,
+  title={Transformer based Multilingual document Embedding model},
+  author={Li, Wei and Mak, Brian},
+  journal={arXiv preprint arXiv:2008.08567},
+  year={2020}
+}
+
+% LASER
+@article{schwenk2017learning,
+  title={Learning joint multilingual sentence representations with neural machine translation},
+  author={Schwenk, Holger and Douze, Matthijs},
+  journal={arXiv preprint arXiv:1704.04154},
+  year={2017}
+}
+
+%HAN
+@inproceedings{yang2016hierarchical,
+  title={Hierarchical attention networks for document classification},
+  author={Yang, Zichao and Yang, Diyi and Dyer, Chris and He, Xiaodong and Smola, Alex and Hovy, Eduard},
+  booktitle={Proceedings of the 2016 conference of the North American chapter of the association for computational linguistics: human language technologies},
+  pages={1480--1489},
+  year={2016}
+}
+
+@article{tay2022efficient,
+author = {Tay, Yi and Dehghani, Mostafa and Bahri, Dara and Metzler, Donald},
+title = {Efficient Transformers: A Survey},
+year = {2022},
+issue_date = {June 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {55},
+number = {6},
+issn = {0360-0300},
+url = {https://doi.org/10.1145/3530811},
+doi = {10.1145/3530811},
+abstract = {Transformer model architectures have garnered immense interest lately due to their effectiveness across a range of domains like language, vision, and reinforcement learning. In the field of natural language processing for example, Transformers have become an indispensable staple in the modern deep learning stack. Recently, a dizzying number of “X-former” models have been proposed—Reformer, Linformer, Performer, Longformer, to name a few—which improve upon the original Transformer architecture, many of which make improvements around computational and memory efficiency. With the aim of helping the avid researcher navigate this flurry, this article characterizes a large and thoughtful selection of recent efficiency-flavored “X-former” models, providing an organized and comprehensive overview of existing work and models across multiple domains.},
+journal = {ACM Comput. Surv.},
+month = {dec},
+articleno = {109},
+numpages = {28},
+keywords = {attention, neural networks, Transformers, deep learning}
+}
+
+@article{vaswani2017attention,
+  title={Attention is all you need},
+  author={Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and Kaiser, {\L}ukasz and Polosukhin, Illia},
+  journal={Advances in neural information processing systems},
+  volume={30},
+  year={2017}
+}
+@misc{devlin2019bert,
+      title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+      author={Jacob Devlin and Ming-Wei Chang and Kenton Lee and Kristina Toutanova},
+      year={2019},
+      eprint={1810.04805},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }

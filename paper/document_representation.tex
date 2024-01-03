@@ -1,70 +1,106 @@
 \chapter{Document representation}
 
-In this chapter we define the properties of a document representation we strive
-for. The following definitions create a foundation both for comparing models
-and choosing evaluation tasks.
+We dedicate this chapter to the center point of our thesis --
+representing documents with vectors. The goal of this chapter is to define the
+desired qualities of our embeddings and illustrate them on examples.
 
-Before enumerating individual properties, we formally define, what we mean by
-document representation. Here we follow the concept of embedding, so often
-encountered in deep learning; representation of an object is understood as a
-vector of floating point numbers.
+\section{Desirable qualities of document representations}
 
-\begin{defn}
-  Document representation (or embedding) is a mapping from continuous
-  piece of text to a dense vector of floating point numbers.
-\end{defn}
+Since there are many ways how to embed a document we deemed it necessary to
+describe what are the target qualities of the embeddings. There are two
+dimensions along which we asses document representations: \emph{depth} and
+\emph{breadth}. \emph{Depth} dimension defines how deep is the model's
+understanding of the input text. \emph{Breadth} dimension defines the amount of
+information the model is able to process. These dimensions are in a sense
+contradictory to each other. We cannot expect a fully learned model of a fixed
+size to deepen its understanding of the input while maintaining the same
+maximum input size. Thus we are searching for a ideal ratio of these two
+qualities.
 
-The properties align with the goal of this work; which is \emph{to create
-semantic embeddings of long texts}. While this definition is concise, it lacks
-the exactness which will be needed, once we we make decisions about our model.
+\subsection{Text understanding}
 
-The properties are split into two sets: \emph{internal} and \emph{external}.
-Internal properties inspect how the representation is computed. External
-properties examine the representation itself and how it behaves and what
-information it contains.
+In the depth dimension we study how well the model understands its input. For
+an input \emph{``This is a really nimble horse. You should be cautious when
+riding him.''} we would like the model to understand that \emph{``him''} refers to
+the \emph{``nimble horse''}. Or that the meaning of \emph{``stick''} in the
+following sentences is largely different:
 
-Both types of definitions are difficult to test. As is generally known neural
-networks are black boxes, whose computations are often not understood
-completely. This makes studying both internal and external properties
-challenging and sometimes even impossible. Consequently we try to be cautious
-with the properties' definitions and keep the testability of given definition
-in mind.
+\begin{itemize}
+  \item \emph{``You are really good at tennis. You should stick to it.''}
+  \item \emph{``Some dogs really like to fetch a stick, some just carry it.''}
+\end{itemize}
 
+To produce embedding that would reliably reflect the input's meaning, we expect
+the model to see the words in context of their relationship to other words. To
+do so, architectures that enable deep text understanding allow the model to
+compute with relationships of ordered subwords, words or sequences of words.
+Such architectures are able to put each word in relevant context and thus
+recover all the meanings of each sequence of words if they are given enough
+training data.
 
-\section{Internal properties}
+To compute with relationships of ordered subwords, the neural network must
+connect representations of two subwords such that the connections also carry
+the information about the subwords' ordering. The same holds for computing with
+relationships of ordered words or sequences of words.
 
+To give some examples we can pick some representative embedding models along
+the depth dimension going from the ones that show the shallowest understanding
+of their input to those who show the deepest. At the beginning, there are
+models that ignore both word ordering and their relationships. An example of
+such model is TF-IDF. If we go deeper we run into Paragraph
+Vector~\cite{le2014distributed}, that takes word relationships into an account,
+but ignores word ordering to a certain degree. Next there are models with
+architectures based on one-directional or two-directional RNNs. These models
+compute with ordering of words implicitly, but do not have the capacity to
+consider some word relationships directly. Finally there are models that are
+based on the architecture of Transformer~\cite{vaswani2017attention}. Such
+models not only take the word ordering into consideration, but are also able to
+compute over all relationships between input's text units. An example of such
+architecture is SBERT~\cite{reimers2019sentence}, which is essentially an
+instance of BERT~\cite{devlin2019bert} finetuned on NLI datasets to encourage
+deeper text understanding.
 
+\subsection{Maximum input length}
 
-\subsection{Long documents}
+In the breadth dimension we study the maximum context length of the model. Put
+simply, we study the maximum number of tokens the model is able to process. The
+longer the maximum context length is, the longer text we can coherently embed.
 
-As our goal is to embed long pieces of texts, it is natural to demand that the
-model used to generate the embedding is able to process whole documents. Since
-the meaning of a longer text can be distributed unevenly throughout it, the
-model should see the entire text before generating an embedding. This gives the
-model the chance to decide what is important and what can be left out.
+Model's context length is especially important when we expect the properties of
+the piece of text to vary throughout it. For such texts the embedding of its
+beginning would be different than the embedding of its end or of the whole
+text. Comparing embeddings of long texts, thus requires to consider the text as
+a whole and embed it with a model whose maximum context is larger or equal than
+the given text's length.
 
+If we revisit the models mentioned in the previous section, we realise the
+order of the mentioned models flips. The models with the smallest maximum
+context are Transformers with classical attention mechanisms. They are
+typically not limited by their architecture, but by the memory they consume for
+longer inputs. The large memory consumption originates in the classical
+attention mechanism, which takes into account all of the $n^2$ relationships
+among the $n$ input tokens. Though recently there have been many improvements
+to the implementation of classical attention(TODO: ref) which improves their
+efficiency, and there are other attention mechanisms which offer more efficient
+alternative, Transformers are nevertheless costly for longer inputs both in
+terms of memory and time. Next type of models are those built using RNNs.
+Though RNNs can in theory process unlimited number of tokens, in practice they
+are known for ``forgetting'' past tokens, once the input is long enough (TODO:
+ref). On the other hand, Paragraph Vector or TF-IDF can both process in theory
+limitless number of words. In practice Paragraph Vector is limited by the
+dimension of the document embedding, which can be, however, scaled arbitrarily.
 
-%TODO: change how properties are referenced, numbers are useless.
-\begin{repre_prop}[long-inputs]\label{repre_prop:long-inputs}
+\subsection{Combining depth and breadth}
 
-  Document representation should be able to capture content from the entire
-  document, not just its part.
+As we have hinted above, the goal of this thesis is to combine deep
+understanding with longer maximum contexts. Combination of both qualities would
+result in a model that can not only register and compute with relationships of
+words, but do so over large gaps of unrelated tokens. For example, in \emph{``I
+really like your T-shirt. It almost looks as if it was designed by some really
+alternative guy living in some cave in Gran Canaria. You should definitely wear
+it more often.''}, we would expect such model to connect \emph{``it''}
+in the last sentence with the \emph{``T-shirt''} from the first sentence.
 
-\end{repre_prop}
-
-Notice that we avoided specifying an exact threshold of input's length. While
-this would make the property more testable, we believe that no threshold is
-truly sufficient.
-
-\subsection{Context and text structure}
-
-It has been shown that natural language tends to be ambiguous, especially with
-shorter contexts TODO: citation. To capture meaning, the model producing the
-embedding should contextualize every piece of text found on its input. In other
-words it should have the ability to compare representations of various words
-and/or sentences and/or paragraphs with each other. This gives us a chance that
-the embedding produced by such model will contain the overall meaning of the
-document rather than meaning of its individual parts.
-
-Long context is also important for assessing the text structure, which we see as an important
-aspect of a document.
+To find a compromise, we combine models of the two extremes: models like
+Transformer that can understand the input very well and models like Paragraph
+Vector which can process very long sequences.
