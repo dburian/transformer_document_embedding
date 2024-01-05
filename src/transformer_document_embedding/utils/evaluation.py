@@ -79,10 +79,10 @@ def evaluate_ir_metrics(
 
     results = {
         "mean_reciprocal_rank": reciprocal_rank / total_queries,
-        "mean_percentile_rank": np.mean(percentile_ranks),
+        "mean_percentile_rank": np.mean(percentile_ranks).item(),
     }
 
     for percentages, threshold in zip(hit_percentages, hits_thresholds, strict=True):
-        results[f"hit_rate_at_{threshold}"] = np.mean(percentages)
+        results[f"hit_rate_at_{threshold}"] = np.mean(percentages).item()
 
     return results
