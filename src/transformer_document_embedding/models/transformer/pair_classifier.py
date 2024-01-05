@@ -57,7 +57,7 @@ class TransformerPairClassifier(TransformerBase):
         )
         loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
-        self._model = _SequenceClassificationModel(
+        self._model: _SequenceClassificationModel = _SequenceClassificationModel(
             self._transformer, self._pooler, cls_head, loss
         )
 
@@ -74,12 +74,16 @@ class TransformerPairClassifier(TransformerBase):
         log_every_step: int,
         save_best: bool,
         lr_scheduler_type: str,
+        freeze_transformer: bool,
         validate_every_step: Optional[int],
         device: Optional[str] = None,
         log_dir: Optional[str] = None,
         model_dir: Optional[str] = None,
         **_,
     ) -> None:
+        # Freezing transformer if required or unfreezing if not
+        self._model.transformer.requires_grad_(not freeze_transformer)
+
         train_data = self._to_dataloader(task.train, training=True)
         val_data = None
         if task.validation is not None:
