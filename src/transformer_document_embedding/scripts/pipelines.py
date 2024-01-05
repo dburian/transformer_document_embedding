@@ -40,6 +40,7 @@ class TrainingPipeline(Pipeline):
     def __init__(
         self,
         load_model_path: Optional[str] = None,
+        load_model_strictly: bool = True,
         save_trained: bool = False,
         train: bool = False,
     ) -> None:
@@ -48,6 +49,7 @@ class TrainingPipeline(Pipeline):
         self._load_model_path = load_model_path
         self._save_trained = save_trained
         self._train = train
+        self._load_model_strictly = load_model_strictly
 
     def add_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
@@ -73,6 +75,15 @@ class TrainingPipeline(Pipeline):
             help="Whether to train the model before generating embeddings.",
         )
 
+        parser.add_argument(
+            "--load_model_strictly",
+            type=bool,
+            action=argparse.BooleanOptionalAction,
+            default=self._load_model_strictly,
+            help="Whether to fail for unknown or missing parameters when loading a "
+            "model",
+        )
+
     def run(
         self,
         args: argparse.Namespace,
@@ -83,7 +94,7 @@ class TrainingPipeline(Pipeline):
     ) -> None:
         if args.load_model_path is not None:
             logging.info("Loading model from %s.", args.load_model_path)
-            model.load(args.load_model_path)
+            model.load(args.load_model_path, strict=args.load_model_strictly)
 
         if args.train:
             logging.info("Training model...")

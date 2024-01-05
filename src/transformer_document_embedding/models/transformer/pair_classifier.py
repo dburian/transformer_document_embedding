@@ -165,12 +165,6 @@ class TransformerPairClassifier(TransformerBase):
             outputs = self._model(**batch)
             yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
 
-    def save(self, dir_path: str) -> None:
-        torch.save(self._model.state_dict(), dir_path)
-
-    def load(self, dir_path: str) -> None:
-        self._model.load_state_dict(torch.load(dir_path))
-
     def _to_dataloader(self, dataset: Dataset, training: bool) -> DataLoader:
         dataset = dataset.with_format("torch")
         dataset = dataset.remove_columns(["id"])

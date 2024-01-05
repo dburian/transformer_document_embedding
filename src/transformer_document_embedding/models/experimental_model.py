@@ -36,6 +36,14 @@ class ExperimentalModel:
         """Saves the model's weights into given directory."""
         raise NotImplementedError()
 
-    def load(self, dir_path: str) -> None:
-        """Loads the model's weights from given directory."""
+    def load(self, dir_path: str, *, strict: bool = False) -> None:
+        """Loads the model's weights from given directory.
+
+        Parameters
+        ----------
+        dir_path: str
+            Path to dir where to save the model.
+        strict: bool, default = True
+            If true, loading will fail if some parameters are unexpected or missing.
+        """
         raise NotImplementedError()

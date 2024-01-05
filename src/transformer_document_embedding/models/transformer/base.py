@@ -147,9 +147,9 @@ class TransformerBase(ExperimentalModel):
     def save(self, dir_path: str) -> None:
         torch.save(self._model.state_dict(), self._model_save_file_path(dir_path))
 
-    def load(self, dir_path: str) -> None:
+    def load(self, dir_path: str, *, strict: bool = True) -> None:
         state_dict = torch.load(
             self._model_save_file_path(dir_path),
             map_location=torch.device("cpu"),
         )
-        self._model.load_state_dict(state_dict)
+        self._model.load_state_dict(state_dict, strict=strict)
