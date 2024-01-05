@@ -67,8 +67,13 @@ class MaskedCosineDistance(torch.nn.CosineSimilarity):
 
         # Cos dist has dimension of 1
         cos_dist *= mask.squeeze()
+        total_weight = mask.sum()
 
-        return cos_dist.sum() / mask.sum()
+        return (
+            cos_dist.sum() / total_weight
+            if total_weight > 0
+            else torch.zeros_like(cos_dist)
+        )
 
 
 class MaskedMSE(torch.nn.MSELoss):
