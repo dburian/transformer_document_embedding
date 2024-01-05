@@ -2,6 +2,7 @@ tde_version: 0.0.3
 model:
   module: transformer.pair_classifier:TransformerPairClassifier
   kwargs:
+    transformer_model: sentence-transformers/all-mpnet-base-v2
     cls_head_kwargs:
       hidden_features: 50
       hidden_dropout: 0.5
@@ -15,6 +16,8 @@ model:
     warmup_steps: 10
     grad_accumulation_steps: 2
     weight_decay: 0.01
+    lr: 3.0e-5
+    lr_scheduler_type: linear
     fp16: True
     max_grad_norm: 1.0
     log_every_step: 1
