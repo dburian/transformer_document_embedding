@@ -20,6 +20,7 @@ from transformer_document_embedding.models.trainer import (
 )
 from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.metrics import TrainingMetric, VMemMetric
+from transformer_document_embedding.utils.tokenizers import FastDataCollator
 import transformer_document_embedding.utils.training as train_utils
 
 if TYPE_CHECKING:
@@ -188,7 +189,7 @@ class TransformerPairClassifier(TransformerBase):
         )
 
 
-class PairFastDataCollator(train_utils.FastDataCollator):
+class PairFastDataCollator(FastDataCollator):
     """Tokenizes pair of texts and puts their tokenization to two keys."""
 
     TOKENIZER_OUTPUT_KEYS = {
