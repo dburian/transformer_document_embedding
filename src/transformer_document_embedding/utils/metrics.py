@@ -13,6 +13,7 @@ from cca_zoo.linear import CCA as ZooCCA
 import numpy as np
 import torch
 from torcheval.metrics import Max, Mean, Metric
+from torcheval.metrics.toolkit import clone_metric
 
 from transformer_document_embedding.utils.cca_losses import CCALoss
 
@@ -46,6 +47,7 @@ class TrainingMetric:
 
     def clone(self, **kwargs_overwrite) -> TrainingMetric:
         kwargs = asdict(self)
+        kwargs["metric"] = clone_metric(self.metric)
         kwargs.update(kwargs_overwrite)
         return TrainingMetric(**kwargs)
 

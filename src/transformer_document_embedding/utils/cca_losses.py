@@ -282,16 +282,19 @@ class StochasticDecorrelationLoss(torch.nn.Module):
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         inputs = self.batch_norm(inputs)
 
-        # Batch size
-        m = inputs.size(0)
         # Dimension of projections
         n = inputs.size(1)
+        # Batch size
+        m = inputs.size(0)
 
         new_sigma = (1 / (m - 1)) * inputs.T @ inputs
-        self.sigma = self.alpha * self.sigma.detach() + new_sigma
+        sigma = self.alpha * self.sigma.detach() + new_sigma
 
-        self.norm_factor = self.alpha * self.norm_factor + 1
-        abs_sigma = (self.sigma / self.norm_factor).abs()
+        if self.training:
+            self.norm_factor = self.alpha * self.norm_factor + 1
+            self.sigma = sigma
+
+        abs_sigma = (sigma / self.norm_factor).abs()
 
         loss = abs_sigma.sum() - abs_sigma.trace()
 
