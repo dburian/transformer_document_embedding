@@ -17,6 +17,7 @@ from transformer_document_embedding.utils.metrics import (
     MSEWithSBERT,
     TrainingMetric,
     VMemMetric,
+    WindowedCCAMetric,
     WindowedCCAMetricZoo,
     WindowedCorrelationMetric,
 )
@@ -332,11 +333,11 @@ class TransformerStudent(TransformerBase):
         weight_decay: float,
         fp16: bool,
         max_grad_norm: float,
+        lr: float,
+        lr_scheduler_type: str,
         log_every_step: int,
         validate_every_step: Optional[int],
         dataloader_sampling: str,
-        lr: float,
-        lr_scheduler_type: str,
         bucket_limits: list[int],
         save_best: bool,
         global_attention_type: str,
@@ -596,9 +597,57 @@ class TransformerStudent(TransformerBase):
                 )
             )
 
+        def _update_with_outputs(metric, outputs, batch) -> None:
+            metric.update(outputs["embeddings"], batch["dbow"])
+
         def _update_with_projected_views(metric, outputs, _):
             metric.update(
                 outputs["static_projected_view1"], outputs["static_projected_view2"]
+            )
+
+        def warn_for_nans_in_validation(
+            cca_metric: WindowedCCAMetric, metric_name: str
+        ):
+            if (
+                val_data is not None
+                and len(val_data) * (val_data.batch_size or 1) < cca_metric.window_size
+            ):
+                logger.warn(
+                    "Validation data smaller than CCA window. "
+                    "Metric '%s' will be output nans.",
+                    metric_name,
+                )
+
+        # TODO: Ugly constant. Fix later.
+        dbow_dim = 100
+        for n_components, window_size in [
+            (dbow_dim, 5 * dbow_dim),
+            (dbow_dim, 10 * dbow_dim),
+        ]:
+            cca_metric = WindowedCCAMetricZoo(
+                n_components=n_components,
+                window_size=window_size,
+            )
+            metric_name = f"cca_outputs_{n_components}x{cca_metric.window_size}"
+            warn_for_nans_in_validation(cca_metric, metric_name)
+
+            train_metrics.extend(
+                [
+                    TrainingMetric(
+                        metric_name,
+                        cca_metric,
+                        default_log_freq,
+                        _update_with_outputs,
+                        reset_after_log=False,
+                    ),
+                    TrainingMetric(
+                        f"corr_outputs_x{cca_metric.window_size}",
+                        WindowedCorrelationMetric(cca_metric.window_size),
+                        default_log_freq,
+                        _update_with_outputs,
+                        reset_after_log=False,
+                    ),
+                ]
             )
 
         for n_components, window_size in [
@@ -613,15 +662,7 @@ class TransformerStudent(TransformerBase):
                 window_size=window_size,
             )
             metric_name = f"cca_{n_components}x{cca_metric.window_size}"
-            if (
-                val_data is not None
-                and len(val_data) * (val_data.batch_size or 1) < cca_metric.window_size
-            ):
-                logger.warn(
-                    "Validation data smaller than CCA window. "
-                    "Metric '%s' will be output nans.",
-                    metric_name,
-                )
+            warn_for_nans_in_validation(cca_metric, metric_name)
 
             train_metrics.extend(
                 [

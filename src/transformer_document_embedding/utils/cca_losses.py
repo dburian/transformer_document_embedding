@@ -326,12 +326,17 @@ class DeepNet(torch.nn.Module):
 
         layers = []
         features = [input_features] + layer_features
-        for input_dim, output_dim in zip(features[:-1], features[1:], strict=True):
+        for i, input_dim in enumerate(features[:-1]):
+            output_dim = features[i + 1]
+
+            layers.append(torch.nn.Linear(input_dim, output_dim))
+
             if norm_class is not None:
                 layers.append(norm_class(input_dim))
 
-            layers.append(get_activation(activation)())
-            layers.append(torch.nn.Linear(input_dim, output_dim))
+            if i < len(features) - 2:
+                # No activation in the last layer
+                layers.append(get_activation(activation)())
 
         # Use ModuleList instead of Sequential to allow empty layers
         self.layers = torch.nn.ModuleList(modules=layers)
