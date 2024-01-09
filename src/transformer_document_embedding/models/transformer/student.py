@@ -19,7 +19,7 @@ from transformer_document_embedding.utils.metrics import (
     VMemMetric,
     WindowedCCAMetric,
     WindowedCCAMetricZoo,
-    WindowedCorrelationMetric,
+    WindowedAbsCorrelationMetric,
 )
 from transformer_document_embedding.utils.similarity_losses import (
     ContrastiveLoss,
@@ -572,37 +572,35 @@ class TransformerStudent(TransformerBase):
             return []
 
         train_metrics = []
-        sample_projection_weight_path = None
 
         for net_name in ["net1", "net2"]:
             net = getattr(model.loss.static_loss, net_name)
             if net is not None:
                 layer_count = len(net.layers)
                 sample_projection_weight_path = (
-                    f"loss.static_loss.{net_name}.layers.{layer_count -1}.weight"
+                    f"loss.static_loss.{net_name}.layers.{layer_count -1}.0.weight"
                 )
-                break
 
-        if sample_projection_weight_path is not None:
-            train_metrics.append(
-                TrainingMetric(
-                    "max_abs_dcca_grad",
-                    Max(),
-                    default_log_freq,
-                    partial(
-                        log_max_abs_grad,
-                        param_name=sample_projection_weight_path,
-                        model=model,
-                    ),
+                train_metrics.append(
+                    TrainingMetric(
+                        f"max_abs_{net_name}_grad",
+                        Max(),
+                        default_log_freq,
+                        partial(
+                            log_max_abs_grad,
+                            param_name=sample_projection_weight_path,
+                            model=model,
+                        ),
+                    )
                 )
-            )
 
-        def _update_with_outputs(metric, outputs, batch) -> None:
+        def update_with_outputs(metric, outputs, batch) -> None:
             metric.update(outputs["embeddings"], batch["dbow"])
 
-        def _update_with_projected_views(metric, outputs, _):
+        def update_with_projection(metric, outputs, _, *, layer_ind: int) -> None:
             metric.update(
-                outputs["static_projected_view1"], outputs["static_projected_view2"]
+                outputs["static_projected_views1"][layer_ind],
+                outputs["static_projected_views2"][layer_ind],
             )
 
         def warn_for_nans_in_validation(
@@ -637,51 +635,60 @@ class TransformerStudent(TransformerBase):
                         metric_name,
                         cca_metric,
                         default_log_freq,
-                        _update_with_outputs,
+                        update_with_outputs,
                         reset_after_log=False,
                     ),
                     TrainingMetric(
                         f"corr_outputs_x{cca_metric.window_size}",
-                        WindowedCorrelationMetric(cca_metric.window_size),
+                        WindowedAbsCorrelationMetric(cca_metric.window_size),
                         default_log_freq,
-                        _update_with_outputs,
+                        update_with_outputs,
                         reset_after_log=False,
                     ),
                 ]
             )
 
-        for n_components, window_size in [
-            (256, 256 * 10),
-            (512, 512 * 5),
-            (512, 512 * 10),
-            (768, 768 * 5),
-            (768, 768 * 10),
-        ]:
-            cca_metric = WindowedCCAMetricZoo(
-                n_components=n_components,
-                window_size=window_size,
-            )
-            metric_name = f"cca_{n_components}x{cca_metric.window_size}"
-            warn_for_nans_in_validation(cca_metric, metric_name)
+        if (
+            isinstance(model.loss.static_loss, cca_losses.ProjectionLoss)
+            and model.loss.static_loss.net1 is not None
+            and model.loss.static_loss.net2 is not None
+        ):
+            net1_feats = model.loss.static_loss.net1.features
+            net2_feats = model.loss.static_loss.net2.features
 
-            train_metrics.extend(
-                [
-                    TrainingMetric(
-                        metric_name,
-                        cca_metric,
-                        default_log_freq,
-                        _update_with_projected_views,
-                        reset_after_log=False,
-                    ),
-                    TrainingMetric(
-                        f"corr_x{cca_metric.window_size}",
-                        WindowedCorrelationMetric(cca_metric.window_size),
-                        default_log_freq,
-                        _update_with_projected_views,
-                        reset_after_log=False,
-                    ),
-                ]
-            )
+            for layer_ind in range(-1, -min(len(net1_feats), len(net2_feats)) - 1, -1):
+                min_dim = min(net1_feats[layer_ind], net2_feats[layer_ind])
+
+                update_fn = partial(update_with_projection, layer_ind=layer_ind)
+                for multiplier in [5, 10]:
+                    cca_metric = WindowedCCAMetricZoo(
+                        n_components=min_dim, window_size=min_dim * multiplier
+                    )
+
+                    metric_name = (
+                        f"cca_projection[{layer_ind}]_"
+                        f"{cca_metric.n_components}x{cca_metric.window_size}"
+                    )
+                    warn_for_nans_in_validation(cca_metric, metric_name)
+
+                    train_metrics.extend(
+                        [
+                            TrainingMetric(
+                                metric_name,
+                                cca_metric,
+                                default_log_freq,
+                                update_fn,
+                                reset_after_log=False,
+                            ),
+                            TrainingMetric(
+                                f"corr_projection[{layer_ind}]_x{cca_metric.window_size}",
+                                WindowedAbsCorrelationMetric(cca_metric.window_size),
+                                default_log_freq,
+                                update_fn,
+                                reset_after_log=False,
+                            ),
+                        ]
+                    )
 
         return train_metrics
 

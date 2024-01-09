@@ -1,6 +1,6 @@
 from __future__ import annotations
 import torch
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 
 from transformer_document_embedding.utils.net_helpers import get_activation
@@ -329,24 +329,36 @@ class DeepNet(torch.nn.Module):
         for i, input_dim in enumerate(features[:-1]):
             output_dim = features[i + 1]
 
-            layers.append(torch.nn.Linear(input_dim, output_dim))
+            layer = []
+            layer.append(torch.nn.Linear(input_dim, output_dim))
 
             if norm_class is not None:
-                layers.append(norm_class(input_dim))
+                layer.append(norm_class(input_dim))
 
             if i < len(features) - 2:
                 # No activation in the last layer
-                layers.append(get_activation(activation)())
+                layer.append(get_activation(activation)())
+
+            layers.append(torch.nn.Sequential(*layer))
+
+        self._features = layer_features
 
         # Use ModuleList instead of Sequential to allow empty layers
         self.layers = torch.nn.ModuleList(modules=layers)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    @property
+    def features(self) -> list[int]:
+        return self._features
+
+    def forward(self, inputs: torch.Tensor) -> list[torch.Tensor]:
         outputs = inputs
+
+        layer_outputs = []
         for layer in self.layers:
             outputs = layer(outputs)
+            layer_outputs.append(outputs)
 
-        return outputs
+        return layer_outputs
 
 
 class ProjectionLoss(torch.nn.Module):
@@ -366,17 +378,18 @@ class ProjectionLoss(torch.nn.Module):
 
     def forward(
         self, view1: torch.Tensor, view2: torch.Tensor
-    ) -> dict[str, torch.Tensor]:
-        projected_view1 = self.net1(view1) if self.net1 is not None else view1
-        projected_view2 = self.net2(view2) if self.net2 is not None else view2
+    ) -> dict[str, Union[torch.Tensor, list[torch.Tensor]]]:
+        projected_views1 = self.net1(view1) if self.net1 is not None else [view1]
+        projected_views2 = self.net2(view2) if self.net2 is not None else [view2]
 
-        loss_outputs = self.loss_fn(projected_view1, projected_view2)
+        loss_outputs = self.loss_fn(projected_views1[-1], projected_views2[-1])
+
         # For MSE and CosineDistanceLoss
         if isinstance(loss_outputs, torch.Tensor):
             loss_outputs = {"loss": loss_outputs}
 
         return {
             **loss_outputs,
-            "projected_view1": projected_view1,
-            "projected_view2": projected_view2,
+            "projected_views1": projected_views1,
+            "projected_views2": projected_views2,
         }
