@@ -349,7 +349,7 @@ class WindowedCCAMetricZoo(WindowedCCAMetric):
         return cca_model.fit(views).score(views)
 
 
-class WindowedCorrelationMetric(WindowedMetric):
+class WindowedAbsCorrelationMetric(WindowedMetric):
     def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
         super().__init__(window_size=window_size, device=device)
 
@@ -357,4 +357,4 @@ class WindowedCorrelationMetric(WindowedMetric):
         all_vars = torch.concat((self.views1.T, self.views2.T), dim=0)
         view1_dim = self.views1.size(1)
 
-        return torch.corrcoef(all_vars).diagonal(offset=view1_dim).sum().item()
+        return torch.corrcoef(all_vars).diagonal(offset=view1_dim).abs().sum().item()
