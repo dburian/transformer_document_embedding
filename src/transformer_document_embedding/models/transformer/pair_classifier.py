@@ -94,10 +94,10 @@ class TransformerPairClassifier(TransformerBase):
         )
 
         lr_scheduler = train_utils.get_lr_scheduler(
-            lr_scheduler_type,
-            optimizer,
-            warmup_steps // grad_accumulation_steps,
-            epochs * len(train_data) // grad_accumulation_steps,
+            scheduler_type=lr_scheduler_type,
+            optimizer=optimizer,
+            total_steps=epochs * len(train_data) // grad_accumulation_steps,
+            warmup_steps=warmup_steps // grad_accumulation_steps,
         )
 
         save_model_callback = self._get_save_model_callback(save_best, model_dir)
