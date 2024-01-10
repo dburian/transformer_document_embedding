@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import logging
 from typing import TYPE_CHECKING
+from datasets import concatenate_datasets
 
 from gensim.models.callbacks import CallbackAny2Vec
 
@@ -140,20 +141,24 @@ class ParagraphVectorEmbed(ExperimentalModel):
         save_at_epochs: Optional[list[int]] = None,
         **kwargs,
     ) -> None:
-        train_data = GensimCorpus(task.train.shuffle())
+        all_datasets = [task.train]
+        if task.validation is not None:
+            all_datasets.append(task.validation)
+
+        train_data = GensimCorpus(concatenate_datasets(all_datasets).shuffle())
         callbacks = []
-        if log_dir is not None and task.validation is not None:
-            callbacks.append(
-                EvaluateIRMetrics(
-                    model=self,
-                    val_dataset=task.validation,
-                    eval_every=10,
-                    save_best_path=model_dir
-                    if save_best and model_dir is not None
-                    else None,
-                    log_dir=log_dir,
-                )
-            )
+        # if log_dir is not None and task.validation is not None:
+        #     callbacks.append(
+        #         EvaluateIRMetrics(
+        #             model=self,
+        #             val_dataset=task.validation,
+        #             eval_every=10,
+        #             save_best_path=model_dir
+        #             if save_best and model_dir is not None
+        #             else None,
+        #             log_dir=log_dir,
+        #         )
+        #     )
 
         if model_dir is not None and save_at_epochs is not None:
             callbacks.append(
