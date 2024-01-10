@@ -346,7 +346,7 @@ class WindowedCCAMetricZoo(WindowedCCAMetric):
 
         views = (self.views1.numpy(force=True), self.views2.numpy(force=True))
         cca_model = ZooCCA(latent_dimensions=self.n_components)
-        return cca_model.fit(views).score(views)
+        return cca_model.fit(views).score(views) / self.n_components
 
 
 class WindowedAbsCorrelationMetric(WindowedMetric):
@@ -357,4 +357,7 @@ class WindowedAbsCorrelationMetric(WindowedMetric):
         all_vars = torch.concat((self.views1.T, self.views2.T), dim=0)
         view1_dim = self.views1.size(1)
 
-        return torch.corrcoef(all_vars).diagonal(offset=view1_dim).abs().sum().item()
+        cross_corr_coefs = torch.corrcoef(all_vars).diagonal(offset=view1_dim)
+        mean_abs_cross_corr = cross_corr_coefs.abs().mean()
+
+        return mean_abs_cross_corr.item()
