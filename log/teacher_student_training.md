@@ -41,6 +41,9 @@ masking considered:
 
 - the most decisive metric should be measured on **model's outputs** not on the
   final projection layer
+  - it holds:
+    - good cca on previous layers -> probably good cca on next layers
+    - good cca on next layers -> chance of having good cca on previous layers
 - typically lower CCA dimensions than the dimension of the embedding reach full
   correlation (1 for each CCA dimension)
 - lower CCA dimensions are closer to 0 entropy, everything is smoothed out,
@@ -54,11 +57,14 @@ large window (I typically use 10x the dimension of CCA)
 
 ## Grid searches
 
-Each training should run like 40min, validation every 10min for 5mins. This
-translates to limits:
-- train: 5600 batches, batch_size = 3
-- validation: every 1400 batches, batch_size = 3, 1400 batches
+On Metacentrum I run:
 
+- 8400 batches of 6 with 12 validation runs over 1280 batches for 10h 40min. So
+  one batch takes ~4 secs.
+- 5600 batches of 6 with 11 validation runs over 1280 batches for 5 - 8h. So one
+  batch takes ~2.6 - 5.2 secs
+
+Should probably try smaller datasets for grid searches.
 
 ### Just contextual loss
 
@@ -119,7 +125,43 @@ Each gs:
 
 ### Searching for optimal `soft_cca_lam`
 
+> SoftCCA = lam * SDL1 + lam * SDL2 + L2 norm
 
+- `soft_cca_lam`:
+    - 0.03
+    - 0.015
+    - 0.005
+
+#### Results
+
+I did a grid search on `soft_cca_lam` while watching CCA on the final
+projections. Since I wasn't logging CCA of the embeddings themselves, I cannot
+tell anything about optimal values. What I can deduce that:
+
+- increasing the weight of SDL to 0.03 effectively reduced the correlation (even
+  for validation split) on the final projections by 25% compared to correlation
+  for 0.015 or 0.005 (which were roughly equal). It should be noted that the
+  correlation also wasn't logged properly so I'd have to repeat the experiment
+  to make sure it is as so.
+
+### Searching for optimal `soft_cca_sdl_alpha`
+
+> The forgetting parameter in SDL: alpha * old_cov_mat + (1-alpha) * new_cov
+
+- `soft_cca_sdl_alpha`:
+    - 0.999
+    - 0.99
+    - 0.95
+    - ... lower values seemed worse (had smaller CCA on final projection layers)
+
+#### Results:
+
+- 0.95 managed to lower SDL1 the most, had the best train and val CCA on final
+  layers
+- 0.99 had the lowest correlation on final projection layer (though by only 0.7%
+  below 0.95, which was 7% above)
+- CCA of outputs is unclear as the validation CCA was more or less the same, if
+  we leave out occasional dips which happen to all cases
 
 ### Only static losses
 
