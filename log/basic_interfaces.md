@@ -1,6 +1,41 @@
-[experiment_config]: experiment_config.md
+[configuration_files]: configuration_files.md
 
-# Evaluation environment
+# Basic interfaces
+
+This document serves as a reminder about the ideas behind the basic interfaces
+in this package (and also as a kind of documentation).
+
+There are two basic interfaces:
+
+- `ExperimentalTask`, and
+- `ExperimentalModel`.
+
+Using these interfaces scripts can load up a dataset and a model, train the
+model on the dataset, evaluate it and save everything.
+
+## `ExperimentalTask`
+
+Wraps a dataset and defines the method how it is evaluated.
+
+## `ExperimentalModel`
+
+Wraps a model and its training/prediction setup.
+
+### Notes
+
+- all arguments that are required only for the training should go into
+  `train_kwargs` in [configuration files][configuration_files]
+
+## General implementation advice
+
+- do not define default values for arguments -- configuration files are then
+  incomplete and one has to search back to the default value that was default
+  when the configuration file was created. Instead leave all but helper
+  arguments as obligatory to force the configuration file to include all values
+  necessary
+
+
+## Thought process
 
 The initial though behind an evaluation environment was to unify models and
 tasks so we can easily evaluate particular task with particular model. As the
@@ -17,39 +52,11 @@ The unification is there to have scripts that can operate on multiple model-task
 pairs. There is still plenty of value in that:
 
 1. we can move from a model implementation to trying it out really quickly,
-2. easy arguments loading, which are also automatically saved (see [experiment
-   configuration][experiment_config])
-3. easily defined grid search (see [grid search config][experiment_config])
-4. avoiding *some* code repetition (though not as much as initially planned)
-5. automatic and systematic saving of experiment results and logging
+2. easy arguments loading, which are also automatically saved
+3. avoiding *some* code repetition (though not as much as initially planned)
+4. automatic and systematic saving of experiment results and logging
 
-## Implementation
-
-There are three types of entities:
-
-- `task` -- defines data, splits, evaluation metrics
-- `model` -- takes care of building the model, minimal as can be (pure
-  `torch.nn.Module` or `tf.keras.Model`)
-- `ExperimentalModel` -- takes care of getting the best out of given `model` and `task`,
-  so mainly training
-
-## Scripts
-
-The above entities are used in multiple types of scripts. Each script should be
-used for the purpose it was designed.
-
-- `evaluate_best` -- simple evaluation model
-    - saves best/trained model
-    - evaluates the model on test data
-    - saves results of the evaluation
-- `grid_search` -- finds the best hyperparameters
-    - loads grid search configuration and tries out each configuration
-    - does not save models
-    - logs hyperparameters
-    - does not evaluate the model on test data
-
-
-## The Why-s
+### The Why-s
 
 - **Why this does not matter that much.**
 
