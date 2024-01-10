@@ -619,8 +619,8 @@ class TransformerStudent(TransformerBase):
         # TODO: Ugly constant. Fix later.
         dbow_dim = 100
         for n_components, window_size in [
-            (dbow_dim, 5 * dbow_dim),
             (dbow_dim, 10 * dbow_dim),
+            (dbow_dim, 15 * dbow_dim),
         ]:
             cca_metric = WindowedCCAMetricZoo(
                 n_components=n_components,
