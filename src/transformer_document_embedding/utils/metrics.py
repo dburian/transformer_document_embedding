@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
+import itertools
 import logging
 from time import time
 
@@ -164,13 +165,15 @@ class CosineDistanceWithSBERT(TrainingMetric):
 class WindowedMetric(Metric):
     """Base class for all metrics that need fixed window in order to be comparable."""
 
-    def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
+    def __init__(
+        self, window_size: int, num_views: int, device: Optional[torch.device] = None
+    ) -> None:
         super().__init__(device=device)
 
-        self._add_state("views1", torch.tensor([], device=device))
-        self.views1: torch.Tensor
-        self._add_state("views2", torch.tensor([], device=device))
-        self.views2: torch.Tensor
+        self._add_state(
+            "views", [torch.tensor([], device=device) for _ in range(num_views)]
+        )
+        self.views: list[torch.Tensor]
 
         self._window_size = window_size
 
@@ -180,13 +183,13 @@ class WindowedMetric(Metric):
 
     @property
     def has_full_window(self) -> int:
-        samples = self.views1.size(0)
+        samples = self.views[0].size(0)
         return samples == self.window_size
 
     @torch.inference_mode()
-    def update(self, views1: torch.Tensor, views2: torch.Tensor) -> WindowedMetric:
-        self.views1 = torch.cat((self.views1, views1.detach()))
-        self.views2 = torch.cat((self.views2, views2.detach()))
+    def update(self, *new_views: torch.Tensor) -> WindowedMetric:
+        for i, new_view in enumerate(new_views):
+            self.views[i] = torch.cat((self.views[i], new_view), dim=0)
 
         self._shorten_views_to_size()
         return self
@@ -202,24 +205,20 @@ class WindowedMetric(Metric):
         pass
 
     def merge_state(self, metrics: Iterable[WindowedCCAMetric]) -> WindowedMetric:
-        views1 = [self.views1]
-        views2 = [self.views2]
-        for other in metrics:
-            views1.append(other.views1)
-            views2.append(other.views2)
+        views = [[] for _ in range(len(self.views))]
+        for metric in itertools.chain([self], metrics):
+            assert len(metric.views) == len(views)
+            for i, view in enumerate(metric.views):
+                views[i].append(view)
 
-        self.views1 = torch.cat(views1)
-        self.views2 = torch.cat(views2)
+        self.views = [torch.concat(view) for view in views]
 
         self._shorten_views_to_size()
-
         return self
 
     def _shorten_views_to_size(self) -> None:
-        if self.views1.size(0) > self.window_size:
-            self.views1 = self.views1[-self.window_size :, :]
-        if self.views2.size(0) > self.window_size:
-            self.views2 = self.views2[-self.window_size :, :]
+        if self.views[0].size(0) > self.window_size:
+            self.views = [view[-self.window_size :] for view in self.views]
 
 
 class WindowedCCAMetric(WindowedMetric):
@@ -243,6 +242,7 @@ class WindowedCCAMetric(WindowedMetric):
             window_size=window_size
             if window_size is not None
             else self.WINDOW_MULT_FACTOR * n_components,
+            num_views=2,
             device=device,
         )
 
@@ -250,9 +250,9 @@ class WindowedCCAMetric(WindowedMetric):
 
     @torch.inference_mode()
     def _compute_with_full_window(self) -> float:
-        samples = self.views1.size(0)
-        view1_dim = self.views1.size(1)
-        view2_dim = self.views2.size(1)
+        samples = self.views[0].size(0)
+        view1_dim = self.views[0].size(1)
+        view2_dim = self.views[1].size(1)
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
@@ -264,8 +264,8 @@ class WindowedCCAMetric(WindowedMetric):
             # No category keyword for python 3.10 compatibility
             with warnings.catch_warnings():
                 views1_, views2_ = cca.fit_transform(
-                    self.views1.numpy(force=True),
-                    self.views2.numpy(force=True),
+                    self.views[0].numpy(force=True),
+                    self.views[1].numpy(force=True),
                 )
 
             correlation = (
@@ -310,23 +310,23 @@ class WindowedCCAMetricTorch(WindowedCCAMetric):
 
     @torch.inference_mode()
     def _compute_with_full_window(self) -> float:
-        samples = self.views1.size(0)
-        view1_dim = self.views1.size(1)
-        view2_dim = self.views2.size(1)
+        samples = self.views[0].size(0)
+        view1_dim = self.views[0].size(1)
+        view2_dim = self.views[1].size(1)
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
             return torch.nan
 
-        return -self._cca_loss(self.views1, self.views2)["loss"]
+        return -self._cca_loss(self.views[0], self.views[1])["loss"]
 
 
 class WindowedCCAMetricZoo(WindowedCCAMetric):
     @torch.inference_mode()
     def _compute_with_full_window(self) -> float:
-        samples = self.views1.size(0)
-        view1_dim = self.views1.size(1)
-        view2_dim = self.views2.size(1)
+        samples = self.views[0].size(0)
+        view1_dim = self.views[0].size(1)
+        view2_dim = self.views[1].size(1)
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
@@ -344,20 +344,35 @@ class WindowedCCAMetricZoo(WindowedCCAMetric):
             )
             return torch.nan
 
-        views = (self.views1.numpy(force=True), self.views2.numpy(force=True))
+        views = (self.views[0].numpy(force=True), self.views[1].numpy(force=True))
         cca_model = ZooCCA(latent_dimensions=self.n_components)
         return cca_model.fit(views).score(views) / self.n_components
 
 
-class WindowedAbsCorrelationMetric(WindowedMetric):
+class WindowedAbsCrossCorrelationMetric(WindowedMetric):
     def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
-        super().__init__(window_size=window_size, device=device)
+        super().__init__(window_size=window_size, num_views=2, device=device)
 
     def _compute_with_full_window(self) -> float:
-        all_vars = torch.concat((self.views1.T, self.views2.T), dim=0)
-        view1_dim = self.views1.size(1)
+        all_vars = torch.concat((self.views[0].T, self.views[1].T), dim=0)
+        view1_dim = self.views[0].size(1)
 
-        cross_corr_coefs = torch.corrcoef(all_vars).diagonal(offset=view1_dim)
+        cross_corr_coefs = torch.corrcoef(all_vars)[:view1_dim, view1_dim:]
         mean_abs_cross_corr = cross_corr_coefs.abs().mean()
 
         return mean_abs_cross_corr.item()
+
+
+class WindowedAbsCorrelationMetric(WindowedMetric):
+    def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
+        super().__init__(window_size, num_views=1, device=device)
+
+    def _compute_with_full_window(self) -> Any:
+        abs_corr_mat = torch.corrcoef(self.views[0].T).abs()
+        abs_corr_without_diagonal = (
+            abs_corr_mat
+            - torch.eye(self.views[0].size(1), device=self.views[0].device)
+            * abs_corr_mat.diagonal()
+        )
+
+        return abs_corr_without_diagonal.mean()

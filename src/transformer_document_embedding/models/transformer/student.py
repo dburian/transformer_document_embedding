@@ -17,9 +17,10 @@ from transformer_document_embedding.utils.metrics import (
     MSEWithSBERT,
     TrainingMetric,
     VMemMetric,
+    WindowedAbsCorrelationMetric,
     WindowedCCAMetric,
     WindowedCCAMetricZoo,
-    WindowedAbsCorrelationMetric,
+    WindowedAbsCrossCorrelationMetric,
 )
 from transformer_document_embedding.utils.similarity_losses import (
     ContrastiveLoss,
@@ -597,12 +598,6 @@ class TransformerStudent(TransformerBase):
         def update_with_outputs(metric, outputs, batch) -> None:
             metric.update(outputs["embeddings"], batch["dbow"])
 
-        def update_with_projection(metric, outputs, _, *, layer_ind: int) -> None:
-            metric.update(
-                outputs["static_projected_views1"][layer_ind],
-                outputs["static_projected_views2"][layer_ind],
-            )
-
         def warn_for_nans_in_validation(
             cca_metric: WindowedCCAMetric, metric_name: str
         ):
@@ -639,14 +634,40 @@ class TransformerStudent(TransformerBase):
                         reset_after_log=False,
                     ),
                     TrainingMetric(
-                        f"corr_outputs_x{cca_metric.window_size}",
-                        WindowedAbsCorrelationMetric(cca_metric.window_size),
+                        f"crosscorr_outputs_x{cca_metric.window_size}",
+                        WindowedAbsCrossCorrelationMetric(cca_metric.window_size),
                         default_log_freq,
                         update_with_outputs,
                         reset_after_log=False,
                     ),
+                    TrainingMetric(
+                        f"corr_transformer_outputs_x{cca_metric.window_size}",
+                        WindowedAbsCorrelationMetric(cca_metric.window_size),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(outputs["embeddings"]),
+                        reset_after_log=False,
+                    ),
+                    TrainingMetric(
+                        f"corr_static_outputs_x{cca_metric.window_size}",
+                        WindowedAbsCorrelationMetric(cca_metric.window_size),
+                        default_log_freq,
+                        lambda metric, _, batch: metric.update(batch["dbow"]),
+                        reset_after_log=False,
+                    ),
                 ]
             )
+
+        def update_with_projection(metric, outputs, _, *, layer_ind: int) -> None:
+            metric.update(
+                outputs["static_projected_views1"][layer_ind],
+                outputs["static_projected_views2"][layer_ind],
+            )
+
+        def update_with_first_projection(metric, outputs, _, layer_ind):
+            metric.update(outputs["static_projected_views1"][layer_ind])
+
+        def update_with_second_projection(metric, outputs, _, layer_ind):
+            metric.update(outputs["static_projected_views2"][layer_ind])
 
         if (
             isinstance(model.loss.static_loss, cca_losses.ProjectionLoss)
@@ -659,7 +680,16 @@ class TransformerStudent(TransformerBase):
             for layer_ind in range(-1, -min(len(net1_feats), len(net2_feats)) - 1, -1):
                 min_dim = min(net1_feats[layer_ind], net2_feats[layer_ind])
 
-                update_fn = partial(update_with_projection, layer_ind=layer_ind)
+                both_views_update_fn = partial(
+                    update_with_projection, layer_ind=layer_ind
+                )
+                view1_update_fn = partial(
+                    update_with_first_projection, layer_ind=layer_ind
+                )
+                view2_update_fn = partial(
+                    update_with_second_projection, layer_ind=layer_ind
+                )
+
                 for multiplier in [5, 10]:
                     cca_metric = WindowedCCAMetricZoo(
                         n_components=min_dim, window_size=min_dim * multiplier
@@ -677,14 +707,30 @@ class TransformerStudent(TransformerBase):
                                 metric_name,
                                 cca_metric,
                                 default_log_freq,
-                                update_fn,
+                                both_views_update_fn,
                                 reset_after_log=False,
                             ),
                             TrainingMetric(
-                                f"corr_projection[{layer_ind}]_x{cca_metric.window_size}",
+                                f"crosscorr_projection[{layer_ind}]_x{cca_metric.window_size}",
+                                WindowedAbsCrossCorrelationMetric(
+                                    cca_metric.window_size
+                                ),
+                                default_log_freq,
+                                both_views_update_fn,
+                                reset_after_log=False,
+                            ),
+                            TrainingMetric(
+                                f"corr_transformer_projection[{layer_ind}]_x{cca_metric.window_size}",
                                 WindowedAbsCorrelationMetric(cca_metric.window_size),
                                 default_log_freq,
-                                update_fn,
+                                view1_update_fn,
+                                reset_after_log=False,
+                            ),
+                            TrainingMetric(
+                                f"corr_static_projection[{layer_ind}]_x{cca_metric.window_size}",
+                                WindowedAbsCorrelationMetric(cca_metric.window_size),
+                                default_log_freq,
+                                view2_update_fn,
                                 reset_after_log=False,
                             ),
                         ]
