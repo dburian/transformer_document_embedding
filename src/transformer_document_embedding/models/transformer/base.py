@@ -21,7 +21,7 @@ class MeanPooler(torch.nn.Module):
     ) -> torch.Tensor:
         summed = torch.sum(last_hidden_state * attention_mask[:, :, None], 1)
         row_lengths = torch.sum(attention_mask, 1)
-        return summed / row_lengths[:, None]
+        return summed / torch.clamp(row_lengths[:, None], min=1e-9)
 
 
 class LocalMeanPooler(torch.nn.Module):
@@ -37,7 +37,7 @@ class LocalMeanPooler(torch.nn.Module):
         attn = attention_mask * (1 - global_attention_mask)
         attn.unsqueeze_(-1)
         masked = last_hidden_state * attn
-        return masked.sum(dim=1) / attn.sum(dim=1)
+        return masked.sum(dim=1) / torch.clamp(attn.sum(dim=1), min=1e-9)
 
 
 class ClsPooler(torch.nn.Module):
