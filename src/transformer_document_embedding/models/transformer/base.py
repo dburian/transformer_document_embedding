@@ -77,6 +77,11 @@ class TransformerBase(ExperimentalModel):
         if transformer_model_kwargs is None:
             transformer_model_kwargs = {}
 
+        if "add_pooling_layer" not in transformer_model_kwargs:
+            # Never add pooling layer through HF unless explicitly said so.
+            # Normally is not configurable.
+            transformer_model_kwargs["add_pooling_layer"] = False
+
         self._transformer = AutoModel.from_pretrained(
             transformer_model, **transformer_model_kwargs
         )
