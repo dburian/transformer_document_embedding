@@ -16,7 +16,6 @@ class ExperimentalModel:
         self,
         task: ExperimentalTask,
         log_dir: Optional[str] = None,
-        model_dir: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Trains the model.
@@ -24,7 +23,6 @@ class ExperimentalModel:
         Args:
             - task: task to train on with optional validation data,
             - log_dir: directory where to save logs,
-            - model_dir: directory where to save the model's parameters,
         """
         raise NotImplementedError()
 

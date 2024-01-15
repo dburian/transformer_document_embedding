@@ -136,7 +136,6 @@ class ParagraphVectorEmbed(ExperimentalModel):
         self,
         task: ExperimentalTask,
         log_dir: Optional[str] = None,
-        model_dir: Optional[str] = None,
         save_best: bool = False,
         save_at_epochs: Optional[list[int]] = None,
         **kwargs,
@@ -160,11 +159,11 @@ class ParagraphVectorEmbed(ExperimentalModel):
         #         )
         #     )
 
-        if model_dir is not None and save_at_epochs is not None:
+        if log_dir is not None and save_at_epochs is not None:
             callbacks.append(
                 CheckpointSave(
                     epoch_checkpoints=save_at_epochs,
-                    save_dir=os.path.join(model_dir, "checkpoints"),
+                    save_dir=os.path.join(log_dir, "checkpoints"),
                     paragraph_vector=self._pv,
                 )
             )
@@ -178,9 +177,9 @@ class ParagraphVectorEmbed(ExperimentalModel):
                 callbacks=callbacks,
             )
 
-        if save_best and model_dir is not None and log_dir is None:
+        if save_best and log_dir is not None and log_dir is None:
             # We should save the model, but we don't know validation metrics.
-            self._pv.save(model_dir)
+            self.save(os.path.join(log_dir, "model"))
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         for doc in inputs:

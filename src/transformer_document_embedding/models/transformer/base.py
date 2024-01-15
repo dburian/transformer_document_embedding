@@ -136,13 +136,15 @@ class TransformerBase(ExperimentalModel):
         return train_logger, val_logger
 
     def _get_save_model_callback(
-        self, save_best: bool, model_dir: Optional[str]
+        self,
+        save_best: bool,
+        log_dir: Optional[str],
     ) -> Optional[Callable[[torch.nn.Module, int], None]]:
-        if not save_best or model_dir is None:
+        if not save_best or log_dir is None:
             return None
 
         def _cb(*_) -> None:
-            self.save(path.join(model_dir, "checkpoint"))
+            self.save(path.join(log_dir, "checkpoint"))
 
         return _cb
 

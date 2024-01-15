@@ -74,13 +74,12 @@ class TransformerClassifier(TransformerBase):
         save_best: bool,
         device: Optional[str] = None,
         log_dir: Optional[str] = None,
-        model_dir: Optional[str] = None,
         **_,
     ) -> None:
         # Freezing transformer if required or unfreezing if not
         self._model.transformer.requires_grad_(not freeze_transformer)
 
-        save_model_callback = self._get_save_model_callback(save_best, model_dir)
+        save_model_callback = self._get_save_model_callback(save_best, log_dir)
 
         train_batches = self._to_dataloader(task.train)
         val_batches = None

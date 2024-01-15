@@ -78,7 +78,6 @@ class TransformerPairClassifier(TransformerBase):
         validate_every_step: Optional[int],
         device: Optional[str] = None,
         log_dir: Optional[str] = None,
-        model_dir: Optional[str] = None,
         **_,
     ) -> None:
         # Freezing transformer if required or unfreezing if not
@@ -100,7 +99,7 @@ class TransformerPairClassifier(TransformerBase):
             warmup_steps=warmup_steps // grad_accumulation_steps,
         )
 
-        save_model_callback = self._get_save_model_callback(save_best, model_dir)
+        save_model_callback = self._get_save_model_callback(save_best, log_dir)
 
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()

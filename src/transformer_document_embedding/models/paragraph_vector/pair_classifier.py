@@ -60,7 +60,6 @@ class PairClassifier(ExperimentalModel):
         log_every_step: int,
         save_best: bool,
         log_dir: Optional[str] = None,
-        model_dir: Optional[str] = None,
         **_,
     ) -> None:
         # TODO: Add `.splits() -> dict[str, Any]` to ExperimentalTask
@@ -74,10 +73,10 @@ class PairClassifier(ExperimentalModel):
             module.train(pv_train, total_examples=module.corpus_count, epochs=pv_epochs)
 
         save_model_callback = None
-        if save_best and model_dir is not None:
+        if save_best and log_dir is not None:
 
             def save_cb(*_) -> None:
-                self.save(os.path.join(model_dir, "checkpoint"))
+                self.save(os.path.join(log_dir, "checkpoint"))
 
             save_model_callback = save_cb
 
