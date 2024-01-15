@@ -164,7 +164,7 @@ class PairClassifier(ExperimentalModel):
         self._cls_head.to(device)
 
         for batch in cls_head_test:
-            logits = self._cls_head(batch["embeddings"].to(device))
+            logits = self._cls_head(batch["embedding"].to(device))
             yield torch.argmax(logits, dim=1).numpy(force=True)
 
     def _create_features_dataloader(
@@ -241,7 +241,7 @@ class FeaturesDataset(TorchDataset):
             )
             embeddings.append(torch.tensor(key_embed))
 
-        features_item = {"embeddings": torch.cat(embeddings)}
+        features_item = {"embedding": torch.cat(embeddings)}
         if "label" in item:
             features_item["labels"] = torch.tensor(item["label"])
 

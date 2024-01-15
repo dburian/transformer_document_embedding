@@ -181,7 +181,7 @@ class _SequenceEmbeddingModel(torch.nn.Module):
         return {
             **outputs,
             **loss_outputs,
-            "embeddings": pooled_output,
+            "embedding": pooled_output,
         }
 
 
@@ -596,7 +596,7 @@ class TransformerStudent(TransformerBase):
                 )
 
         def update_with_outputs(metric, outputs, batch) -> None:
-            metric.update(outputs["embeddings"], batch["dbow"])
+            metric.update(outputs["embedding"], batch["dbow"])
 
         def warn_for_nans_in_validation(
             cca_metric: WindowedCCAMetric, metric_name: str
@@ -644,7 +644,7 @@ class TransformerStudent(TransformerBase):
                         f"corr_transformer_outputs_x{cca_metric.window_size}",
                         WindowedAbsCorrelationMetric(cca_metric.window_size),
                         default_log_freq,
-                        lambda metric, outputs, _: metric.update(outputs["embeddings"]),
+                        lambda metric, outputs, _: metric.update(outputs["embedding"]),
                         reset_after_log=False,
                     ),
                     TrainingMetric(
@@ -750,5 +750,5 @@ class TransformerStudent(TransformerBase):
             if "labels" in batch:
                 del batch["labels"]
             train_utils.batch_to_device(batch, device)
-            embeddings = self._model(**batch)["embeddings"]
+            embeddings = self._model(**batch)["embedding"]
             yield embeddings.numpy(force=True)
