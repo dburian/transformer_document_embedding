@@ -103,7 +103,7 @@ class MSEWithSBERT(TrainingMetric):
         outputs: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
     ) -> None:
-        model_embeddings = outputs["pooler_output"]
+        model_embeddings = outputs["embedding"]
         sbert_emebddings = batch["sbert"]
         if self.normalize:
             model_embeddings /= torch.linalg.vector_norm(model_embeddings)
@@ -150,7 +150,7 @@ class CosineDistanceWithSBERT(TrainingMetric):
         batch: dict[str, torch.Tensor],
     ) -> None:
         cos_dist = 1 - torch.nn.functional.cosine_similarity(
-            outputs["pooler_output"],
+            outputs["embedding"],
             batch["sbert"],
             dim=1,
         )
