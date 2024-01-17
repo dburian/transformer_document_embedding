@@ -1,0 +1,21 @@
+model:
+  module: paragraph_vector.embed:ParagraphVectorEmbed
+  kwargs:
+    dbow_kwargs:
+      vector_size: 768
+      min_count: 10
+      epochs: 5
+      negative: 5
+      sample: 0
+      workers: 64
+  train_kwargs:
+    save_at_epochs: [1, 2, 4]
+
+
+task:
+  module: teacher_embedding:TeacherEmbedding
+  kwargs:
+    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    data_size_limit:
+      train: 1000
+      validation: 1000

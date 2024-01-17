@@ -6,36 +6,36 @@ model:
     # transformer_model: allenai/longformer-base-4096
     pooler_type: mean
     batch_size: 4
-    contextual_max_length: null
-    contextual_loss_kwargs: null
-    # contextual_loss_kwargs:
-    #   contextual_key: sbert
+    max_depth_length: null
+    depth_loss_kwargs: null
+    # depth_loss_kwargs:
     #   lam: 1000
-    #   contextual_loss_type: contrastive_cos_dist
+    #   loss_type: contrastive_cos_dist
     #   contrastive_lam: 0.8
-    static_loss_kwargs:
-      static_key: dbow
-      static_embed_dim: 100
-      static_loss_type: soft_cca
+    breadth_loss_kwargs:
+      breadth_embed_dim: 100
+      loss_type: soft_cca
       projection_norm: null
       cca_output_dim: null
       # cca_output_dim: 50
       transformer_projection_layers: [768]
-      static_projection_layers: [512, 768]
-      soft_cca_lam: 1
+      breadth_projection_layers: [512, 768]
+      soft_cca_lam: 0.15
+      soft_cca_sdl_alpha: 0.999
       contrastive_lam: 0.8
 
   train_kwargs:
     save_best: False
     epochs: 1
-    warmup_steps: 560
-    grad_accumulation_steps: 8
+    warmup_steps: 840
+    grad_accumulation_steps: 4
     weight_decay: 0.01
-    lr: 3.0e-5
+    lr: 0 #3.0e-5
+    lr_scheduler_type: cos
     fp16: True
     max_grad_norm: 1.0
-    log_every_step: 5
-    validate_every_step: 1000
+    log_every_step: 4
+    validate_every_step: 1050
     global_attention_type: cls
     patience: null
     device: cuda
@@ -47,7 +47,10 @@ model:
 task:
   module: teacher_embedding:TeacherEmbedding
   kwargs:
-    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    # path: /mnt/data/datasets/wikipedia_sample_with_eval
+    path: ./results/teacher_embedding:TeacherEmbedding/transformer.student:TransformerStudent/sbert_test/embeddings
+    depth_embedding_col: hf_sbert
+    breadth_embedding_col: dbow
     data_size_limit:
-      train: 16000
-      validation: 4200
+      train: 33800
+      validation: 7680

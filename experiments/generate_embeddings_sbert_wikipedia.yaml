@@ -1,0 +1,17 @@
+model:
+  module: transformer.student:TransformerStudent
+  kwargs:
+    transformer_model: sentence-transformers/all-mpnet-base-v2
+    pooler_type: mean
+    batch_size: 8
+    contextual_max_length: null
+    contextual_loss_kwargs: null
+    static_loss_kwargs: null
+
+task:
+  module: teacher_embedding:TeacherEmbedding
+  kwargs:
+    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    data_size_limit:
+      train: 1000
+      validation: 1000
