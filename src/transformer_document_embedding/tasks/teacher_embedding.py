@@ -22,8 +22,8 @@ class TeacherEmbedding(HFTask):
     def __init__(
         self,
         path: str,
-        breadth_embedding_col: str,
-        depth_embedding_col: str,
+        breadth_embedding_col: Optional[str] = None,
+        depth_embedding_col: Optional[str] = None,
         data_size_limit: Optional[int] = None,
         validation_source_fraction: Optional[float] = None,
         validation_source: Optional[str] = None,
@@ -46,12 +46,14 @@ class TeacherEmbedding(HFTask):
         dataset = load_from_disk(self._path_to_dataset)
         assert isinstance(dataset, DatasetDict)
 
-        return dataset.rename_columns(
-            {
-                self.breadth_embedding_col: self.BREADTH_COL,
-                self.depth_embedding_col: self.DEPTH_COL,
-            }
-        )
+        renames = {}
+        if self.breadth_embedding_col is not None:
+            renames[self.breadth_embedding_col] = self.BREADTH_COL
+
+        if self.depth_embedding_col is not None:
+            renames[self.depth_embedding_col] = self.DEPTH_COL
+
+        return dataset if len(renames) == 0 else dataset.rename_columns(renames)
 
     def evaluate(
         self,
