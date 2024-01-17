@@ -16,9 +16,14 @@ class TeacherEmbedding(HFTask):
     See `scripts/generate_embeddings.py` to create such dataset.
     """
 
+    BREADTH_COL = "breadth_embedding"
+    DEPTH_COL = "depth_embedding"
+
     def __init__(
         self,
         path: str,
+        breadth_embedding_col: str,
+        depth_embedding_col: str,
         data_size_limit: Optional[int] = None,
         validation_source_fraction: Optional[float] = None,
         validation_source: Optional[str] = None,
@@ -31,6 +36,9 @@ class TeacherEmbedding(HFTask):
         )
         self._path_to_dataset = path
 
+        self.breadth_embedding_col = breadth_embedding_col
+        self.depth_embedding_col = depth_embedding_col
+
     def test(self) -> Dataset:
         return Dataset.from_dict({})
 
@@ -38,7 +46,12 @@ class TeacherEmbedding(HFTask):
         dataset = load_from_disk(self._path_to_dataset)
         assert isinstance(dataset, DatasetDict)
 
-        return dataset
+        return dataset.rename_columns(
+            {
+                self.breadth_embedding_col: self.BREADTH_COL,
+                self.depth_embedding_col: self.DEPTH_COL,
+            }
+        )
 
     def evaluate(
         self,

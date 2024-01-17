@@ -12,9 +12,10 @@ from transformer_document_embedding.models.transformer.base import TransformerBa
 from transformer_document_embedding.models.trainer import (
     TorchTrainer,
 )
+from transformer_document_embedding.tasks.teacher_embedding import TeacherEmbedding
 from transformer_document_embedding.utils.metrics import (
-    CosineDistanceWithSBERT,
-    MSEWithSBERT,
+    EmbeddingCosineDistanceWithCol,
+    EmbeddingMSEWithCol,
     TrainingMetric,
     VMemMetric,
     WindowedAbsCorrelationMetric,
@@ -58,74 +59,69 @@ def log_max_abs_grad(
         metric.update(grad.abs().max())
 
 
-class StaticContextualLoss(torch.nn.Module):
+class BreadthDepthLoss(torch.nn.Module):
     def __init__(
         self,
-        contextual_max_length: Optional[int],
+        max_depth_length: Optional[int],
         lam: Optional[float] = None,
-        static_loss: Optional[torch.nn.Module] = None,
-        contextual_loss: Optional[torch.nn.Module] = None,
-        contextual_key: str = "sbert",
-        static_key: str = "dbow",
-        len_key: str = "length",
+        breadth_loss: Optional[torch.nn.Module] = None,
+        depth_loss: Optional[torch.nn.Module] = None,
+        depth_col: str = TeacherEmbedding.DEPTH_COL,
+        breadth_col: str = TeacherEmbedding.BREADTH_COL,
+        len_col: str = "length",
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        self._contextual_key = contextual_key
-        self._static_key = static_key
-        self._contextual_max_length = contextual_max_length
-        self._len_key = len_key
-        self.static_loss = static_loss
-        self.contextual_loss = contextual_loss
+        self._depth_col = depth_col
+        self._breadth_col = breadth_col
+        self._max_depth_length = max_depth_length
+        self._len_key = len_col
+        self.breadth_loss = breadth_loss
+        self.depth_loss = depth_loss
         self._lam = lam
 
     @property
-    def contextual_max_length(self) -> Optional[int]:
-        return self._contextual_max_length
+    def max_depth_length(self) -> Optional[int]:
+        return self._max_depth_length
 
     def forward(
         self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
     ) -> dict[str, torch.Tensor]:
         outputs = {"loss": torch.tensor(0, device=inputs.device, dtype=inputs.dtype)}
 
-        if self.contextual_loss is not None:
+        if self.depth_loss is not None:
             mask = (
-                targets[self._len_key] <= self._contextual_max_length
-                if self.contextual_max_length is not None
+                targets[self._len_key] <= self._max_depth_length
+                if self.max_depth_length is not None
                 else torch.ones_like(targets[self._len_key])
             ).unsqueeze(-1)
 
-            contextual_loss = self.contextual_loss(
-                inputs, targets[self._contextual_key], mask=mask
-            )
-            if isinstance(contextual_loss, dict):
-                just_contextual_loss = contextual_loss.pop("loss")
+            depth_loss = self.depth_loss(inputs, targets[self._depth_col], mask=mask)
+            if isinstance(depth_loss, dict):
+                just_depth_loss = depth_loss.pop("loss")
                 outputs.update(
-                    {
-                        f"contextual_{key}": value
-                        for key, value in contextual_loss.items()
-                    }
+                    {f"depth_{key}": value for key, value in depth_loss.items()}
                 )
-                contextual_loss = just_contextual_loss
+                depth_loss = just_depth_loss
 
             if self._lam is not None:
-                contextual_loss *= self._lam
+                depth_loss *= self._lam
 
-            outputs["contextual_mask"] = mask
-            outputs["contextual_loss"] = contextual_loss
-            outputs["loss"] += contextual_loss
+            outputs["depth_mask"] = mask
+            outputs["depth_loss"] = depth_loss
+            outputs["loss"] += depth_loss
 
-        if self.static_loss is not None:
-            static_loss_outputs = self.static_loss(inputs, targets[self._static_key])
-            static_loss = torch.mean(static_loss_outputs.pop("loss"))
+        if self.breadth_loss is not None:
+            breadth_loss_outputs = self.breadth_loss(inputs, targets[self._breadth_col])
+            breadth_loss = torch.mean(breadth_loss_outputs.pop("loss"))
 
             outputs.update(
-                {f"static_{key}": value for key, value in static_loss_outputs.items()}
+                {f"breadth_{key}": value for key, value in breadth_loss_outputs.items()}
             )
-            outputs["static_loss"] = static_loss
-            outputs["loss"] += static_loss
+            outputs["breadth_loss"] = breadth_loss
+            outputs["loss"] += breadth_loss
 
         return outputs
 
@@ -135,7 +131,7 @@ class _SequenceEmbeddingModel(torch.nn.Module):
         self,
         transformer: PreTrainedModel,
         pooler: torch.nn.Module,
-        loss: StaticContextualLoss,
+        loss: BreadthDepthLoss,
         *args,
         **kwargs,
     ) -> None:
@@ -191,9 +187,9 @@ class TransformerStudent(TransformerBase):
         transformer_model: str,
         batch_size: int,
         pooler_type: str,
-        contextual_max_length: Optional[int],
-        contextual_loss_kwargs: Optional[dict[str, Any]],
-        static_loss_kwargs: Optional[dict[str, Any]],
+        max_depth_length: Optional[int],
+        depth_loss_kwargs: Optional[dict[str, Any]],
+        breadth_loss_kwargs: Optional[dict[str, Any]],
         transformer_model_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(
@@ -203,9 +199,9 @@ class TransformerStudent(TransformerBase):
             pooler_type=pooler_type,
         )
         loss = self._construct_loss(
-            static_loss_kwargs,
-            contextual_loss_kwargs,
-            contextual_max_length,
+            breadth_loss_kwargs,
+            depth_loss_kwargs,
+            max_depth_length,
             transformer_hidden_size=self._transformer.config.hidden_size,
         )
 
@@ -213,43 +209,46 @@ class TransformerStudent(TransformerBase):
             self._transformer, self._pooler, loss
         )
 
+        self.breadth_embed_dim = (
+            None
+            if breadth_loss_kwargs is None
+            else breadth_loss_kwargs["breadth_embed_dim"]
+        )
+
     def _construct_loss(
         self,
-        static_loss_kwargs: Optional[dict[str, Any]],
-        contextual_loss_kwargs: Optional[dict[str, Any]],
-        contextual_max_length: Optional[int],
+        breadth_loss_kwargs: Optional[dict[str, Any]],
+        depth_loss_kwargs: Optional[dict[str, Any]],
+        max_depth_length: Optional[int],
         transformer_hidden_size: int,
-    ) -> StaticContextualLoss:
+    ) -> BreadthDepthLoss:
         loss_kwargs: dict[str, Any] = {
-            "static_loss": None,
-            "contextual_loss": None,
-            "contextual_max_length": contextual_max_length,
+            "breadth_loss": None,
+            "depth_loss": None,
+            "max_depth_length": max_depth_length,
         }
-        if static_loss_kwargs is not None:
-            loss_kwargs["static_key"] = static_loss_kwargs.pop("static_key")
-
-            loss_kwargs["static_loss"] = self._construct_static_loss(
-                **static_loss_kwargs,
+        if breadth_loss_kwargs is not None:
+            loss_kwargs["breadth_loss"] = self._construct_breadth_loss(
+                **breadth_loss_kwargs,
                 transformer_hidden_size=transformer_hidden_size,
             )
 
-        if contextual_loss_kwargs is not None:
-            for param_name in ["contextual_key", "lam"]:
-                loss_kwargs[param_name] = contextual_loss_kwargs.pop(param_name)
+        if depth_loss_kwargs is not None:
+            loss_kwargs["lam"] = depth_loss_kwargs.pop("lam")
 
-            loss_kwargs["contextual_loss"] = self._construct_contextual_loss(
-                **contextual_loss_kwargs,
+            loss_kwargs["depth_loss"] = self._construct_depth_loss(
+                **depth_loss_kwargs,
             )
 
-        return StaticContextualLoss(**loss_kwargs)
+        return BreadthDepthLoss(**loss_kwargs)
 
-    def _construct_static_loss(
+    def _construct_breadth_loss(
         self,
-        static_loss_type: str,
+        loss_type: str,
         transformer_projection_layers: list[int],
-        static_projection_layers: list[int],
+        breadth_projection_layers: list[int],
         projection_norm: Optional[str],
-        static_embed_dim: int,
+        breadth_embed_dim: int,
         cca_output_dim: Optional[int],
         transformer_hidden_size: int,
         soft_cca_sdl_alpha: float,
@@ -262,25 +261,25 @@ class TransformerStudent(TransformerBase):
             else transformer_hidden_size
         )
         view2_dim = (
-            static_projection_layers[-1]
-            if len(static_projection_layers) > 0
-            else static_embed_dim
+            breadth_projection_layers[-1]
+            if len(breadth_projection_layers) > 0
+            else breadth_embed_dim
         )
 
-        static_loss_fn = None
-        if static_loss_type == "cca":
-            static_loss_fn = cca_losses.CCALoss(output_dimension=cca_output_dim)
-        elif static_loss_type == "running_cca":
-            static_loss_fn = cca_losses.RunningCCALoss(
+        loss_fn = None
+        if loss_type == "cca":
+            loss_fn = cca_losses.CCALoss(output_dimension=cca_output_dim)
+        elif loss_type == "running_cca":
+            loss_fn = cca_losses.RunningCCALoss(
                 view1_dimension=view1_dim,
                 view2_dimension=view2_dim,
                 output_dimension=cca_output_dim,
             )
-        elif static_loss_type == "soft_cca":
+        elif loss_type == "soft_cca":
             assert (
                 soft_cca_lam is not None
             ), "To use soft_cca, `soft_cca_lam` must be set"
-            static_loss_fn = cca_losses.SoftCCALoss(
+            loss_fn = cca_losses.SoftCCALoss(
                 sdl1=cca_losses.StochasticDecorrelationLoss(
                     view1_dim,
                     alpha=soft_cca_sdl_alpha,
@@ -292,9 +291,7 @@ class TransformerStudent(TransformerBase):
                 lam=soft_cca_lam,
             )
         else:
-            static_loss_fn = create_sim_based_loss(
-                static_loss_type, contrastive_lam=contrastive_lam
-            )
+            loss_fn = create_sim_based_loss(loss_type, contrastive_lam=contrastive_lam)
 
         def _construct_net(
             layers: list[int], input_features: int
@@ -309,20 +306,18 @@ class TransformerStudent(TransformerBase):
             )
 
         net1 = _construct_net(transformer_projection_layers, transformer_hidden_size)
-        net2 = _construct_net(static_projection_layers, static_embed_dim)
+        net2 = _construct_net(breadth_projection_layers, breadth_embed_dim)
 
         return cca_losses.ProjectionLoss(
             net1=net1,
             net2=net2,
-            loss_fn=static_loss_fn,
+            loss_fn=loss_fn,
         )
 
-    def _construct_contextual_loss(
-        self, contextual_loss_type: str, contrastive_lam: Optional[float]
+    def _construct_depth_loss(
+        self, loss_type: str, contrastive_lam: Optional[float]
     ) -> torch.nn.Module:
-        return create_sim_based_loss(
-            contextual_loss_type, contrastive_lam=contrastive_lam
-        )
+        return create_sim_based_loss(loss_type, contrastive_lam=contrastive_lam)
 
     def train(
         self,
@@ -407,7 +402,7 @@ class TransformerStudent(TransformerBase):
     def _get_train_metrics(
         self, val_data: Optional[DataLoader], default_log_freq: int
     ) -> list[TrainingMetric]:
-        contextual_len_thres = self._model.loss.contextual_max_length
+        depth_len_thres = self._model.loss.max_depth_length
         train_metrics = [
             VMemMetric(default_log_freq),
             TrainingMetric(
@@ -416,9 +411,18 @@ class TransformerStudent(TransformerBase):
                 default_log_freq,
                 lambda metric, _, batch: metric.update(batch["length"]),
             ),
-            MSEWithSBERT(default_log_freq),
-            MSEWithSBERT(default_log_freq, normalize=True),
-            CosineDistanceWithSBERT(default_log_freq),
+            EmbeddingMSEWithCol(
+                "depth", default_log_freq, col_name=TeacherEmbedding.DEPTH_COL
+            ),
+            EmbeddingMSEWithCol(
+                "depth",
+                default_log_freq,
+                col_name=TeacherEmbedding.DEPTH_COL,
+                normalize=True,
+            ),
+            EmbeddingCosineDistanceWithCol(
+                "depth", default_log_freq, col_name=TeacherEmbedding.DEPTH_COL
+            ),
             TrainingMetric(
                 "max_abs_transformer_grad",
                 Max(),
@@ -432,103 +436,109 @@ class TransformerStudent(TransformerBase):
             *self._get_projection_metrics(self._model, val_data, default_log_freq),
         ]
 
-        if isinstance(self._model.loss.contextual_loss, ContrastiveLoss):
+        if isinstance(self._model.loss.depth_loss, ContrastiveLoss):
             train_metrics.extend(
                 [
                     TrainingMetric(
-                        "contextual_contrastive_positive",
+                        "depth_contrastive_positive",
                         Mean(),
                         default_log_freq,
                         lambda metric, outputs, _: metric.update(
-                            outputs["contextual_contrastive_positive"]
+                            outputs["depth_contrastive_positive"]
                         ),
                     ),
                     TrainingMetric(
-                        "contextual_contrastive_negative",
+                        "depth_contrastive_negative",
                         Mean(),
                         default_log_freq,
                         lambda metric, outputs, _: metric.update(
-                            outputs["contextual_contrastive_negative"]
+                            outputs["depth_contrastive_negative"]
                         ),
                     ),
                 ]
             )
 
         if isinstance(
-            self._model.loss.static_loss, cca_losses.ProjectionLoss
-        ) and isinstance(self._model.loss.static_loss.loss_fn, ContrastiveLoss):
+            self._model.loss.breadth_loss, cca_losses.ProjectionLoss
+        ) and isinstance(self._model.loss.breadth_loss.loss_fn, ContrastiveLoss):
             train_metrics.extend(
                 [
                     TrainingMetric(
-                        "static_contrastive_positive",
+                        "breadth_contrastive_positive",
                         Mean(),
                         default_log_freq,
                         lambda metric, outputs, _: metric.update(
-                            outputs["static_contrastive_positive"]
+                            outputs["breadth_contrastive_positive"]
                         ),
                     ),
                     TrainingMetric(
-                        "static_contrastive_negative",
+                        "breadth_contrastive_negative",
                         Mean(),
                         default_log_freq,
                         lambda metric, outputs, _: metric.update(
-                            outputs["static_contrastive_negative"]
+                            outputs["breadth_contrastive_negative"]
                         ),
                     ),
                 ]
             )
 
         # sbert_mse_None would be equal to sbert_mse, same for cos_dist
-        if contextual_len_thres is not None:
+        if depth_len_thres is not None:
             train_metrics.extend(
                 [
-                    MSEWithSBERT(
-                        default_log_freq, max_input_length=contextual_len_thres
-                    ),
-                    MSEWithSBERT(
+                    EmbeddingMSEWithCol(
+                        "depth",
                         default_log_freq,
-                        max_input_length=contextual_len_thres,
+                        col_name=TeacherEmbedding.DEPTH_COL,
+                        max_input_length=depth_len_thres,
+                    ),
+                    EmbeddingMSEWithCol(
+                        "depth",
+                        default_log_freq,
+                        col_name=TeacherEmbedding.DEPTH_COL,
+                        max_input_length=depth_len_thres,
                         normalize=True,
                     ),
-                    CosineDistanceWithSBERT(
-                        default_log_freq, max_input_length=contextual_len_thres
+                    EmbeddingCosineDistanceWithCol(
+                        "depth",
+                        default_log_freq,
+                        col_name=TeacherEmbedding.DEPTH_COL,
+                        max_input_length=depth_len_thres,
                     ),
                 ]
             )
 
-        if self._model.loss.contextual_loss is not None:
+        if self._model.loss.depth_loss is not None:
             train_metrics.extend(
                 [
                     TrainingMetric(
-                        "mean_contextual_loss",
+                        "mean_depth_loss",
                         Mean(),
                         default_log_freq,
-                        lambda metric, outputs, _: metric.update(
-                            outputs["contextual_loss"]
-                        ),
+                        lambda metric, outputs, _: metric.update(outputs["depth_loss"]),
                     ),
                     TrainingMetric(
-                        "mean_contextual_mask",
+                        "mean_depth_mask",
                         Mean(),
                         default_log_freq,
-                        lambda metric, outputs, _: metric.update(
-                            outputs["contextual_mask"]
-                        ),
+                        lambda metric, outputs, _: metric.update(outputs["depth_mask"]),
                     ),
                 ]
             )
 
-        if self._model.loss.static_loss is not None:
+        if self._model.loss.breadth_loss is not None:
             train_metrics.append(
                 TrainingMetric(
-                    "mean_static_loss",
+                    "mean_breadth_loss",
                     Mean(),
                     default_log_freq,
-                    lambda metric, outputs, _: metric.update(outputs["static_loss"]),
+                    lambda metric, outputs, _: metric.update(outputs["breadth_loss"]),
                 )
             )
 
-            if isinstance(self._model.loss.static_loss.loss_fn, cca_losses.SoftCCALoss):
+            if isinstance(
+                self._model.loss.breadth_loss.loss_fn, cca_losses.SoftCCALoss
+            ):
                 train_metrics.extend(
                     [
                         TrainingMetric(
@@ -536,7 +546,7 @@ class TransformerStudent(TransformerBase):
                             Mean(),
                             default_log_freq,
                             lambda metric, outputs, _: metric.update(
-                                outputs["static_l2"]
+                                outputs["breadth_l2"]
                             ),
                         ),
                         TrainingMetric(
@@ -544,7 +554,7 @@ class TransformerStudent(TransformerBase):
                             Mean(),
                             default_log_freq,
                             lambda metric, outputs, _: metric.update(
-                                outputs["static_sdl1"]
+                                outputs["breadth_sdl1"]
                             ),
                         ),
                         TrainingMetric(
@@ -552,7 +562,7 @@ class TransformerStudent(TransformerBase):
                             Mean(),
                             default_log_freq,
                             lambda metric, outputs, _: metric.update(
-                                outputs["static_sdl2"]
+                                outputs["breadth_sdl2"]
                             ),
                         ),
                     ]
@@ -566,19 +576,22 @@ class TransformerStudent(TransformerBase):
         val_data: Optional[DataLoader],
         default_log_freq: int,
     ) -> list[TrainingMetric]:
-        if model.loss.static_loss is None or not isinstance(
-            model.loss.static_loss, cca_losses.ProjectionLoss
+        if model.loss.breadth_loss is None or not isinstance(
+            model.loss.breadth_loss, cca_losses.ProjectionLoss
         ):
             return []
+
+        # breadth embed should be specified since we're using breadth loss
+        assert self.breadth_embed_dim is not None
 
         train_metrics = []
 
         for net_name in ["net1", "net2"]:
-            net = getattr(model.loss.static_loss, net_name)
+            net = getattr(model.loss.breadth_loss, net_name)
             if net is not None:
                 layer_count = len(net.layers)
                 sample_projection_weight_path = (
-                    f"loss.static_loss.{net_name}.layers.{layer_count -1}.0.weight"
+                    f"loss.breadth_loss.{net_name}.layers.{layer_count -1}.0.weight"
                 )
 
                 train_metrics.append(
@@ -595,7 +608,7 @@ class TransformerStudent(TransformerBase):
                 )
 
         def update_with_outputs(metric, outputs, batch) -> None:
-            metric.update(outputs["embedding"], batch["dbow"])
+            metric.update(outputs["embedding"], batch[TeacherEmbedding.BREADTH_COL])
 
         def warn_for_nans_in_validation(
             cca_metric: WindowedCCAMetric, metric_name: str
@@ -610,11 +623,9 @@ class TransformerStudent(TransformerBase):
                     metric_name,
                 )
 
-        # TODO: Ugly constant. Fix later.
-        dbow_dim = 100
         for n_components, window_size in [
-            (dbow_dim, 10 * dbow_dim),
-            (dbow_dim, 15 * dbow_dim),
+            (self.breadth_embed_dim, multiplier * self.breadth_embed_dim)
+            for multiplier in [10, 15]
         ]:
             cca_metric = WindowedCCAMetricZoo(
                 n_components=n_components,
@@ -647,10 +658,12 @@ class TransformerStudent(TransformerBase):
                         reset_after_log=False,
                     ),
                     TrainingMetric(
-                        f"corr_static_outputs_x{cca_metric.window_size}",
+                        f"corr_breadth_outputs_x{cca_metric.window_size}",
                         WindowedAbsCorrelationMetric(cca_metric.window_size),
                         default_log_freq,
-                        lambda metric, _, batch: metric.update(batch["dbow"]),
+                        lambda metric, _, batch: metric.update(
+                            batch[TeacherEmbedding.BREADTH_COL]
+                        ),
                         reset_after_log=False,
                     ),
                 ]
@@ -658,23 +671,23 @@ class TransformerStudent(TransformerBase):
 
         def update_with_projection(metric, outputs, _, *, layer_ind: int) -> None:
             metric.update(
-                outputs["static_projected_views1"][layer_ind],
-                outputs["static_projected_views2"][layer_ind],
+                outputs["breadth_projected_views1"][layer_ind],
+                outputs["breadth_projected_views2"][layer_ind],
             )
 
         def update_with_first_projection(metric, outputs, _, layer_ind):
-            metric.update(outputs["static_projected_views1"][layer_ind])
+            metric.update(outputs["breadth_projected_views1"][layer_ind])
 
         def update_with_second_projection(metric, outputs, _, layer_ind):
-            metric.update(outputs["static_projected_views2"][layer_ind])
+            metric.update(outputs["breadth_projected_views2"][layer_ind])
 
         if (
-            isinstance(model.loss.static_loss, cca_losses.ProjectionLoss)
-            and model.loss.static_loss.net1 is not None
-            and model.loss.static_loss.net2 is not None
+            isinstance(model.loss.breadth_loss, cca_losses.ProjectionLoss)
+            and model.loss.breadth_loss.net1 is not None
+            and model.loss.breadth_loss.net2 is not None
         ):
-            net1_feats = model.loss.static_loss.net1.features
-            net2_feats = model.loss.static_loss.net2.features
+            net1_feats = model.loss.breadth_loss.net1.features
+            net2_feats = model.loss.breadth_loss.net2.features
 
             for layer_ind in range(-1, -min(len(net1_feats), len(net2_feats)) - 1, -1):
                 min_dim = min(net1_feats[layer_ind], net2_feats[layer_ind])
@@ -726,7 +739,7 @@ class TransformerStudent(TransformerBase):
                                 reset_after_log=False,
                             ),
                             TrainingMetric(
-                                f"corr_static_projection[{layer_ind}]_x{cca_metric.window_size}",
+                                f"corr_breadth_projection[{layer_ind}]_x{cca_metric.window_size}",
                                 WindowedAbsCorrelationMetric(cca_metric.window_size),
                                 default_log_freq,
                                 view2_update_fn,

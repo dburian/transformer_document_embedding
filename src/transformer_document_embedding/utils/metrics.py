@@ -75,10 +75,12 @@ class VMemMetric(TrainingMetric):
         metric.update(torch.tensor(mem_used))
 
 
-class MSEWithSBERT(TrainingMetric):
+class EmbeddingMSEWithCol(TrainingMetric):
     def __init__(
         self,
+        base_name: str,
         log_frequency: int,
+        col_name: str,
         max_input_length: Optional[int] = None,
         normalize: bool = False,
         reset_after_log: bool = False,
@@ -87,13 +89,14 @@ class MSEWithSBERT(TrainingMetric):
         name_length_mod = f"_{max_input_length}" if max_input_length is not None else ""
 
         super().__init__(
-            f"sbert_mse{name_norm_mod}{name_length_mod}",
+            f"{base_name}_mse{name_norm_mod}{name_length_mod}",
             Mean(),
             log_frequency,
             self._update_fn,
             reset_after_log,
         )
 
+        self.col_name = col_name
         self.normalize = normalize
         self.max_input_length = max_input_length
 
@@ -104,13 +107,13 @@ class MSEWithSBERT(TrainingMetric):
         batch: dict[str, torch.Tensor],
     ) -> None:
         model_embeddings = outputs["embedding"]
-        sbert_emebddings = batch["sbert"]
+        col_emebddings = batch[self.col_name]
         if self.normalize:
             model_embeddings /= torch.linalg.vector_norm(model_embeddings)
-            sbert_emebddings /= torch.linalg.vector_norm(sbert_emebddings)
+            col_emebddings /= torch.linalg.vector_norm(col_emebddings)
 
         # TODO: Mean instead of sum
-        mse = (model_embeddings - sbert_emebddings) ** 2
+        mse = (model_embeddings - col_emebddings) ** 2
         mse = mse.sum(dim=1)
 
         if self.max_input_length is not None:
@@ -122,10 +125,12 @@ class MSEWithSBERT(TrainingMetric):
         metric.update(mse)
 
 
-class CosineDistanceWithSBERT(TrainingMetric):
+class EmbeddingCosineDistanceWithCol(TrainingMetric):
     def __init__(
         self,
+        base_name: str,
         log_frequency: int,
+        col_name: str,
         max_input_length: Optional[int] = None,
         reset_after_log: bool = False,
     ) -> None:
@@ -134,13 +139,14 @@ class CosineDistanceWithSBERT(TrainingMetric):
         )
 
         super().__init__(
-            f"sbert_cos_dist{name_length_suffix}",
+            f"{base_name}_cos_dist{name_length_suffix}",
             Mean(),
             log_frequency,
             self._update_fn,
             reset_after_log,
         )
 
+        self.col_name = col_name
         self.max_input_length = max_input_length
 
     def _update_fn(
@@ -151,7 +157,7 @@ class CosineDistanceWithSBERT(TrainingMetric):
     ) -> None:
         cos_dist = 1 - torch.nn.functional.cosine_similarity(
             outputs["embedding"],
-            batch["sbert"],
+            batch[self.col_name],
             dim=1,
         )
         if self.max_input_length is not None:

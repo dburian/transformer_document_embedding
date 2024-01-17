@@ -2,8 +2,7 @@
 
 Semi-required interface:
 
-- Should support masking of inputs to use them in `StaticContextualLoss`.
-- Should return a dict, not a Tensor.
+- Should support masking of inputs to use them in `BreadthDepthLoss`.
 """
 
 from __future__ import annotations
