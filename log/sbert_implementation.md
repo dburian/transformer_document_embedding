@@ -41,3 +41,10 @@ other models from `transformers`) which could cause less code duplication.
 
 **I've confirmed that using my 'mean' pooler on top of HF transformer equals
 using `SentenceTransformer('model_name')`.**
+
+## Caveats
+
+- It seems that `st` has different weights. I've compared outputs from my
+  implementation using HF and they differ slightly. It shouldn't be because of
+  the pooling layer as I've copied its implementation from HF recommendation,
+  which seems to be identical with what `st` uses.

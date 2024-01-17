@@ -163,6 +163,83 @@ tell anything about optimal values. What I can deduce that:
 - CCA of outputs is unclear as the validation CCA was more or less the same, if
   we leave out occasional dips which happen to all cases
 
+### SoftCCA projection layers
+
+#### Observations
+
+L2 and SDL losses:
+- with few static layers the model has problems with L2
+- bottleneck-like projections have higher with SDL
+- more neurons with net shape like <|> (64x256x64) have smaller SDL
+- with few projection layers the SDL is a bit higher, more layers give the
+  projection net more oportunities to lower SDL. Though there might be caveat:
+  more transformer layers had higher SDL1, but it might be only to a unfortunate
+  initialization -- to many things could have gone bad.
+- transformer layers have no effect on SDL2, static layers have effect on
+  SDL1
+- by using more beefy static network we significantly lower L2 loss -- for L2
+  loss static projection seems to be the bottleneck. (Though we get some small
+  decrease for increase of transformer projection net as well.)
+- it seems that the beefier the nets the smaller L2
+- even for SDL1 static projection seems to be the bottleneck and larger gains
+  can be won there.
+
+Metrics (if not mentioned it is a *train* metric) and gradients:
+- Low L2 and SDL doesn't have to mean low train CCA on outputs
+- More static layers meant lower train CCA on outputs, meanwhile this drop could
+  be compensated with more transformer layers. Nevertheless it seems to be more
+  effective to have small number of static layers than large number of
+  transformer layers.
+- [H] It might be that if the static net is more voluminous the majority of
+  changes happens there to get better SDL and L2 and vice-versa: if the
+  transformer net is more voluminous the majority of changes happens there. If
+  the static net changes, there are no changes to the outputs however, so output
+  CCA is the same or worse. However if the transformer changes, gradients
+  propagate to the transformer itself, output changes and CCA rises.
+    - comparison of gradients after accounting for the difference in loss:
+        - for more voluminous transformer net: net1 gradients lower, net2
+          gradients higher, lower transformer gradients
+        - for more voluminous static net: net1 gradients higher, net2 gradients
+          lower, higher transformer gradients
+        - for more voluminous static net and small transformer net transformer
+          gradients are very jumpy
+    - so the gradients do not support the hypothesis, rather, they are against
+      it -- if we suppose higher gradients == more changes
+        - but it may be that higher gradients == larger jumps are necessary for
+          slight lowering of the loss
+        - so higher gradients show us "the bottlenecks" -- the places where
+          there are less parameters which have to move more than if there were
+          more parameters which can move just a bit for the combined function to
+          move a lot
+        - in that sense gradients tell us that if transformer net is voluminous
+          static net is the bottleneck, if the static net is voluminous
+          transformer and its net are the bottlenecks
+    - comparison of minimal transformer net (`t_p_l=[768]`) and minimal static
+      net (`s_p_l=[768]`):
+        - hypothesis says that min. static net should be better -- more changes
+          in transformer net and transformer itself
+        - gradients say that min. transformer net should be better so it is the
+          bottleneck and the gradients there are higher
+        - cca says min. static net is better
+        - losses say min. transformer net is better
+- [H] Another hypothesis that would explain larger CCA for small static or large
+  transformer nets is that by using larger static nets we give the model the
+  opportunity to lower loss without changing outputs of the model which would
+  increase the CCA
+    - this seems to be supported by the facts that for fixed transformer layers:
+        - CCA lowers as the static layers get more layers/neurons
+        - losses lowers as the static layers get more layers/neurons
+    - and the gradients also kind of support this: for fixed transformer layers
+      the net1 and transformer gradients lower as the static net gets more
+      neurons (however the loss also lowers so, the gradients may lower because
+      loss does)
+- higher cross-correlation but also higher SDL means lower CCA. Otherwise
+  cross-correlations on final projeciton correspond +- to cross-correlation and
+  cca on outputs.
+- If we compare CCA on final projection vs on outputs, order does +- correspond
+  but the tendencies do not. While the CCA on outputs rises, on projections it
+  declines.
+
 ### Only static losses
 
 - loss type:
