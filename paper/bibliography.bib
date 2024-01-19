@@ -39,6 +39,37 @@
   organization={PMLR}
 }
 
+% Paragraph Vector study
+@article{dai2015document,
+  title={Document embedding with paragraph vectors},
+  author={Dai, Andrew M and Olah, Christopher and Le, Quoc V},
+  journal={arXiv preprint arXiv:1507.07998},
+  year={2015}
+}
+
+% LDA
+@article{blei2003latent,
+  title={Latent dirichlet allocation},
+  author={Blei, David M and Ng, Andrew Y and Jordan, Michael I},
+  journal={Journal of machine Learning research},
+  volume={3},
+  number={Jan},
+  pages={993--1022},
+  year={2003}
+}
+
+% TFIDF BoW model
+@article{harris1954distributional,
+  title={Distributional structure},
+  author={Harris, Zellig S},
+  journal={Word},
+  volume={10},
+  number={2-3},
+  pages={146--162},
+  year={1954},
+  publisher={Taylor \& Francis}
+}
+
 % Word2Vec
 @article{mikolov2013efficient,
   title={Efficient estimation of word representations in vector space},
@@ -53,6 +84,51 @@
   author={Reimers, Nils and Gurevych, Iryna},
   journal={arXiv preprint arXiv:1908.10084},
   year={2019}
+}
+
+% SNLI dataset (SBERT training dataset)
+@article{bowman2015large,
+  title={A large annotated corpus for learning natural language inference},
+  author={Bowman, Samuel R and Angeli, Gabor and Potts, Christopher and Manning, Christopher D},
+  journal={arXiv preprint arXiv:1508.05326},
+  year={2015}
+}
+
+% Multi-genre NLI dataset (SBERT training dataset)
+@article{williams2017broad,
+  title={A broad-coverage challenge corpus for sentence understanding through inference},
+  author={Williams, Adina and Nangia, Nikita and Bowman, Samuel R},
+  journal={arXiv preprint arXiv:1704.05426},
+  year={2017}
+}
+
+% CCA
+@incollection{hotelling1992relations,
+  title={Relations between two sets of variates},
+  author={Hotelling, Harold},
+  booktitle={Breakthroughs in statistics: methodology and distribution},
+  pages={162--190},
+  year={1992},
+  publisher={Springer}
+}
+
+% DeepCCA
+@inproceedings{andrew2013deep,
+  title={Deep canonical correlation analysis},
+  author={Andrew, Galen and Arora, Raman and Bilmes, Jeff and Livescu, Karen},
+  booktitle={International conference on machine learning},
+  pages={1247--1255},
+  year={2013},
+  organization={PMLR}
+}
+
+% SoftCCA
+@inproceedings{chang2018scalable,
+  title={Scalable and effective deep CCA via soft decorrelation},
+  author={Chang, Xiaobin and Xiang, Tao and Hospedales, Timothy M},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  pages={1488--1497},
+  year={2018}
 }
 
 % Longformer
@@ -174,6 +250,8 @@ keywords = {attention, neural networks, Transformers, deep learning}
   volume={30},
   year={2017}
 }
+
+% BERT
 @misc{devlin2019bert,
       title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
       author={Jacob Devlin and Ming-Wei Chang and Kenton Lee and Kristina Toutanova},
@@ -181,4 +259,72 @@ keywords = {attention, neural networks, Transformers, deep learning}
       eprint={1810.04805},
       archivePrefix={arXiv},
       primaryClass={cs.CL}
+}
+
+% Roberta
+@article{liu2019roberta,
+  title={Roberta: A robustly optimized bert pretraining approach},
+  author={Liu, Yinhan and Ott, Myle and Goyal, Naman and Du, Jingfei and Joshi, Mandar and Chen, Danqi and Levy, Omer and Lewis, Mike and Zettlemoyer, Luke and Stoyanov, Veselin},
+  journal={arXiv preprint arXiv:1907.11692},
+  year={2019}
+}
+
+% Research on adaptive attention span in sparse transformers
+@misc{sukhbaatar2019adaptive,
+      title={Adaptive Attention Span in Transformers},
+      author={Sainbayar Sukhbaatar and Edouard Grave and Piotr Bojanowski and Armand Joulin},
+      year={2019},
+      eprint={1905.07799},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+
+% Book corpus (part of Longformer and Roberta pretraining corpus)
+@inproceedings{zhu2015aligning,
+  title={Aligning books and movies: Towards story-like visual explanations by watching movies and reading books},
+  author={Zhu, Yukun and Kiros, Ryan and Zemel, Rich and Salakhutdinov, Ruslan and Urtasun, Raquel and Torralba, Antonio and Fidler, Sanja},
+  booktitle={Proceedings of the IEEE international conference on computer vision},
+  pages={19--27},
+  year={2015}
+}
+
+% Realnews dataset
+@article{zellers2019defending,
+  title={Defending against neural fake news},
+  author={Zellers, Rowan and Holtzman, Ari and Rashkin, Hannah and Bisk, Yonatan and Farhadi, Ali and Roesner, Franziska and Choi, Yejin},
+  journal={Advances in neural information processing systems},
+  volume={32},
+  year={2019}
+}
+
+% stories Corpus
+@article{trinh2018simple,
+  title={A simple method for commonsense reasoning},
+  author={Trinh, Trieu H and Le, Quoc V},
+  journal={arXiv preprint arXiv:1806.02847},
+  year={2018}
+}
+
+% Extending sentence embedding models to other languages using knowledge distillation
+@article{reimers2020making,
+  title={Making monolingual sentence embeddings multilingual using knowledge distillation},
+  author={Reimers, Nils and Gurevych, Iryna},
+  journal={arXiv preprint arXiv:2004.09813},
+  year={2020}
+}
+
+% DistilBert
+@article{sanh2019distilbert,
+  title={DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter},
+  author={Sanh, Victor and Debut, Lysandre and Chaumond, Julien and Wolf, Thomas},
+  journal={arXiv preprint arXiv:1910.01108},
+  year={2019}
+}
+
+% Sparse transformer by Open AI
+@article{child2019generating,
+  title={Generating long sequences with sparse transformers},
+  author={Child, Rewon and Gray, Scott and Radford, Alec and Sutskever, Ilya},
+  journal={arXiv preprint arXiv:1904.10509},
+  year={2019}
 }

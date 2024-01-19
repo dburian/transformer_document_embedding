@@ -1,0 +1,93 @@
+\chapter{Experiments}
+
+\begin{itemize}
+    \item what metrics we used to evaluate the model
+    \item mention the main hyperparameters
+    \item how we searched -- step by step
+\end{itemize}
+
+
+\section{Base model}
+
+To test our finetuning method we used a model pretrained using Masked
+Language Modelling on a large corpus. Since our training method relies on the
+model's basic natural language understanding, we would have to pretrain the
+model either way. Additionally by using a checkpoint of a pretrained model we
+dramatically save on resources.
+
+We have considered several transformer encoders: BigBird~\cite{zaheer2020big},
+Longformer~\cite{beltagy2020longformer}, (TODO: fill in?). Of these we chose
+Longformer for the following reasons:
+
+\begin{itemize}
+  \item It is memory-efficient small model that can be trained on a single GPU.
+  \item Its attention implementation is easy to understand.
+  \item Longformer performs above average in comparison to other similar
+    models~\cite{tay2020long}
+\end{itemize}
+
+We emphasize that our training method can be applied theoretically to all
+transformer encoders. We, therefore view this decision as a practical one,
+rather than theoretical one. In other words we prioritize ease of use and
+simplicity in order to demonstrate the advantages of our training method.
+
+\subsection{Longformer}
+
+Longformer~\cite{beltagy2020longformer}, is a transformer encoder that is able
+to process input sequences longer than traditional Transformer using its
+implementation of self-attention.
+
+\subsubsection{Self-attention mechanism}
+
+Longformer's self-attention is not a full attention, in which each token attends
+to all other tokens. Instead, some tokens only attend to a selected few other
+tokens. This makes the attention more sparse and thus allows its computation in
+$O(n)$ time and memory.
+
+In practice, Longformer's self-attention tokens can attend either just to their
+local neighbourhood or to all other tokens. These types of attention are called
+local and global respectively. For a neighbourhood of $\frac{1}{2}\omega$
+tokens on each side, the implementation splits the matrix of queries $Q$ and
+the matrix of keys $K$ into chunks of size $\omega$ overlapped by
+$\frac{1}{2}\omega$ tokens. These are multiplied separately and composed
+together to form a block diagonal. Global attentions are computed separately
+and then are assigned to the result at the correct indices. The neighbourhood
+size $\omega$ can vary across transformer layers. This can be helpful when we
+try to save on the number of floating point operations per second (or
+\emph{FLOPS}) while minimizing the negative impact on
+performance~\cite{sukhbaatar2019adaptive}.
+
+The attention as it was described above is the basic sparse attention that
+Longformer supports. Longformer can dilate the local attention pattern by only
+attending to every $n$-th neighbouring token. This means that while the number
+of neighbourhood tokens stays the same, the attended window is effectively
+increased. However, to use dilated local attention effectively, special GPU
+kernel is needed.
+
+
+\subsubsection{Training}
+
+Longformer is warm-started from a RoBERTa~\cite{liu2019roberta} checkpoint with
+its learned positional embeddings copied 8 times to support inputs up to 4096
+tokens long. Copying RoBERTa's positional embeddings showed to be an effective
+way how to increase the maximum context length of a transformer with learned
+positional embeddings. Then it was trained further using Masked Language
+Modelling (or \emph{MLM}) on long documents with different attention span for
+each layer as well as different dilatation for each head.
+
+The specially compiled training corpus has some overlap with RoBERTa's
+pretraining corpus, but is more focused on longer pieces of text. It includes:
+
+\begin{itemize}
+  \item Book corpus~\cite{zhu2015aligning},
+  \item English Wikipedia,
+  \item one third of Realnews dataset~\cite{zellers2019defending}, and
+  \item one third of the Stories corpus~\cite{trinh2018simple}.
+\end{itemize}
+
+\section{Ablation studies}
+
+\begin{itemize}
+    \item here should be the ablation studies we did to prove that the main
+        thing we did has some effect (e.g. using MSE instead of Soft CCA)
+\end{itemize}
