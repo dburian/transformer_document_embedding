@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Iterable
 import logging
 
 import torch
-from torcheval.metrics import Max, Mean
+from torcheval.metrics import Max, Mean, Sum
 from tqdm.auto import tqdm
 
 
@@ -524,6 +524,13 @@ class TransformerStudent(TransformerBase):
                         Mean(),
                         default_log_freq,
                         lambda metric, outputs, _: metric.update(outputs["depth_mask"]),
+                    ),
+                    TrainingMetric(
+                        "effective_depth_steps",
+                        Sum(),
+                        default_log_freq,
+                        lambda metric, outputs, _: metric.update(outputs["depth_mask"]),
+                        reset_after_log=False,
                     ),
                 ]
             )
