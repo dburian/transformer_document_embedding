@@ -148,7 +148,7 @@ class ParagraphVectorEmbed(ExperimentalModel):
     def train(
         self,
         task: ExperimentalTask,
-        starts_at_epoch: Optional[int],
+        start_at_epoch: Optional[int],
         save_at_epochs: Optional[list[int]],
         save_best: bool,
         log_dir: Optional[str] = None,
@@ -174,6 +174,8 @@ class ParagraphVectorEmbed(ExperimentalModel):
         #     )
 
         if log_dir is not None and save_at_epochs is not None:
+            if start_at_epoch is not None:
+                save_at_epochs = [epoch - start_at_epoch for epoch in save_at_epochs]
             callbacks.append(
                 CheckpointSave(
                     epoch_checkpoints=save_at_epochs,
@@ -183,7 +185,7 @@ class ParagraphVectorEmbed(ExperimentalModel):
             )
 
         for module in self._pv.modules:
-            if starts_at_epoch is None:
+            if start_at_epoch is None:
                 module.build_vocab(train_data)
 
             train_kwargs: dict[str, Any] = {
@@ -191,13 +193,13 @@ class ParagraphVectorEmbed(ExperimentalModel):
                 "callbacks": callbacks,
             }
 
-            if starts_at_epoch is not None:
+            if start_at_epoch is not None:
                 train_kwargs["start_alpha"] = compute_alpha(
                     total_epochs=module.epochs,
-                    cur_epoch=starts_at_epoch,
+                    cur_epoch=start_at_epoch,
                 )
                 train_kwargs["end_alpha"] = 1e-4
-                train_kwargs["epochs"] -= starts_at_epoch
+                train_kwargs["epochs"] -= start_at_epoch
 
             module.train(
                 train_data,
