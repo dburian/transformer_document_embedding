@@ -4,6 +4,7 @@ import os
 import logging
 from typing import TYPE_CHECKING
 from datasets import concatenate_datasets
+from tqdm.auto import tqdm
 
 from gensim.models.callbacks import CallbackAny2Vec
 
@@ -208,7 +209,7 @@ class ParagraphVectorEmbed(ExperimentalModel):
             self.save(os.path.join(log_dir, "model"))
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
-        for doc in inputs:
+        for doc in tqdm(inputs, desc="Predicting documents", total=len(inputs)):
             yield self._pv.get_vector(doc["id"])
 
     def save(self, dir_path: str) -> None:
