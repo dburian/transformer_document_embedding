@@ -214,5 +214,5 @@ class ParagraphVectorEmbed(ExperimentalModel):
     def save(self, dir_path: str) -> None:
         self._pv.save(dir_path)
 
-    def load(self, dir_path: str) -> None:
+    def load(self, dir_path: str, **_) -> None:
         self._pv.load(dir_path)
