@@ -15,11 +15,19 @@ model:
     breadth_loss_kwargs:
       breadth_embed_dim: 100
       loss_type: soft_cca
-      projection_norm: null
       cca_output_dim: null
       # cca_output_dim: 50
-      transformer_projection_layers: [768]
-      breadth_projection_layers: [512, 768]
+      transformer_projection:
+        - features: 768
+          activation: null
+          normalization: null
+      breadth_projection:
+        - features: 512
+          activation: null
+          normalization: null
+        - features: 768
+          activation: null
+          normalization: null
       soft_cca_lam: 0.15
       soft_cca_sdl_alpha: 0.999
       contrastive_lam: 0.8

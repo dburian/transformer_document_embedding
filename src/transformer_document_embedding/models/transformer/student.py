@@ -245,9 +245,8 @@ class TransformerStudent(TransformerBase):
     def _construct_breadth_loss(
         self,
         loss_type: str,
-        transformer_projection_layers: list[int],
-        breadth_projection_layers: list[int],
-        projection_norm: Optional[str],
+        transformer_projection: list[dict[str, Any]],
+        breadth_projection: list[dict[str, Any]],
         breadth_embed_dim: int,
         cca_output_dim: Optional[int],
         transformer_hidden_size: int,
@@ -256,13 +255,13 @@ class TransformerStudent(TransformerBase):
         contrastive_lam: Optional[float] = None,
     ) -> cca_losses.ProjectionLoss:
         view1_dim = (
-            transformer_projection_layers[-1]
-            if len(transformer_projection_layers) > 0
+            transformer_projection[-1]["features"]
+            if len(transformer_projection) > 0
             else transformer_hidden_size
         )
         view2_dim = (
-            breadth_projection_layers[-1]
-            if len(breadth_projection_layers) > 0
+            breadth_projection[-1]["features"]
+            if len(breadth_projection) > 0
             else breadth_embed_dim
         )
 
@@ -294,19 +293,18 @@ class TransformerStudent(TransformerBase):
             loss_fn = create_sim_based_loss(loss_type, contrastive_lam=contrastive_lam)
 
         def _construct_net(
-            layers: list[int], input_features: int
+            blocks_config: list[dict[str, Any]], input_features: int
         ) -> Optional[cca_losses.DeepNet]:
-            if len(layers) == 0:
+            if len(blocks_config) == 0:
                 return None
 
             return cca_losses.DeepNet(
-                layer_features=layers,
+                blocks_config=blocks_config,
                 input_features=input_features,
-                norm=projection_norm,
             )
 
-        net1 = _construct_net(transformer_projection_layers, transformer_hidden_size)
-        net2 = _construct_net(breadth_projection_layers, breadth_embed_dim)
+        net1 = _construct_net(transformer_projection, transformer_hidden_size)
+        net2 = _construct_net(breadth_projection, breadth_embed_dim)
 
         return cca_losses.ProjectionLoss(
             net1=net1,

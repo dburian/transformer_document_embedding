@@ -1,9 +1,12 @@
 from __future__ import annotations
 import torch
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Union
 
 
-from transformer_document_embedding.utils.net_helpers import get_activation
+from transformer_document_embedding.utils.net_helpers import (
+    get_activation,
+    get_normalization,
+)
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -309,42 +312,37 @@ class DeepNet(torch.nn.Module):
 
     def __init__(
         self,
-        layer_features: list[int],
+        blocks_config: list[dict[str, Any]],
         input_features: int,
-        activation: str = "relu",
-        norm: Optional[str] = "layer",
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        norm_class = None
-        if norm is not None and norm == "layer":
-            norm_class = torch.nn.LayerNorm
-        elif norm is not None and norm == "batch":
-            norm_class = torch.nn.BatchNorm1d
+        blocks = []
+        in_features = input_features
+        for block_config in blocks_config:
+            out_features = block_config["features"]
 
-        layers = []
-        features = [input_features] + layer_features
-        for i, input_dim in enumerate(features[:-1]):
-            output_dim = features[i + 1]
+            layers = []
+            layers.append(torch.nn.Linear(in_features, out_features))
 
-            layer = []
-            layer.append(torch.nn.Linear(input_dim, output_dim))
+            if block_config["normalization"] is not None:
+                layers.append(
+                    get_normalization(block_config["normalization"])(out_features)
+                )
 
-            if norm_class is not None:
-                layer.append(norm_class(input_dim))
-
-            if i < len(features) - 2:
+            if block_config["activation"] is not None:
                 # No activation in the last layer
-                layer.append(get_activation(activation)())
+                layers.append(get_activation(block_config["activation"])())
 
-            layers.append(torch.nn.Sequential(*layer))
+            in_features = out_features
+            blocks.append(torch.nn.Sequential(*layers))
 
-        self._features = layer_features
+        self._features = [c["features"] for c in blocks_config]
 
         # Use ModuleList instead of Sequential to allow empty layers
-        self.layers = torch.nn.ModuleList(modules=layers)
+        self.layers = torch.nn.ModuleList(modules=blocks)
 
     @property
     def features(self) -> list[int]:
