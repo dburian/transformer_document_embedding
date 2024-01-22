@@ -187,6 +187,7 @@ class ParagraphVectorEmbed(ExperimentalModel):
                 module.build_vocab(train_data)
 
             train_kwargs: dict[str, Any] = {
+                "epochs": module.epochs,
                 "callbacks": callbacks,
             }
 
@@ -196,11 +197,11 @@ class ParagraphVectorEmbed(ExperimentalModel):
                     cur_epoch=starts_at_epoch,
                 )
                 train_kwargs["end_alpha"] = 1e-4
+                train_kwargs["epochs"] -= starts_at_epoch
 
             module.train(
                 train_data,
                 total_examples=module.corpus_count,
-                epochs=module.epochs,
                 **train_kwargs,
             )
 
