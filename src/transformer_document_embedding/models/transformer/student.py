@@ -334,6 +334,7 @@ class TransformerStudent(TransformerBase):
         dataloader_sampling: str,
         bucket_limits: list[int],
         save_best: bool,
+        save_after_steps: Optional[list[int]],
         global_attention_type: str,
         device: Optional[str] = None,
         log_dir: Optional[str] = None,
@@ -368,7 +369,9 @@ class TransformerStudent(TransformerBase):
             warmup_steps=warmup_steps // grad_accumulation_steps,
         )
 
-        save_model_callback = self._get_save_model_callback(save_best, log_dir)
+        save_model_callback = self._get_save_model_callback(
+            save_best or (save_after_steps is not None), log_dir
+        )
 
         if self._transformer.supports_gradient_checkpointing:
             self._transformer.gradient_checkpointing_enable()
@@ -395,6 +398,7 @@ class TransformerStudent(TransformerBase):
             epochs=epochs,
             train_data=train_data,
             val_data=val_data,
+            save_after_steps=save_after_steps,
         )
 
     def _get_train_metrics(

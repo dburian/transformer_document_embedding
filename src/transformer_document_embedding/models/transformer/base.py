@@ -1,6 +1,8 @@
 from __future__ import annotations
 from os import path
+import os
 import torch
+import logging
 from typing import TYPE_CHECKING, Callable
 
 from transformers import AutoModel, AutoTokenizer
@@ -13,6 +15,9 @@ if TYPE_CHECKING:
     from torch.utils.data import DataLoader
     from datasets import Dataset
     from typing import Optional, Any
+
+
+logger = logging.getLogger(__name__)
 
 
 class MeanPooler(torch.nn.Module):
@@ -137,14 +142,16 @@ class TransformerBase(ExperimentalModel):
 
     def _get_save_model_callback(
         self,
-        save_best: bool,
+        saving_permitted: bool,
         log_dir: Optional[str],
     ) -> Optional[Callable[[torch.nn.Module, int], None]]:
-        if not save_best or log_dir is None:
+        if not saving_permitted or log_dir is None:
             return None
 
-        def _cb(*_) -> None:
-            self.save(path.join(log_dir, "checkpoint"))
+        def _cb(_, total_steps: int) -> None:
+            save_path = path.join(log_dir, f"checkpoint_{total_steps}")
+            logger.info("Saving after %d step to '%s'", total_steps, save_path)
+            self.save(save_path)
 
         return _cb
 
@@ -152,6 +159,8 @@ class TransformerBase(ExperimentalModel):
         return path.join(dir_path, "model")
 
     def save(self, dir_path: str) -> None:
+        if not path.isdir(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
         torch.save(self._model.state_dict(), self._model_save_file_path(dir_path))
 
     def load(self, dir_path: str, *, strict: bool = True) -> None:

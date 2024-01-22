@@ -46,6 +46,7 @@ class TorchTrainer:
         - patience: int, optional
             Maximum number of validation rounds without improvement. If
             patience is reached, the training is stopped.
+        - save_model_callback: model, total # of steps -> None, optional
         """
         self._model = model
 
@@ -100,6 +101,7 @@ class TorchTrainer:
         train_data: DataLoader,
         val_data: Optional[DataLoader] = None,
         progress_bar: bool = True,
+        save_after_steps: Optional[list[int]] = None,
     ) -> None:
         self._init_train()
 
@@ -136,6 +138,13 @@ class TorchTrainer:
                             self._validations_without_improvement,
                         )
                         return
+
+                if (
+                    save_after_steps is not None
+                    and self._save_model_callback is not None
+                    and total_step in save_after_steps
+                ):
+                    self._save_model_callback(self._model, total_step)
 
         step_count = steps_in_epoch * epochs
 
