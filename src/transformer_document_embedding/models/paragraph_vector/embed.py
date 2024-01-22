@@ -124,6 +124,18 @@ class CheckpointSave(CallbackAny2Vec):
         self._epoch += 1
 
 
+def compute_alpha(
+    total_epochs: int,
+    cur_epoch: int,
+    start_alpha: float = 0.025,
+    end_alpha: float = 1e-4,
+) -> float:
+    progress = cur_epoch / total_epochs
+    next_alpha = start_alpha - (start_alpha - end_alpha) * progress
+    next_alpha = max(end_alpha, next_alpha)
+    return next_alpha
+
+
 class ParagraphVectorEmbed(ExperimentalModel):
     def __init__(
         self,
@@ -135,9 +147,10 @@ class ParagraphVectorEmbed(ExperimentalModel):
     def train(
         self,
         task: ExperimentalTask,
+        starts_at_epoch: Optional[int],
+        save_at_epochs: Optional[list[int]],
+        save_best: bool,
         log_dir: Optional[str] = None,
-        save_best: bool = False,
-        save_at_epochs: Optional[list[int]] = None,
         **kwargs,
     ) -> None:
         all_datasets = [task.train]
@@ -169,12 +182,25 @@ class ParagraphVectorEmbed(ExperimentalModel):
             )
 
         for module in self._pv.modules:
-            module.build_vocab(train_data)
+            if starts_at_epoch is None:
+                module.build_vocab(train_data)
+
+            train_kwargs: dict[str, Any] = {
+                "callbacks": callbacks,
+            }
+
+            if starts_at_epoch is not None:
+                train_kwargs["start_alpha"] = compute_alpha(
+                    total_epochs=module.epochs,
+                    cur_epoch=starts_at_epoch,
+                )
+                train_kwargs["end_alpha"] = 1e-4
+
             module.train(
                 train_data,
                 total_examples=module.corpus_count,
                 epochs=module.epochs,
-                callbacks=callbacks,
+                **train_kwargs,
             )
 
         if save_best and log_dir is not None and log_dir is None:
