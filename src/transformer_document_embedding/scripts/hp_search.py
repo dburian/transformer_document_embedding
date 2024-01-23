@@ -113,18 +113,20 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def generate_name_from_dict(dct: dict[str, Any]) -> str:
-    name_parts = []
-    for key, value in dct.items():
-        short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
-        value_str = value
-        if isinstance(value, list):
-            value_str = f"[{','.join(map(str, value))}]"
-        elif isinstance(value, dict):
-            value_str = f"{{{generate_name_from_dict(value)}}}"
-        name_parts.append(f"{short_key}={value_str}")
+def generate_filename(input: Any) -> str:
+    if isinstance(input, list):
+        return f"[{','.join(map(generate_filename, input))}]"
 
-    return "-".join(name_parts)
+    if isinstance(input, dict):
+        name_parts = []
+        for key, value in input.items():
+            short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
+            value_str = generate_filename(value)
+            name_parts.append(f"{short_key}={value_str}")
+
+        return "-".join(name_parts)
+
+    return str(input)
 
 
 def search_single(
@@ -132,7 +134,7 @@ def search_single(
     flattened_hparams: dict[str, Any],
     args: argparse.Namespace,
 ) -> None:
-    exp_name = generate_name_from_dict(flattened_hparams)
+    exp_name = generate_filename(flattened_hparams)
     exp_path = os.path.join(args.output_base_path, args.name, exp_name)
     os.makedirs(exp_path, exist_ok=True)
 
