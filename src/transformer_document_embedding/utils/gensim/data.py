@@ -1,19 +1,23 @@
 from typing import Iterable
 from datasets.arrow_dataset import Dataset
 from gensim.models import doc2vec
+from nltk.stem import PorterStemmer
 
 
 class GensimCorpus:
-    def __init__(self, dataset: Dataset) -> None:
+    def __init__(self, dataset: Dataset, lowercase: bool, stem: bool) -> None:
         self._dataset = dataset
+        self._lowercase = lowercase
+        self._stemer = PorterStemmer() if stem else None
 
     def __iter__(self) -> Iterable[doc2vec.TaggedDocument]:
         for doc in self._dataset:
             yield doc2vec.TaggedDocument(self.preprocess_text(doc["text"]), [doc["id"]])
 
-    @classmethod
-    def preprocess_text(cls, doc_text: str) -> list[str]:
-        words = doc_text.split()
+    def preprocess_text(self, doc_text: str) -> list[str]:
+        words = (doc_text.lower() if self._lowercase else doc_text).split()
+        if self._stemer is not None:
+            words = [self._stemer.stem(w) for w in words]
 
         return words
 

@@ -150,14 +150,21 @@ class ParagraphVectorEmbed(ExperimentalModel):
         task: ExperimentalTask,
         start_at_epoch: Optional[int],
         save_at_epochs: Optional[list[int]],
+        lowercase: bool,
+        stem: bool,
         log_dir: Optional[str] = None,
         **_,
     ) -> None:
         all_datasets = [task.train]
-        if task.validation is not None:
-            all_datasets.append(task.validation)
+        for optional_split in [task.validation, task.test]:
+            if optional_split is not None:
+                all_datasets.append(optional_split)
 
-        train_data = GensimCorpus(concatenate_datasets(all_datasets).shuffle())
+        train_data = GensimCorpus(
+            concatenate_datasets(all_datasets).shuffle(),
+            lowercase=lowercase,
+            stem=stem,
+        )
         callbacks = []
 
         if log_dir is not None and save_at_epochs is not None:

@@ -19,6 +19,7 @@ dependencies = [
   "scikit-learn",
   "dacite",
   "cca-zoo>=2.5",
+  "nltk",
 ]
 
 
