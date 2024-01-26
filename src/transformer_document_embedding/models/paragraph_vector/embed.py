@@ -150,9 +150,8 @@ class ParagraphVectorEmbed(ExperimentalModel):
         task: ExperimentalTask,
         start_at_epoch: Optional[int],
         save_at_epochs: Optional[list[int]],
-        save_best: bool,
         log_dir: Optional[str] = None,
-        **kwargs,
+        **_,
     ) -> None:
         all_datasets = [task.train]
         if task.validation is not None:
@@ -160,18 +159,6 @@ class ParagraphVectorEmbed(ExperimentalModel):
 
         train_data = GensimCorpus(concatenate_datasets(all_datasets).shuffle())
         callbacks = []
-        # if log_dir is not None and task.validation is not None:
-        #     callbacks.append(
-        #         EvaluateIRMetrics(
-        #             model=self,
-        #             val_dataset=task.validation,
-        #             eval_every=10,
-        #             save_best_path=model_dir
-        #             if save_best and model_dir is not None
-        #             else None,
-        #             log_dir=log_dir,
-        #         )
-        #     )
 
         if log_dir is not None and save_at_epochs is not None:
             if start_at_epoch is not None:
@@ -206,10 +193,6 @@ class ParagraphVectorEmbed(ExperimentalModel):
                 total_examples=module.corpus_count,
                 **train_kwargs,
             )
-
-        if save_best and log_dir is not None and log_dir is None:
-            # We should save the model, but we don't know validation metrics.
-            self.save(os.path.join(log_dir, "model"))
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
         for doc in tqdm(inputs, desc="Predicting documents", total=len(inputs)):
