@@ -153,6 +153,7 @@ class ParagraphVectorEmbed(ExperimentalModel):
         lowercase: bool,
         stem: bool,
         log_dir: Optional[str] = None,
+        num_proc: int = 0,
         **_,
     ) -> None:
         all_datasets = [task.train]
@@ -164,6 +165,7 @@ class ParagraphVectorEmbed(ExperimentalModel):
             concatenate_datasets(all_datasets).shuffle(),
             lowercase=lowercase,
             stem=stem,
+            num_proc=num_proc,
         )
         callbacks = []
 
