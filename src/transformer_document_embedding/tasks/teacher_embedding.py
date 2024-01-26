@@ -39,6 +39,7 @@ class TeacherEmbedding(HFTask):
         self.breadth_embedding_col = breadth_embedding_col
         self.depth_embedding_col = depth_embedding_col
 
+    @property
     def test(self) -> Dataset:
         return Dataset.from_dict({})
 
