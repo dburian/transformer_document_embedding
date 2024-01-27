@@ -3,13 +3,15 @@
 Experiments focused on breadth part of [teacher-student
 training](./teacher_student_training.md).
 
-## Earlier experiments
+## Hyperparameter tuning
+
+### Earlier experiments
 
 These I unfortunately did not log. But I remember there were a lot of [problems
 with CCA metric](./cca_metric_problems.md). Once I started using CCA-Zoo it was
 somehow better.
 
-## 12.12. Breadth losses
+### 12.12. Breadth losses
 
 Relevant files: `hp_searches/transformer_student_only_static`
 
@@ -37,7 +39,7 @@ Results:
   dramatically decreased correlation on the last projection layer. This was
   (presumably) after contrastive losses were fixed, so new gs should be done.
 
-## 12.12. Balancing SDL and L2
+### 12.12. Balancing SDL and L2
 
 Relevant files: `hp_searches/transformer_student_soft_cca`
 
@@ -59,7 +61,7 @@ Bugs:
 Results:
 - Again all versions decreased train CCA and validation CCA remained the same.
 
-## 12.12. Soft CCA with increased projections' correlations
+### 12.12. Soft CCA with increased projections' correlations
 
 Relevant files: `hp_searches/transformer_student_soft_cca_test`
 
@@ -81,7 +83,7 @@ Results:
   obstacle, but in long term the two versions were pretty much the same.
 - **Due to bugs no conclusions.**
 
-## 14.12. Soft CCA with positive SDL
+### 14.12. Soft CCA with positive SDL
 
 Relevant files: `hp_searches/positive_sdl`
 
@@ -98,7 +100,7 @@ Bugs:
 Results:
 - CCA still decreased, even for validation.
 
-## 3.1. Initial search for SDL alpha
+### 3.1. Initial search for SDL alpha
 
 Relevant files: `hp_searches/sdl_alpha`
 
@@ -131,7 +133,7 @@ Results:
   pretty close to each other. This suggests that the model cannot generalize
   well.
 
-## 9.1. Soft CCA lambda -- Balancing SDL and L2
+### 9.1. Soft CCA lambda -- Balancing SDL and L2
 
 Relevant files: `hp_searches/soft_cca_lam`
 
@@ -157,7 +159,7 @@ Results:
 - No dramatic affect on CCA though 0.015 was the best and 0.005 the worst.
 - The more weight on SDL the smaller cross-correlation on final layer was.
 
-## 9.1. SDL alpha with CCA on outputs measured
+### 9.1. SDL alpha with CCA on outputs measured
 
 Relevant files: `hp_searches/sdl_alpha_new`
 
@@ -185,8 +187,7 @@ Results:
   did not start with activation (ReLU). This makes sense as it essentially
   discarded every number in embedding below 0.
 
-
-## 9.1. First Soft CCA projections gs
+### 9.1. First Soft CCA projections gs
 
 Relevant files: `hp_searches/student_transformer_projection_gs`
 
@@ -220,7 +221,7 @@ Results:
 - It was evident that changes on PV's projection layers do influence transformer
   projections whereas the opposite wasn't true.
 
-## 23.1. Soft CCA projection gs on DBOW 100d
+### 23.1. Soft CCA projection gs on DBOW 100d
 
 Relevant files: `hp_searches/soft_cca_projections_dbow_100`
 
@@ -248,6 +249,8 @@ Results:
       SDL1 than transformer projection in SDL2
     - large transformer projection combined with small PV projection is the
       *worst* not the best variant
+- The best CCA was achieved by small transformer and bigger PV (though smaller
+  PV was just behind)
 - LoRA-like nets need more experiments to show when they are helpful and when
   they are not. *I suspect this is the thing that threw off the experiment.*
 - Interpreting what goes on throughout the projection seems impossible (e.g.
@@ -259,7 +262,64 @@ Results:
   experiments like this (perhaps repeat it with some older **not as extreme**
   configurations).
 
-
-## 23.1. Soft CCA projection gs on DBOW 768d
+### 23.1. Soft CCA projection gs on DBOW 768d
 
 Relevant files: `hp_searches/soft_cca_projections_dbow_768`
+
+Goal:
+- Confirm previous hypotheses on larger embeddings.
+- Find out if there are any differences between low-dimensional PV embeddings
+  and high-dimensional embeddings.
+
+Hyperparameters (grid search):
+- `transformer_projection`:
+    - 256(relu)x768
+    - 768(relu)x1024(relu)x768
+- `breadth_projection`:
+    - []
+    - 128(linear)x768
+
+Results:
+- This experiment seems to support hypotheses from [first projection
+  experiment](#9.1.-first-soft-cca-projections-gs):
+    - best CCA: large transformer, no PV projection
+    - in the middle, very close to each other: small transformer and no PV
+      projection, large transformer and bigger PV projection (the latter would
+      probably get worse)
+    - worst CCA: small transformer and bigger PV projeciton
+    - Bottleneck-like architecture truly have higher SDL.
+- SDL2 is lowest for no projections (even when considering the previous
+  experiment). This suggests that the projections really increase correlations.
+- Hypothesis: with larger DBOW embeddings it seems easier to have low
+  correlation on the side of PV. Even if the architecture is bottlenecked it is
+  still better than smaller DBOW dim.
+
+## Evaluations
+
+### 10.1. Some random models chosen
+
+- wrong CCA was measured and the models were picked chaotically
+
+### 26.1. With DBOW 100, 768 on Wikipedia similarities
+
+Scores: [wikipedia similarities
+results](./wiki_similarities_results.md#second-evaluation-round).
+
+Evaluated models:
+- with `dbow_30e_100d` and `dbow_30e_768d`
+- the models were picked from projection gs on [100
+  DBOW](#231-soft-cca-projection-gs-on-dbow-100d) and on [768
+  DBOW](#231-soft-cca-projection-gs-on-dbow-768d).
+    - I picked the best, second best and worst CCA for each dimensionality
+
+Results:
+- more often than not CCA ranking equals ranking in wikipedia similarities
+- CCA probably doesn't correlate with wikipedia sim. scores as models with very
+  close CCA behave as differently as the best and worst CCA models
+- sometimes it there is inexplicable success of models with bad CCA
+    - this success was in precision-like metric, but the model did badly in
+      longer recall-like metric (HR@100) which together with high in-embedding
+      correlation may suggest that this caused embeddings to have low variance
+      (many dimensions seem dependent on others) which caused in a dataset, with
+      higher positive/negative answers to a query, to have high precision
+- higher dimensional PV embeddings may not be as good as lower dimensional
