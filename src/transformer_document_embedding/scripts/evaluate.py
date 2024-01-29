@@ -80,8 +80,12 @@ def evaluate_single(
     ):
         task: ExperimentalTask = init_type(task_spec)
 
-        test_predictions = model.predict(task.test)
-        task_metrics = task.evaluate(task.test, test_predictions)
+        if "test" not in task.splits:
+            logging.error("Task %s does not have a 'test' split. Skipping...", task)
+            continue
+
+        test_predictions = model.predict(task.splits["test"])
+        task_metrics = task.evaluate(task.splits["test"], test_predictions)
         logging.info("Evaluation done. Results:\n%s", metrics)
 
         metrics.append(task_metrics)

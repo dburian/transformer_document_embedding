@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 class ExperimentalTask:
@@ -14,19 +14,9 @@ class ExperimentalTask:
     """
 
     @property
-    def train(self):
-        """Returns all training data."""
+    def splits(self) -> dict[str, Any]:
+        """Returns dictionary of all available splits."""
         raise NotImplementedError()
-
-    @property
-    def test(self):
-        """Returns testing inputs."""
-        raise NotImplementedError()
-
-    @property
-    def validation(self) -> Optional[Any]:
-        """Returns validation data."""
-        return None
 
     def evaluate(self, split, pred_batches) -> dict[str, float]:
         """Evaluates given split predictions on task-specific metrics.

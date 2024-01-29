@@ -4,7 +4,7 @@ import os
 from functools import partial
 import logging
 import pprint
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from datasets import Dataset, disable_progress_bar, enable_progress_bar
 import senteval
@@ -180,19 +180,11 @@ def main() -> None:
 
 class DummyTask(ExperimentalTask):
     def __init__(self, train_ds: Dataset) -> None:
-        self._train_ds = train_ds
+        self._splits = {"train": train_ds}
 
     @property
-    def train(self):
-        return self._train_ds
-
-    @property
-    def validation(self) -> Optional[Any]:
-        return None
-
-    @property
-    def test(self):
-        return Dataset.from_dict({"text": []})
+    def splits(self) -> dict[str, Any]:
+        return self._splits
 
     def evaluate(self, *_) -> dict[str, float]:
         raise NotImplementedError()

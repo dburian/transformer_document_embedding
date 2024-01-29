@@ -83,10 +83,10 @@ class TransformerPairClassifier(TransformerBase):
         # Freezing transformer if required or unfreezing if not
         self._model.transformer.requires_grad_(not freeze_transformer)
 
-        train_data = self._to_dataloader(task.train, training=True)
+        train_data = self._to_dataloader(task.splits["train"], training=True)
         val_data = None
-        if task.validation is not None:
-            val_data = self._to_dataloader(task.validation, training=False)
+        if (validation_split := task.splits.get("validation", None)) is not None:
+            val_data = self._to_dataloader(validation_split, training=False)
 
         optimizer = torch.optim.AdamW(
             train_utils.get_optimizer_params(self._model, weight_decay), lr=3e-5

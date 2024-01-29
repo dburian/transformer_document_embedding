@@ -10,7 +10,6 @@ from transformer_document_embedding.tasks.experimental_task import ExperimentalT
 if TYPE_CHECKING:
     from typing import Any, Optional, Union
     from datasets.dataset_dict import DatasetDict
-    from datasets.arrow_dataset import Dataset
 
 
 class HFTask(ExperimentalTask):
@@ -28,18 +27,6 @@ class HFTask(ExperimentalTask):
         self._validation_fraction = validation_source_fraction
         self._validation_source = validation_source
         self._splits = None
-
-    @property
-    def train(self) -> Dataset:
-        return self.splits["train"]
-
-    @property
-    def test(self) -> Dataset:
-        return self.splits["test"]
-
-    @property
-    def validation(self) -> Optional[Dataset]:
-        return self.splits.get("validation", None)
 
     @property
     def splits(self) -> DatasetDict:

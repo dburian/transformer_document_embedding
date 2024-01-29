@@ -351,11 +351,11 @@ class TransformerStudent(TransformerBase):
             },
         )
 
-        train_data = to_dataloader(task.train)
+        train_data = to_dataloader(task.splits["train"])
 
         val_data = None
-        if task.validation is not None:
-            val_data = to_dataloader(task.validation, training=False)
+        if (val_split := task.splits.get("validation", None)) is not None:
+            val_data = to_dataloader(val_split, training=False)
 
         optimizer = torch.optim.AdamW(
             train_utils.get_optimizer_params(self._model, weight_decay),

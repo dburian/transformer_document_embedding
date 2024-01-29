@@ -46,9 +46,14 @@ def train(
 
     training_pipeline.run(args, model, task, exp_path, config)
 
+    test_split = task.splits.get("test", None)
+    if test_split is None:
+        logging.warn("Task doesn't have 'test' split. Skipping evaluation...")
+        return {}
+
     logging.info("Evaluating on test data...")
-    test_predictions = model.predict(task.test)
-    results = task.evaluate(task.test, test_predictions)
+    test_predictions = model.predict(test_split)
+    results = task.evaluate(test_split, test_predictions)
     logging.info("Evaluation done. Results:\n%s", results)
 
     save_results(results, exp_path)

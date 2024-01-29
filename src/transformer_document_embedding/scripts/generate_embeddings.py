@@ -91,12 +91,12 @@ def generate_embeddings(
 
     # TODO: We're relying on HF Task interface. Do we really need the basic
     # task? Should the basic task also have `splits` property?
-    splits = args.splits.split(",") if args.splits != "all" else task.splits.keys()
+    splits = args.splits.split(",") if args.splits != "all" else task.split_names.keys()
 
     hf_logging.disable_progress_bar()
     for split_name in splits:
         logging.info("Generating embeddings for split '%s'", split_name)
-        split = task.splits.get(split_name, None)
+        split = task.split_names.get(split_name, None)
         if split is None:
             logging.warn(
                 "Split '%s' doesn't exist for this dataset. Skipping...", split_name
