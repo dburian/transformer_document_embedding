@@ -11,6 +11,7 @@ from transformer_document_embedding.scripts.config_specs import ExperimentSpec
 
 from transformer_document_embedding.scripts.utils import (
     load_yaml,
+    save_results,
 )
 from transformer_document_embedding.scripts.pipelines import (
     InitializeModelAndTask,
@@ -106,6 +107,14 @@ def parse_args() -> argparse.Namespace:
         help="Path to yaml file defining parameters to 'one' search.",
     )
 
+    parser.add_argument(
+        "--evaluate",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Whether to evaluate each model on test data after training.",
+    )
+
     add_common_args(parser, output_base_path=HS_BASE_PATH)
     training_pipeline.add_args(parser)
     initialization_pipeline.add_args(parser)
@@ -145,6 +154,14 @@ def search_single(
     trial_id = os.path.join(args.name, exp_name.replace("/", "-"))
     log_hparams(flattened_hparams, trial_id, exp_path)
 
+    if args.evaluate:
+        logging.info("Evaluating on test data...")
+        test_predictions = model.predict(task.splits["test"])
+        results = task.evaluate(task.splits["test"], test_predictions)
+        logging.info("Evaluation done. Results:\n%s", results)
+
+        save_results(results, exp_path)
+
 
 def main() -> None:
     args = parse_args()
@@ -155,7 +172,7 @@ def main() -> None:
 
     assert args.grid_config is None or args.one_config is None, (
         "Cannot simultaneously run grid search and one search. "
-        "Please issue two commands instead."
+        "Please run two commands instead."
     )
 
     reference_config = load_yaml(args.config)
