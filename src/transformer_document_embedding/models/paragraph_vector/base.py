@@ -12,7 +12,10 @@ import transformer_document_embedding.tasks.wikipedia_similarities as wiki_sims_
 from ..experimental_model import ExperimentalModel
 from .paragraph_vector import ParagraphVector
 from transformer_document_embedding.utils.evaluation import evaluate_ir_metrics
-from transformer_document_embedding.utils.gensim.data import GensimCorpus
+from transformer_document_embedding.utils.gensim import (
+    GensimCorpus,
+    create_text_pre_processor,
+)
 
 if TYPE_CHECKING:
     from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
@@ -31,7 +34,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
     def __init__(
         self,
         *,
-        model: ParagraphVectorEmbed,
+        model: ParagraphVectorBase,
         val_dataset: Dataset,
         eval_every: int,
         log_dir: str,
@@ -72,6 +75,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
     def evaluate(self, log_name_prefix: str) -> None:
         logger.info("Evaluating %s model.", log_name_prefix)
 
+        # TODO: Model needs to be set to "predicting" mode
         pred_embeddings = self._model.predict(self._true_dataset)
         true_pred_ids_iter = wiki_sims_task.get_nearest_ids_from_faiss(
             self._true_dataset, pred_embeddings
@@ -85,7 +89,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
         if self._save_best_path is not None and self._is_best(score):
             logger.info(
                 "Saving best %s model to %s.",
-                ParagraphVectorEmbed.__name__,
+                ParagraphVectorBase.__name__,
                 self._save_best_path,
             )
 
@@ -137,36 +141,34 @@ def compute_alpha(
     return next_alpha
 
 
-class ParagraphVectorEmbed(ExperimentalModel):
+class ParagraphVectorBase(ExperimentalModel):
+    """Base class for any PV models, that trains PV"""
+
     def __init__(
         self,
-        dm_kwargs: Optional[dict[str, Any]] = None,
-        dbow_kwargs: Optional[dict[str, Any]] = None,
+        dm_kwargs: Optional[dict[str, Any]],
+        dbow_kwargs: Optional[dict[str, Any]],
+        pre_process: Optional[str],
     ) -> None:
         self._pv = ParagraphVector(dm_kwargs=dm_kwargs, dbow_kwargs=dbow_kwargs)
+
+        self._text_pre_processor = create_text_pre_processor(pre_process)
 
     def train(
         self,
         task: ExperimentalTask,
         start_at_epoch: Optional[int],
         save_at_epochs: Optional[list[int]],
-        lowercase: bool,
-        stem: bool,
         log_dir: Optional[str] = None,
-        num_proc: int = 0,
         **_,
     ) -> None:
-        all_datasets = [task.train]
-        for optional_split in [task.validation, task.test]:
-            if optional_split is not None:
-                all_datasets.append(optional_split)
+        all_splits = [
+            split
+            for split_name, split in task.splits.items()
+            if split_name not in ["test", "validation"]
+        ]
 
-        train_data = GensimCorpus(
-            concatenate_datasets(all_datasets).shuffle(),
-            lowercase=lowercase,
-            stem=stem,
-            num_proc=num_proc,
-        )
+        train_data = self._get_gensim_corpus(concatenate_datasets(all_splits).shuffle())
         callbacks = []
 
         if log_dir is not None and save_at_epochs is not None:
@@ -204,8 +206,16 @@ class ParagraphVectorEmbed(ExperimentalModel):
             )
 
     def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
-        for doc in tqdm(inputs, desc="Predicting documents", total=len(inputs)):
-            yield self._pv.get_vector(doc["id"])
+        gensim_inputs = self._get_gensim_corpus(inputs)
+        for doc in tqdm(gensim_inputs, desc="Predicting documents", total=len(inputs)):
+            yield self._pv.infer_vector(doc.words)
+
+    def _get_gensim_corpus(self, text_dataset: Dataset) -> GensimCorpus:
+        return GensimCorpus(
+            text_dataset,
+            text_pre_processor=self._text_pre_processor,
+            num_proc=max(m.workers for m in self._pv.modules),
+        )
 
     def save(self, dir_path: str) -> None:
         self._pv.save(dir_path)

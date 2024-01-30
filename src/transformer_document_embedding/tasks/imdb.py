@@ -3,6 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from datasets import load_dataset
+from torcheval.metrics import (
+    BinaryAUPRC,
+    BinaryAccuracy,
+    BinaryF1Score,
+    BinaryPrecision,
+    BinaryRecall,
+)
 from transformer_document_embedding.tasks.hf_task import HFTask
 from transformer_document_embedding.utils.evaluation import aggregate_batches
 from datasets import DatasetDict
@@ -37,20 +44,23 @@ class IMDBClassification(HFTask):
     def evaluate(
         self, split: Dataset, pred_batches: Iterable[np.ndarray]
     ) -> dict[str, float]:
-        import tensorflow as tf
+        import torch
 
-        metrics = [
-            tf.keras.metrics.BinaryCrossentropy(),
-            tf.keras.metrics.BinaryAccuracy(),
-        ]
+        metrics = {
+            "accuracy": BinaryAccuracy(),
+            "recall": BinaryRecall(),
+            "precision": BinaryPrecision(),
+            "f1": BinaryF1Score(),
+            "auprc": BinaryAUPRC(),
+        }
 
-        for met in metrics:
-            met.reset_state()
+        for metric in metrics.values():
+            metric.reset()
 
         for pred_batch, true_batch in aggregate_batches(
             pred_batches, iter(split), lambda x: x["label"]
         ):
-            for met in metrics:
-                met.update_state(true_batch, pred_batch)
+            for met in metrics.values():
+                met.update(torch.from_numpy(true_batch), torch.from_numpy(pred_batch))
 
-        return {met.name: met.result().numpy() for met in metrics}
+        return {name: met.compute().numpy().item() for name, met in metrics.items()}

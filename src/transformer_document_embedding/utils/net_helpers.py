@@ -1,4 +1,5 @@
 import logging
+import os
 
 import torch
 
@@ -38,3 +39,18 @@ def _get_from_dict(
         raise ValueError("Invalid name.")
 
     return dict_[key]
+
+
+def save_model_weights(model: torch.nn.Module, filepath: str) -> None:
+    dirpath = os.path.dirname(filepath)
+    if not os.path.isdir(dirpath):
+        os.makedirs(dirpath, exist_ok=True)
+    torch.save(model.state_dict(), filepath)
+
+
+def load_model_weights(model: torch.nn.Module, filepath: str, *, strict: bool) -> None:
+    state_dict = torch.load(
+        filepath,
+        map_location=torch.device("cpu"),
+    )
+    model.load_state_dict(state_dict, strict=strict)

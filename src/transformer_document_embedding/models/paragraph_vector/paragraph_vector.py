@@ -78,7 +78,7 @@ class ParagraphVector:
         dm_kwargs: Optional[dict[str, Any]] = None,
         dbow_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
-        self.modules = []
+        self.modules: list[doc2vec.Doc2Vec] = []
         if dm_kwargs is not None:
             self.modules.append(PV_DM(**dm_kwargs))
         if dbow_kwargs is not None:
@@ -94,6 +94,11 @@ class ParagraphVector:
 
     def get_vector(self, id: Any) -> np.ndarray:
         vectors = [module.dv.get_vector(id) for module in self.modules]
+
+        return np.concatenate(vectors)
+
+    def infer_vector(self, words: list[str]) -> np.ndarray:
+        vectors = [module.infer_vector(words) for module in self.modules]
 
         return np.concatenate(vectors)
 
