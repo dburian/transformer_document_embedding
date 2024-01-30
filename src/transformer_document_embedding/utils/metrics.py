@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TrainingMetric:
-    """`torcheval` Metric wrapped with information how to handle it during training."""
+    """Wrapped `torcheval` Metric with information how to handle it during training."""
 
     @staticmethod
     def identity_update_fn(metric: Metric, *args: Any) -> None:
