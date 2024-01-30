@@ -11,6 +11,7 @@ from transformer_document_embedding.scripts.config_specs import ExperimentSpec
 
 from transformer_document_embedding.scripts.utils import (
     load_yaml,
+    log_results,
     save_results,
 )
 from transformer_document_embedding.scripts.pipelines import (
@@ -161,6 +162,9 @@ def search_single(
         logging.info("Evaluation done. Results:\n%s", results)
 
         save_results(results, exp_path)
+
+        test_log_path = os.path.join(exp_path, "test")
+        log_results(test_log_path, results)
 
 
 def main() -> None:
