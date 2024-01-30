@@ -56,13 +56,9 @@ class PairedGensimCorpus(GensimCorpus):
         return {
             "words1": self._text_preprocessor(doc["text1"]),
             "words2": self._text_preprocessor(doc["text2"]),
-            "id1": self.transform_id(doc["id"], 0),
-            "id2": self.transform_id(doc["id"], 1),
+            "id1": doc["id"] * 2,
+            "id2": doc["id"] * 2 + 1,
         }
-
-    @classmethod
-    def transform_id(cls, pair_id: int, idx_in_pair: int) -> int:
-        return pair_id * 2 + idx_in_pair
 
 
 class IterableFeaturesDataset(IterableDataset):

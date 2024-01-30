@@ -217,8 +217,12 @@ class ParagraphVectorBase(ExperimentalModel):
             num_proc=max(m.workers for m in self._pv.modules),
         )
 
+    @classmethod
+    def _pv_save_dir(cls, dir_path: str) -> str:
+        return os.path.join(dir_path, "pv")
+
     def save(self, dir_path: str) -> None:
-        self._pv.save(dir_path)
+        self._pv.save(self._pv_save_dir(dir_path))
 
     def load(self, dir_path: str, **_) -> None:
-        self._pv.load(dir_path)
+        self._pv.load(self._pv_save_dir(dir_path))

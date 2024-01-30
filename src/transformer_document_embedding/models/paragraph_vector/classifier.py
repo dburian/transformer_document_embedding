@@ -12,6 +12,7 @@ from torcheval.metrics import (
     MulticlassPrecision,
     MulticlassRecall,
 )
+from tqdm.auto import tqdm
 from transformer_document_embedding.models.cls_head import ClsHead
 
 from transformer_document_embedding.models.paragraph_vector.base import (
@@ -144,7 +145,9 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model.to(device)
 
-        for batch in features_batches:
+        for batch in tqdm(
+            features_batches, desc="Evaluation batches", total=len(features_batches)
+        ):
             train_utils.batch_to_device(batch, device)
             outputs = self._model(embeddings=batch["embeddings"])
             yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
