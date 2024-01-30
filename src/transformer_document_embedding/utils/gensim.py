@@ -86,10 +86,13 @@ class IterableFeaturesDataset(IterableDataset):
                 else self._pv.infer_vector(self._text_preprocessor(doc["text"]))
             )
             # TODO: Add labels to this
-            yield {
+            input = {
                 "embeddings": torch.tensor(embedding),
-                "labels": torch.tensor(doc["label"]),
             }
+            if self._training:
+                input["labels"] = torch.tensor(doc["label"])
+
+            yield input
 
 
 TextPreProcessor = Callable[[str], list[str]]

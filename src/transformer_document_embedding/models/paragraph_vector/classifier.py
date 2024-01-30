@@ -142,9 +142,9 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
         self._model.to(device)
 
         for embeddings in features_batches:
-            embeddings = train_utils.batch_to_device(embeddings, device)
-            outputs = self._model(embeddings)
-            yield from torch.argmax(outputs["logits"], dim=1).numpy()
+            train_utils.batch_to_device(embeddings, device)
+            outputs = self._model(**embeddings)
+            yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
 
     def save(self, dir_path: str) -> None:
         self._pv.save(self._pv_dirpath(dir_path))
@@ -192,9 +192,12 @@ class _SequenceClassificationModel(torch.nn.Module):
     def forward(
         self,
         embeddings: torch.Tensor,
-        labels: torch.Tensor,
+        labels: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
         logits = self.cls_head(embeddings)
-        loss = self.loss(logits, labels)
 
-        return {"logits": logits, "loss": loss}
+        outputs = {"logits": logits}
+        if labels is not None:
+            outputs["loss"] = self.loss(logits, labels)
+
+        return outputs
