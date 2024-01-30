@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import torch
-from typing import TYPE_CHECKING, Iterator, Optional
+from typing import TYPE_CHECKING, Iterator, Optional, cast, Any
 from gensim.models import doc2vec
 from nltk.stem import PorterStemmer
 from torch.utils.data import IterableDataset
@@ -13,7 +13,6 @@ if TYPE_CHECKING:
         ParagraphVector,
     )
     from datasets.arrow_dataset import Dataset
-    from typing import Any
 
 
 class GensimCorpus:
@@ -28,6 +27,9 @@ class GensimCorpus:
 
     def __iter__(self) -> Iterator[doc2vec.TaggedDocument]:
         for gensim_doc in self._dataset:
+            # To get rid of warnings that doc can also be a list
+            gensim_doc = cast(dict[str, Any], gensim_doc)
+
             yield doc2vec.TaggedDocument(gensim_doc["words"], [gensim_doc["id"]])
 
     def doc_to_gensim_doc(self, doc: dict[str, Any]) -> dict[str, Any]:
@@ -44,6 +46,9 @@ class PairedGensimCorpus(GensimCorpus):
 
     def __iter__(self) -> Iterator[doc2vec.TaggedDocument]:
         for doc in self._dataset:
+            # To get rid of warnings that doc can also be a list
+            doc = cast(dict[str, Any], doc)
+
             yield doc2vec.TaggedDocument(doc["words1"], [doc["id1"]])
             yield doc2vec.TaggedDocument(doc["words2"], [doc["id2"]])
 
@@ -66,30 +71,33 @@ class IterableFeaturesDataset(IterableDataset):
         docs: Dataset,
         text_pre_processor: TextPreProcessor,
         pv: ParagraphVector,
-        training: bool,
+        lookup_vectors: bool,
     ) -> None:
         super().__init__()
 
         self._docs = docs
         self._text_preprocessor = text_pre_processor
         self._pv = pv
-        self._training = training
+        self._lookup_vectors = lookup_vectors
 
     def __len__(self) -> int:
         return len(self._docs)
 
     def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
         for doc in self._docs:
+            # To get rid of warnings that doc can also be a list
+            doc = cast(dict[str, Any], doc)
+
             embedding = (
                 self._pv.get_vector(doc["id"])
-                if self._training
+                if self._lookup_vectors
                 else self._pv.infer_vector(self._text_preprocessor(doc["text"]))
             )
-            # TODO: Add labels to this
             input = {
                 "embeddings": torch.tensor(embedding),
             }
-            if self._training:
+
+            if "label" in doc:
                 input["labels"] = torch.tensor(doc["label"])
 
             yield input

@@ -65,6 +65,7 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
         save_at_epochs: Optional[list[int]],
         cls_epochs: int,
         log_every_step: int,
+        validate_every_step: int,
         log_dir: Optional[str] = None,
         **_,
     ) -> None:
@@ -73,6 +74,7 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
         train_batches = self._feature_dataloader(task.splits["train"], training=True)
         val_batches = None
         if (val_split := task.splits.get("validation", None)) is not None:
+            print("validation exists")
             val_batches = self._feature_dataloader(val_split, training=False)
 
         optimizer = torch.optim.Adam(
@@ -102,6 +104,7 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
             lr_scheduler=lr_scheduler,
             train_logger=train_logger,
             val_logger=val_logger,
+            validate_every_step=validate_every_step,
         )
         trainer.train(cls_epochs, train_batches, val_batches)
 
@@ -141,9 +144,9 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model.to(device)
 
-        for embeddings in features_batches:
-            train_utils.batch_to_device(embeddings, device)
-            outputs = self._model(**embeddings)
+        for batch in features_batches:
+            train_utils.batch_to_device(batch, device)
+            outputs = self._model(embeddings=batch["embeddings"])
             yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
 
     def save(self, dir_path: str) -> None:
@@ -171,7 +174,7 @@ class ParagraphVectorClassifier(ParagraphVectorBase):
             data.shuffle() if training else data,
             text_pre_processor=self._text_pre_processor,
             pv=self._pv,
-            training=training,
+            lookup_vectors=training,
         )
 
         return DataLoader(
