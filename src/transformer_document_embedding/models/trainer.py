@@ -365,6 +365,8 @@ class MetricLogger:
                 if metric.reset_after_log:
                     metric.reset()
 
+        self.writer.flush()
+
     def reset_all(self) -> None:
         for metric in self.metrics.values():
             metric.reset()
