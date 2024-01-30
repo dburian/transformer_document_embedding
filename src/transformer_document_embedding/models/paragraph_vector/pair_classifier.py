@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Iterator, cast
+from typing import TYPE_CHECKING, Iterable, Iterator, cast
 import logging
 
 from torch.utils.data import DataLoader, IterableDataset
@@ -10,17 +10,16 @@ from transformer_document_embedding.models.paragraph_vector.classifier import (
 from transformer_document_embedding.models.cls_head import ClsHead
 from transformer_document_embedding.utils.gensim import (
     GensimCorpus,
-    PairedGensimCorpus,
     TextPreProcessor,
 )
 import torch
 from typing import Any
 import numpy as np
+import datasets
 
 
 if TYPE_CHECKING:
     from .paragraph_vector import ParagraphVector
-    import datasets
     from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,6 @@ class ParagraphVectorPairClassifier(ParagraphVectorClassifier):
     - how embeddings are obtained.
 
     Otherwise we got a model that classifies each input into two categories.
-
     """
 
     def __init__(
@@ -83,6 +81,44 @@ class ParagraphVectorPairClassifier(ParagraphVectorClassifier):
         )
 
 
+class PairedGensimCorpus(GensimCorpus):
+    """Gensim corpus for pairs of sentences as one item.
+
+    E.g. for pairwise classification tasks, where PV needs each sentence separately."""
+
+    def __init__(
+        self,
+        dataset: datasets.Dataset,
+        text_pre_processor: TextPreProcessor,
+        num_proc: int = 0,
+    ) -> None:
+        self._text_preprocessor = text_pre_processor
+        self._dataset = datasets.Dataset.from_generator(
+            self._unique_gensim_docs_iter,
+            gen_kwargs={"pairs_dataset": dataset},
+            num_proc=num_proc,
+        )
+
+    def _unique_gensim_docs_iter(
+        self, pairs_dataset: datasets.Dataset
+    ) -> Iterable[dict[str, Any]]:
+        def _duplicates_iter() -> Iterable[dict[str, Any]]:
+            for pair in pairs_dataset:
+                pair = cast(dict[str, Any], pair)
+                for i in range(2):
+                    yield {
+                        "words": self._text_preprocessor(pair[f"text_{i}"]),
+                        "tag": pair[f"id_{i}"],
+                    }
+
+        seen_tags = set()
+        for doc in _duplicates_iter():
+            if doc["tag"] in seen_tags:
+                continue
+            seen_tags.add(doc["tag"])
+            yield doc
+
+
 class IterableFeaturesDataset(IterableDataset):
     """Though it could be just normal dataset with __getitem__ method. Probably
     this is more efficient in terms of disk reads."""
@@ -118,10 +154,10 @@ class IterableFeaturesDataset(IterableDataset):
 
             embeddings = [
                 self._get_embedding(
-                    doc[f"text{offset + 1}"],
-                    doc["id"] * 2 + offset,
+                    doc[f"text_{i}"],
+                    doc[f"id_{i}"],
                 )
-                for offset in range(2)
+                for i in range(2)
             ]
             input = {
                 "embeddings": torch.tensor(np.concatenate(embeddings, axis=0)),

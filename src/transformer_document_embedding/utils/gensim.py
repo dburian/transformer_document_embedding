@@ -30,34 +30,12 @@ class GensimCorpus:
             # To get rid of warnings that doc can also be a list
             gensim_doc = cast(dict[str, Any], gensim_doc)
 
-            yield doc2vec.TaggedDocument(gensim_doc["words"], [gensim_doc["id"]])
+            yield doc2vec.TaggedDocument(gensim_doc["words"], [gensim_doc["tag"]])
 
     def doc_to_gensim_doc(self, doc: dict[str, Any]) -> dict[str, Any]:
         return {
             "words": self._text_preprocessor(doc["text"]),
-            "id": doc["id"],
-        }
-
-
-class PairedGensimCorpus(GensimCorpus):
-    """Gensim corpus for pairs of sentences as one item.
-
-    E.g. for pairwise classification tasks, where PV needs each sentence separately."""
-
-    def __iter__(self) -> Iterator[doc2vec.TaggedDocument]:
-        for doc in self._dataset:
-            # To get rid of warnings that doc can also be a list
-            doc = cast(dict[str, Any], doc)
-
-            yield doc2vec.TaggedDocument(doc["words1"], [doc["id1"]])
-            yield doc2vec.TaggedDocument(doc["words2"], [doc["id2"]])
-
-    def doc_to_gensim_doc(self, doc: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "words1": self._text_preprocessor(doc["text1"]),
-            "words2": self._text_preprocessor(doc["text2"]),
-            "id1": doc["id"] * 2,
-            "id2": doc["id"] * 2 + 1,
+            "tag": doc["id"],
         }
 
 
