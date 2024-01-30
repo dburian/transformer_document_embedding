@@ -1,6 +1,5 @@
 from __future__ import annotations
 from os import path
-import os
 import torch
 import logging
 from typing import TYPE_CHECKING, Callable
@@ -8,6 +7,10 @@ from typing import TYPE_CHECKING, Callable
 from transformers import AutoModel, AutoTokenizer
 from transformer_document_embedding.models.experimental_model import ExperimentalModel
 from transformer_document_embedding.models.trainer import MetricLogger
+from transformer_document_embedding.utils.net_helpers import (
+    load_model_weights,
+    save_model_weights,
+)
 from transformer_document_embedding.utils.tokenizers import create_tokenized_data_loader
 
 if TYPE_CHECKING:
@@ -159,13 +162,9 @@ class TransformerBase(ExperimentalModel):
         return path.join(dir_path, "model")
 
     def save(self, dir_path: str) -> None:
-        if not path.isdir(dir_path):
-            os.makedirs(dir_path, exist_ok=True)
-        torch.save(self._model.state_dict(), self._model_save_file_path(dir_path))
+        save_model_weights(self._model, self._model_save_file_path(dir_path))
 
     def load(self, dir_path: str, *, strict: bool = True) -> None:
-        state_dict = torch.load(
-            self._model_save_file_path(dir_path),
-            map_location=torch.device("cpu"),
+        load_model_weights(
+            self._model, self._model_save_file_path(dir_path), strict=strict
         )
-        self._model.load_state_dict(state_dict, strict=strict)
