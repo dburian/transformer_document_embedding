@@ -14,10 +14,10 @@ from torcheval.metrics import (
 )
 from tqdm.auto import tqdm
 from transformer_document_embedding.models.cls_head import ClsHead
-
-from transformer_document_embedding.models.paragraph_vector.base import (
-    ParagraphVectorBase,
+from transformer_document_embedding.models.paragraph_vector.paragraph_vector import (
+    ParagraphVector,
 )
+
 from transformer_document_embedding.models.trainer import MetricLogger, TorchTrainer
 from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
 from transformer_document_embedding.utils.metrics import TrainingMetric, VMemMetric
@@ -33,7 +33,7 @@ from transformer_document_embedding.utils.gensim import (
 )
 
 
-class ParagraphVectorClassifier(ParagraphVectorBase):
+class ParagraphVectorClassifier(ParagraphVector):
     def __init__(
         self,
         dm_kwargs: Optional[dict[str, Any]],
