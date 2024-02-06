@@ -42,10 +42,10 @@ def parse_args() -> argparse.Namespace:
     initialization_pipeline.add_args(parser)
 
     parser.add_argument(
-        "--load_model_path",
+        "--load_weights_path",
         type=str,
         default=None,
-        help="Path from which to load the fitted model before training.",
+        help="Path from which to load the model's weights before training.",
     )
 
     parser.add_argument(
@@ -53,7 +53,7 @@ def parse_args() -> argparse.Namespace:
         type=bool,
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Whether to save trained model.",
+        help="Whether to save model's weights after training.",
     )
 
     parser.add_argument(
@@ -101,9 +101,9 @@ def generic_prepare(
     model: ExperimentalModel = init_type(config.model)
     task: SentEval = init_type(config.task)
 
-    if args.load_model_path is not None:
-        logging.info("Loading model from %s.", args.load_model_path)
-        model.load_weights(args.load_model_path)
+    if args.load_weights_path is not None:
+        logging.info("Loading model from %s.", args.load_weights_path)
+        model.load_weights(args.load_weights_path)
 
     ds = words_to_dataset(samples)
     if task.add_ids:

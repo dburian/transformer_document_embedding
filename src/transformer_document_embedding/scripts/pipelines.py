@@ -39,23 +39,23 @@ class Pipeline:
 class TrainingPipeline(Pipeline):
     def __init__(
         self,
-        load_model_path: Optional[str] = None,
-        load_model_strictly: bool = True,
+        load_weights_path: Optional[str] = None,
+        load_weights_strictly: bool = True,
         save_trained: bool = False,
         train: bool = False,
     ) -> None:
         super().__init__()
 
-        self._load_model_path = load_model_path
+        self._load_weights_path = load_weights_path
         self._save_trained = save_trained
         self._train = train
-        self._load_model_strictly = load_model_strictly
+        self._load_weights_strictly = load_weights_strictly
 
     def add_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--load_weights_path",
             type=str,
-            default=self._load_model_path,
+            default=self._load_weights_path,
             help="Path from which to load the model's weights before training.",
         )
 
@@ -79,7 +79,7 @@ class TrainingPipeline(Pipeline):
             "--load_weights_strictly",
             type=bool,
             action=argparse.BooleanOptionalAction,
-            default=self._load_model_strictly,
+            default=self._load_weights_strictly,
             help="Whether to fail for unknown or missing parameters when loading a "
             "model",
         )
@@ -92,9 +92,12 @@ class TrainingPipeline(Pipeline):
         exp_path: str,
         config: ExperimentSpec,
     ) -> None:
-        if args.load_model_path is not None:
-            logging.info("Loading model from %s.", args.load_model_path)
-            model.load_weights(args.load_model_path, strict=args.load_model_strictly)
+        if args.load_weights_path is not None:
+            logging.info("Loading model from %s.", args.load_weights_path)
+            model.load_weights(
+                args.load_weights_path,
+                strict=args.load_weights_strictly,
+            )
 
         if args.train:
             logging.info("Training model...")
