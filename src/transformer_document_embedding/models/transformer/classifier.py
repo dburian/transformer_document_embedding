@@ -12,7 +12,10 @@ from torcheval.metrics import (
 from tqdm.auto import tqdm
 
 
-from transformer_document_embedding.models.transformer.base import TransformerBase
+from transformer_document_embedding.models.transformer.base import (
+    TransformerBase,
+    TransformerBaseModule,
+)
 from transformer_document_embedding.models.trainer import (
     TorchTrainer,
 )
@@ -167,7 +170,7 @@ class TransformerClassifier(TransformerBase):
             yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
 
 
-class _SequenceClassificationModel(torch.nn.Module):
+class _SequenceClassificationModel(TransformerBaseModule):
     def __init__(
         self,
         transformer: PreTrainedModel,
@@ -177,10 +180,8 @@ class _SequenceClassificationModel(torch.nn.Module):
         *args,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(transformer, pooler, *args, **kwargs)
 
-        self.transformer = transformer
-        self.pooler = pooler
         self.classifier = classifier
         self.loss = loss
 
@@ -189,30 +190,19 @@ class _SequenceClassificationModel(torch.nn.Module):
         input_ids: torch.Tensor,
         labels: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
-        head_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
         **kwargs,
     ) -> dict[str, torch.Tensor]:
-        outputs = self.transformer(
+        outputs = super().forward(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            head_mask=head_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=True,
-            inputs_embeds=None,
             **kwargs,
         )
-        pooled_output = self.pooler(
-            **outputs,
-            attention_mask=attention_mask,
-        )
-        logits = self.classifier(pooled_output)
+        pooled_outputs = outputs.pop("pooled_outputs")
+        logits = self.classifier(pooled_outputs)
         loss = self.loss(logits, labels)
 
         return {

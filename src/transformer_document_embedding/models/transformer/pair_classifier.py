@@ -14,7 +14,10 @@ from torcheval.metrics import (
 from tqdm.auto import tqdm
 
 
-from transformer_document_embedding.models.transformer.base import TransformerBase
+from transformer_document_embedding.models.transformer.base import (
+    TransformerBase,
+    TransformerBaseModule,
+)
 from transformer_document_embedding.models.trainer import (
     TorchTrainer,
 )
@@ -172,7 +175,7 @@ class TransformerPairClassifier(TransformerBase):
 
     def _to_dataloader(self, dataset: Dataset, training: bool) -> DataLoader:
         dataset = dataset.with_format("torch")
-        dataset = dataset.remove_columns(["id"])
+        dataset = dataset.remove_columns(["id_0", "id_1"])
 
         collator = PairFastDataCollator(
             padding="longest",
@@ -201,7 +204,8 @@ class PairFastDataCollator(FastDataCollator):
 
     def __call__(self, features: list[dict[str, Any]]) -> dict[str, Any]:
         batches = [
-            self._tokenize_single(features, text_key) for text_key in ["text1", "text2"]
+            self._tokenize_single(features, text_key)
+            for text_key in ["text_0", "text_1"]
         ]
 
         global_inputs = {}
@@ -211,8 +215,8 @@ class PairFastDataCollator(FastDataCollator):
             for key in set(batch.keys()) - self.TOKENIZER_OUTPUT_KEYS:
                 global_inputs[key] = batch.pop(key)
 
-        global_inputs["inputs1"] = batches[0]
-        global_inputs["inputs2"] = batches[1]
+        global_inputs["inputs_0"] = batches[0]
+        global_inputs["inputs_1"] = batches[1]
 
         return global_inputs
 
@@ -229,7 +233,7 @@ class PairFastDataCollator(FastDataCollator):
         return super().__call__(vanilla_feats)
 
 
-class _SequenceClassificationModel(torch.nn.Module):
+class _SequenceClassificationModel(TransformerBaseModule):
     def __init__(
         self,
         transformer: PreTrainedModel,
@@ -239,26 +243,27 @@ class _SequenceClassificationModel(torch.nn.Module):
         *args,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(transformer, pooler, *args, **kwargs)
 
-        self.transformer = transformer
-        self.pooler = pooler
         self.classifier = classifier
         self.loss = loss
 
     def forward(
         self,
-        inputs1: dict[str, Any],
-        inputs2: dict[str, Any],
+        inputs_0: dict[str, Any],
+        inputs_1: dict[str, Any],
         labels: torch.Tensor,
         **_,
     ) -> dict[str, torch.Tensor]:
         pair_pooled_outputs = [
-            self._single_forward(**inputs) for inputs in [inputs1, inputs2]
+            super(_SequenceClassificationModel, self).forward(**inputs)[
+                "pooled_outputs"
+            ]
+            for inputs in [inputs_0, inputs_1]
         ]
 
-        pooled_output = torch.cat(pair_pooled_outputs, dim=1)
-        logits = self.classifier(pooled_output)
+        pooled_outputs = torch.cat(pair_pooled_outputs, dim=1)
+        logits = self.classifier(pooled_outputs)
         loss = self.loss(logits, labels)
 
         return {
@@ -267,20 +272,3 @@ class _SequenceClassificationModel(torch.nn.Module):
             "pooled_output1": pair_pooled_outputs[0],
             "pooled_output2": pair_pooled_outputs[1],
         }
-
-    def _single_forward(
-        self,
-        attention_mask: torch.Tensor,
-        **input_kws,
-    ) -> torch.Tensor:
-        outputs = self.transformer(
-            **input_kws,
-            attention_mask=attention_mask,
-            return_dict=True,
-            inputs_embeds=None,
-        )
-
-        return self.pooler(
-            **outputs,
-            attention_mask=attention_mask,
-        )

@@ -115,7 +115,9 @@ class PVBare:
             module_filepath = os.path.join(dir_path, module_type)
             if os.path.exists(module_filepath):
                 module = doc2vec.Doc2Vec.load(module_filepath)
-                assert module.dbow == (module_type == "dbow"), (
+                assert isinstance(module, doc2vec.Doc2Vec) and (
+                    module.dbow == (module_type == "dbow")
+                ), (
                     f"{PVBare.load.__name__}: Loaded module does not"
                     " correspond to assumed architecture."
                 )

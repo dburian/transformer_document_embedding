@@ -168,3 +168,47 @@ class TransformerBase(ExperimentalModel):
         load_model_weights(
             self._model, self._model_save_file_path(dir_path), strict=strict
         )
+
+
+class TransformerBaseModule(torch.nn.Module):
+    def __init__(
+        self, transformer: torch.nn.Module, pooler: torch.nn.Module, *args, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.transformer = transformer
+        self.pooler = pooler
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> dict[str, torch.Tensor]:
+        input_kws = {}
+        # Needed for Longformer
+        if "global_attention_mask" in kwargs:
+            # we need to pass global attn. mask if it was passed and don't if it wasn't
+            input_kws["global_attention_mask"] = kwargs.pop("global_attention_mask")
+
+        outputs = self.transformer(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=None,
+            output_attentions=False,
+            output_hidden_states=False,
+            return_dict=True,
+            inputs_embeds=None,
+            **input_kws,
+        )
+        pooled_outputs = self.pooler(
+            **outputs,
+            attention_mask=attention_mask,
+            **input_kws,
+        )
+
+        return {**outputs, "pooled_outputs": pooled_outputs}

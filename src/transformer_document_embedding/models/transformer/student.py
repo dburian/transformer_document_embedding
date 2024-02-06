@@ -8,7 +8,10 @@ from torcheval.metrics import Max, Mean, Sum
 from tqdm.auto import tqdm
 
 
-from transformer_document_embedding.models.transformer.base import TransformerBase
+from transformer_document_embedding.models.transformer.base import (
+    TransformerBase,
+    TransformerBaseModule,
+)
 from transformer_document_embedding.models.trainer import (
     TorchTrainer,
 )
@@ -126,7 +129,7 @@ class BreadthDepthLoss(torch.nn.Module):
         return outputs
 
 
-class _SequenceEmbeddingModel(torch.nn.Module):
+class _SequenceEmbeddingModel(TransformerBaseModule):
     def __init__(
         self,
         transformer: PreTrainedModel,
@@ -135,10 +138,8 @@ class _SequenceEmbeddingModel(torch.nn.Module):
         *args,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(transformer, pooler, *args, **kwargs)
 
-        self.transformer = transformer
-        self.pooler = pooler
         self.loss = loss
 
     def forward(
@@ -150,34 +151,24 @@ class _SequenceEmbeddingModel(torch.nn.Module):
         position_ids: Optional[torch.Tensor] = None,
         **kwargs,
     ) -> dict[str, torch.Tensor]:
-        input_kws = {}
-        # Needed for Longformer
-        if "global_attention_mask" in kwargs:
-            input_kws["global_attention_mask"] = kwargs.pop("global_attention_mask")
-
-        outputs = self.transformer(
+        outputs = super().forward(
             input_ids=input_ids,
             attention_mask=attention_mask,
             head_mask=head_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
-            output_attentions=False,
-            output_hidden_states=False,
-            return_dict=True,
-            inputs_embeds=None,
-            **input_kws,
+            **kwargs,
         )
-        pooled_output = self.pooler(
-            **outputs,
-            attention_mask=attention_mask,
-            **input_kws,
-        )
-        loss_outputs = self.loss(pooled_output, kwargs) if len(kwargs) > 0 else {}
+
+        # TODO: Do I really need this? Seems finnicky to define some args so
+        # that all others are passed to loss
+        pooled_outputs = outputs.pop("pooled_outputs")
+        loss_outputs = self.loss(pooled_outputs, kwargs) if len(kwargs) > 0 else {}
 
         return {
             **outputs,
             **loss_outputs,
-            "embedding": pooled_output,
+            "embedding": pooled_outputs,
         }
 
 

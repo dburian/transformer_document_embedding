@@ -153,20 +153,14 @@ class ParagraphVectorClassifier(ParagraphVector):
             yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
 
     def save_weights(self, dir_path: str) -> None:
-        self._pv.save(self._pv_dirpath(dir_path))
+        super(ParagraphVectorClassifier, self).save_weights(dir_path)
         save_model_weights(self._model, self._cls_head_filepath(dir_path))
 
     def load_weights(self, dir_path: str, *, strict: bool) -> None:
-        self._pv.load(self._pv_dirpath(dir_path))
+        super(ParagraphVectorClassifier, self).load_weights(dir_path, strict=strict)
         load_model_weights(
             self._model, self._cls_head_filepath(dir_path), strict=strict
         )
-
-    @classmethod
-    def _pv_dirpath(cls, dir_path: str) -> str:
-        new_dir = os.path.join(dir_path, "paragraph_vector")
-        os.makedirs(new_dir, exist_ok=True)
-        return new_dir
 
     @classmethod
     def _cls_head_filepath(cls, dir_path: str) -> str:

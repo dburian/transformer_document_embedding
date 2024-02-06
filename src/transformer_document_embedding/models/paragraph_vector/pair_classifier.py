@@ -1,4 +1,5 @@
 from __future__ import annotations
+from os import path
 from typing import TYPE_CHECKING, Iterable, Iterator, cast
 import logging
 
@@ -19,7 +20,7 @@ import datasets
 
 
 if TYPE_CHECKING:
-    from .paragraph_vector import PV
+    from transformer_document_embedding.models.paragraph_vector.pv_bare import PVBare
     from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,10 @@ class ParagraphVectorPairClassifier(ParagraphVectorClassifier):
             batch_size=self._batch_size,
         )
 
+    @classmethod
+    def _cls_head_filepath(cls, dir_path: str) -> str:
+        return path.join(dir_path, "pair_cls_head")
+
 
 class PairedGensimCorpus(GensimCorpus):
     """Gensim corpus for pairs of sentences as one item.
@@ -127,7 +132,7 @@ class IterableFeaturesDataset(IterableDataset):
         self,
         docs: datasets.Dataset,
         text_pre_processor: TextPreProcessor,
-        pv: PV,
+        pv: PVBare,
         lookup_vectors: bool,
     ) -> None:
         super().__init__()
