@@ -69,18 +69,12 @@ class BreadthDepthLoss(torch.nn.Module):
         lam: Optional[float] = None,
         breadth_loss: Optional[torch.nn.Module] = None,
         depth_loss: Optional[torch.nn.Module] = None,
-        depth_col: str = TeacherEmbedding.DEPTH_COL,
-        breadth_col: str = TeacherEmbedding.BREADTH_COL,
-        len_col: str = "length",
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        self._depth_col = depth_col
-        self._breadth_col = breadth_col
         self._max_depth_length = max_depth_length
-        self._len_key = len_col
         self.breadth_loss = breadth_loss
         self.depth_loss = depth_loss
         self._lam = lam
@@ -90,18 +84,24 @@ class BreadthDepthLoss(torch.nn.Module):
         return self._max_depth_length
 
     def forward(
-        self, inputs: torch.Tensor, targets: dict[str, torch.Tensor]
+        self,
+        inputs: torch.Tensor,
+        lengths: torch.Tensor,
+        depth_targets: Optional[torch.Tensor] = None,
+        breadth_targets: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
         outputs = {"loss": torch.tensor(0, device=inputs.device, dtype=inputs.dtype)}
 
         if self.depth_loss is not None:
+            assert depth_targets is not None, "No targets for depths loss were given."
+
             mask = (
-                targets[self._len_key] <= self._max_depth_length
+                lengths <= self._max_depth_length
                 if self.max_depth_length is not None
-                else torch.ones_like(targets[self._len_key])
+                else torch.ones_like(lengths)
             ).unsqueeze(-1)
 
-            depth_loss = self.depth_loss(inputs, targets[self._depth_col], mask=mask)
+            depth_loss = self.depth_loss(inputs, depth_targets, mask=mask)
             if isinstance(depth_loss, dict):
                 just_depth_loss = depth_loss.pop("loss")
                 outputs.update(
@@ -117,7 +117,10 @@ class BreadthDepthLoss(torch.nn.Module):
             outputs["loss"] += depth_loss
 
         if self.breadth_loss is not None:
-            breadth_loss_outputs = self.breadth_loss(inputs, targets[self._breadth_col])
+            assert (
+                breadth_targets is not None
+            ), "No targets for breadth loss were given."
+            breadth_loss_outputs = self.breadth_loss(inputs, breadth_targets)
             breadth_loss = torch.mean(breadth_loss_outputs.pop("loss"))
 
             outputs.update(
@@ -149,6 +152,7 @@ class _SequenceEmbeddingModel(TransformerBaseModule):
         head_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
+        compute_loss: bool = True,
         **kwargs,
     ) -> dict[str, torch.Tensor]:
         outputs = super().forward(
@@ -160,10 +164,16 @@ class _SequenceEmbeddingModel(TransformerBaseModule):
             **kwargs,
         )
 
-        # TODO: Do I really need this? Seems finnicky to define some args so
-        # that all others are passed to loss
         pooled_outputs = outputs.pop("pooled_outputs")
-        loss_outputs = self.loss(pooled_outputs, kwargs) if len(kwargs) > 0 else {}
+
+        loss_outputs = {}
+        if compute_loss:
+            loss_outputs = self.loss(
+                pooled_outputs,
+                lengths=kwargs["length"],
+                depth_targets=kwargs.get(TeacherEmbedding.DEPTH_COL, None),
+                breadth_targets=kwargs.get(TeacherEmbedding.BREADTH_COL, None),
+            )
 
         return {
             **outputs,
@@ -762,5 +772,5 @@ class TransformerStudent(TransformerBase):
             if "labels" in batch:
                 del batch["labels"]
             train_utils.batch_to_device(batch, device)
-            embeddings = self._model(**batch)["embedding"]
+            embeddings = self._model(**batch, compute_loss=False)["embedding"]
             yield embeddings.numpy(force=True)
