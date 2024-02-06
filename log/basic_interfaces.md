@@ -2,8 +2,9 @@
 
 # Basic interfaces
 
-This document serves as a reminder about the ideas behind the basic interfaces
-in this package (and also as a kind of documentation).
+This document records the basic interfaces that are used in scripts. The idea is
+to abstract away the peculiarities of each model and task such that they can be
+combined almost arbitrarily.
 
 There are two basic interfaces:
 
@@ -13,6 +14,11 @@ There are two basic interfaces:
 Using these interfaces scripts can load up a dataset and a model, train the
 model on the dataset, evaluate it and save everything.
 
+Its clear that each task is going to have some type (e.g. classification,
+retrieval based, classification of pairs, ...). This needs to be mirrored on the
+side of the models (e.g. classification model cannot be used when generating
+embeddings and vice versa). *This is not explicitly mentioned in code*.
+
 ## `ExperimentalTask`
 
 Wraps a dataset and defines the method how it is evaluated.
@@ -20,6 +26,12 @@ Wraps a dataset and defines the method how it is evaluated.
 ## `ExperimentalModel`
 
 Wraps a model and its training/prediction setup.
+
+- `save_weights`/`load_weights` -- saves/loads model's weights in a manner such
+  that the same model of different type will be able to reuse weights from shared
+  architecture (e.g. a Longformer classifier should be able to reuse the weights
+  of the Longformer, with weights of the classification head randomly
+  initialized).
 
 ### Notes
 
@@ -96,9 +108,10 @@ HF dataset is great because:
     - it has documentation (though hard to navigate)
     - caching
 
-- Naming: baseline vs experimental_model
+- Defining task's and model's type in code:
 
-I've came back and forth on this. Experimental model is more descriptive. It
-says right away it is a model that is experimented with. Baseline has additional
-meaning that it serves as a basic threshold which is supposed to be surpassed by
-another model. Which does not really make sense.
+It is not explicitly mentioned in the code that each task and model has certain
+type and that they need to match. This is because enforcing matching of types of
+model and task currently wouldn't contribute to the result of this thesis and
+would only add bulk. Instead it is up to the researcher that runs the scripts to
+use to correct model for given task.
