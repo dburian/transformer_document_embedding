@@ -1,0 +1,5 @@
+model.kwargs.pre_process: [lowercase, stem, null]
+model.kwargs.dbow_kwargs.vector_size: [100, 768, 1024]
+model.kwargs.dbow_kwargs.min_count:
+  - 2
+  - 750 # 1% for IMDB

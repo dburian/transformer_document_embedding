@@ -12,10 +12,13 @@ model:
 
   train_kwargs:
     epochs: 1
-    warmup_steps: 10
+    warmup_steps: 0
     grad_accumulation_steps: 2
     weight_decay: 0.01
     fp16: True
+    lr_scheduler_type: cos
+    lr: 1.0e-4
+    freeze_transformer: False
     max_grad_norm: 1.0
     log_every_step: 1
     validate_every_step: 100

@@ -4,10 +4,22 @@ model:
     dbow_kwargs:
       vector_size: 768
       min_count: 10
-      epochs: 5
+      epochs: 30
       negative: 5
       sample: 0
-      workers: 64
+      workers: 32
+      dbow_words: 0
+    db_kwargs:
+      vector_size: 768
+      min_count: 10
+      epochs: 30
+      negative: 5
+      sample: 0
+      workers: 32
+      dm_concat: 0
+      dm_mean: 1
+      max_vocab_size:
+
   train_kwargs:
     save_at_epochs: [1, 2, 4]
 

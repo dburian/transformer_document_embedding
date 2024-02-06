@@ -1,0 +1,24 @@
+tde_version: 0.0.2
+model:
+  module: paragraph_vector.paragraph_vector:ParagraphVector
+  kwargs:
+    dm_kwargs: null
+    dbow_kwargs:
+      epochs: 1
+      max_vocab_size: 6.0e+7 # ~60GBs of memory
+      workers: 8
+      vector_size: 100
+      min_count: 2
+      negative: 5
+      sample: 0
+    pre_process: stem
+
+  train_kwargs:
+    start_at_epoch: null
+    save_at_epochs: [0, 3, 7]
+
+task:
+  module: wikipedia_similarities:WikipediaSimilarities
+  kwargs:
+    path: ./data/wikipedia_similarities.py
+    dataset: wine
