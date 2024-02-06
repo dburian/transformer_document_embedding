@@ -19,7 +19,7 @@ import datasets
 
 
 if TYPE_CHECKING:
-    from .paragraph_vector import ParagraphVector
+    from .paragraph_vector import PV
     from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ class IterableFeaturesDataset(IterableDataset):
         self,
         docs: datasets.Dataset,
         text_pre_processor: TextPreProcessor,
-        pv: ParagraphVector,
+        pv: PV,
         lookup_vectors: bool,
     ) -> None:
         super().__init__()

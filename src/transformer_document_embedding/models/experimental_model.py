@@ -30,18 +30,19 @@ class ExperimentalModel:
         """Returns predictions for given `inputs`."""
         raise NotImplementedError()
 
-    def save(self, dir_path: str) -> None:
+    def save_weights(self, dir_path: str) -> None:
         """Saves the model's weights into given directory."""
         raise NotImplementedError()
 
-    def load(self, dir_path: str, *, strict: bool = False) -> None:
+    def load_weights(self, dir_path: str, *, strict: bool = False) -> None:
         """Loads the model's weights from given directory.
 
         Parameters
         ----------
         dir_path: str
-            Path to dir where to save the model.
+            Path to dir where to save the model's weights.
         strict: bool, default = True
-            If true, loading will fail if some parameters are unexpected or missing.
+            If true, loading will fail if loaded parameters will not correspond
+            to what is expected.
         """
         raise NotImplementedError()

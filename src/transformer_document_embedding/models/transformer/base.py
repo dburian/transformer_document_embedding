@@ -154,17 +154,17 @@ class TransformerBase(ExperimentalModel):
         def _cb(_, total_steps: int) -> None:
             save_path = path.join(log_dir, f"checkpoint_{total_steps}")
             logger.info("Saving after %d step to '%s'", total_steps, save_path)
-            self.save(save_path)
+            self.save_weights(save_path)
 
         return _cb
 
     def _model_save_file_path(self, dir_path: str) -> str:
         return path.join(dir_path, "model")
 
-    def save(self, dir_path: str) -> None:
+    def save_weights(self, dir_path: str) -> None:
         save_model_weights(self._model, self._model_save_file_path(dir_path))
 
-    def load(self, dir_path: str, *, strict: bool = True) -> None:
+    def load_weights(self, dir_path: str, *, strict: bool = True) -> None:
         load_model_weights(
             self._model, self._model_save_file_path(dir_path), strict=strict
         )

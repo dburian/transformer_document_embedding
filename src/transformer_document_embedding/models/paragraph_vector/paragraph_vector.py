@@ -94,7 +94,7 @@ class EvaluateIRMetrics(CallbackAny2Vec):
             )
 
             self._best_score = score
-            self._model.save(self._save_best_path)
+            self._model.save_weights(self._save_best_path)
 
         import tensorflow as tf
 
@@ -223,8 +223,8 @@ class ParagraphVector(ExperimentalModel):
         os.makedirs(dirpath, exist_ok=True)
         return dirpath
 
-    def save(self, dir_path: str) -> None:
+    def save_weights(self, dir_path: str) -> None:
         self._pv.save(self._pv_save_dir(dir_path))
 
-    def load(self, dir_path: str, **_) -> None:
+    def load_weights(self, dir_path: str, **_) -> None:
         self._pv.load(self._pv_save_dir(dir_path))

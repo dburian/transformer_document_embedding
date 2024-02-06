@@ -53,10 +53,10 @@ class TrainingPipeline(Pipeline):
 
     def add_args(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--load_model_path",
+            "--load_weights_path",
             type=str,
             default=self._load_model_path,
-            help="Path from which to load the fitted model before training.",
+            help="Path from which to load the model's weights before training.",
         )
 
         parser.add_argument(
@@ -76,7 +76,7 @@ class TrainingPipeline(Pipeline):
         )
 
         parser.add_argument(
-            "--load_model_strictly",
+            "--load_weights_strictly",
             type=bool,
             action=argparse.BooleanOptionalAction,
             default=self._load_model_strictly,
@@ -94,7 +94,7 @@ class TrainingPipeline(Pipeline):
     ) -> None:
         if args.load_model_path is not None:
             logging.info("Loading model from %s.", args.load_model_path)
-            model.load(args.load_model_path, strict=args.load_model_strictly)
+            model.load_weights(args.load_model_path, strict=args.load_model_strictly)
 
         if args.train:
             logging.info("Training model...")
@@ -107,13 +107,13 @@ class TrainingPipeline(Pipeline):
             logging.info("Training done.")
 
         if args.save_trained:
-            trained_path = os.path.join(exp_path, "model")
+            trained_path = os.path.join(exp_path, "trained_model")
             logging.info(
-                "Saving trained model to %s.",
+                "Saving trained weights to %s.",
                 trained_path,
             )
             os.makedirs(trained_path, exist_ok=True)
-            model.save(trained_path)
+            model.save_weights(trained_path)
 
 
 class InitializeModelAndTask(Pipeline):

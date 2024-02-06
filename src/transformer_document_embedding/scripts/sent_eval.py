@@ -103,7 +103,7 @@ def generic_prepare(
 
     if args.load_model_path is not None:
         logging.info("Loading model from %s.", args.load_model_path)
-        model.load(args.load_model_path)
+        model.load_weights(args.load_model_path)
 
     ds = words_to_dataset(samples)
     if task.add_ids:

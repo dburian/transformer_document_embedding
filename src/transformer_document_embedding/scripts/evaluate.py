@@ -120,7 +120,7 @@ def main() -> None:
         model: ExperimentalModel = init_type(model_config)
         model_config_dir = os.path.dirname(model_config_path)
         model_load_dir = os.path.join(model_config_dir, args.model_dir)
-        model.load(model_load_dir)
+        model.load_weights(model_load_dir)
 
         eval_config = EvaluationSpec.from_dict(
             {

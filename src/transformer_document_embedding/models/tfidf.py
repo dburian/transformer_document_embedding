@@ -65,8 +65,8 @@ class TFIDF(ExperimentalModel):
 
         return gensim_dict
 
-    def save(self, dir_path: str) -> None:
+    def save_weights(self, dir_path: str) -> None:
         pass
 
-    def load(self, dir_path: str) -> None:
+    def load_weights(self, dir_path: str) -> None:
         pass

@@ -152,11 +152,11 @@ class ParagraphVectorClassifier(ParagraphVector):
             outputs = self._model(embeddings=batch["embeddings"])
             yield torch.argmax(outputs["logits"], dim=1).numpy(force=True)
 
-    def save(self, dir_path: str) -> None:
+    def save_weights(self, dir_path: str) -> None:
         self._pv.save(self._pv_dirpath(dir_path))
         save_model_weights(self._model, self._cls_head_filepath(dir_path))
 
-    def load(self, dir_path: str, *, strict: bool) -> None:
+    def load_weights(self, dir_path: str, *, strict: bool) -> None:
         self._pv.load(self._pv_dirpath(dir_path))
         load_model_weights(
             self._model, self._cls_head_filepath(dir_path), strict=strict
