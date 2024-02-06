@@ -4,7 +4,7 @@ from functools import partial
 import math
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 import torch
 from torch.optim.lr_scheduler import LambdaLR
@@ -29,15 +29,19 @@ def get_optimizer_params(
 ) -> list[dict[str, Any]]:
     decay_parameters = get_parameter_names(model, [torch.nn.LayerNorm])
     decay_parameters = [name for name in decay_parameters if "bias" not in name]
+
+    def _named_params() -> Iterator[tuple[str, torch.nn.Parameter]]:
+        for n, p in model.named_parameters():
+            if p.requires_grad:
+                yield n, p
+
     return [
         {
-            "params": [p for n, p in model.named_parameters() if n in decay_parameters],
+            "params": [p for n, p in _named_params() if n in decay_parameters],
             "weight_decay": weight_decay,
         },
         {
-            "params": [
-                p for n, p in model.named_parameters() if n not in decay_parameters
-            ],
+            "params": [p for n, p in _named_params() if n not in decay_parameters],
             "weight_decay": 0.0,
         },
     ]
