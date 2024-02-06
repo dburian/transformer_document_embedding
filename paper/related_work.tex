@@ -1,233 +1,272 @@
 \chapter{Related Work}
 
-% Describe very broadly other approaches to embedding documents. What has been
-% achieved rather than how some methods work.
-
-% Current shortcomings:
-
-% \begin{enumerate}
-
-%   \item minimal resources about teacher-student (de-facto only SBERT)
-
-%   \item few papers dedicated strictly to embedding documents
-
-%   \item Add Lora
-
-% \end{enumerate}
+% Describe
+% - what other work was done in the area of document embedding using transformers
+% - focus on the plethora of options, instead of focusing on one single paper
+% - what work you continue from, what you follow up on
 
 In this chapter we go over the research that we consider relevant to the
-embedding of long pieces of text. Since the goal of this thesis is to use the
-transformer architecture, we first describe what are the obstacles in embedding
-longer documents using transformers and how can be these obstacles overcome.
-Next we talk about typical approaches to training of embedding models. Finally,
-there are some ways of embedding texts that are not typical and which we would
-like to mention.
+embedding of long pieces of text using the transformer architecture. First we
+summarize crucial efforts that have gone into making transformer more efficient
+to be able to process long inputs such as documents. The next section is
+dedicated to typical approaches to training embedding models. For completeness,
+we also mention uncommon approaches to embedding documents.
 
 \section{Efficient transformers}
 
-% \begin{itemize}
+% - How long inputs=documents are handled by transformers?
+% - Why they cannot be handled by classical architectures?
+% - What can be done for transformer to handle long texts? -- attention
+%    mechanism, attention implementation, different architecture altogether
 
-%     \item How long inputs=documents are handled by transformers?
-
-%     \item Why they cannot be handled by classical architectures?
-
-%     \item What can be done for transformer to handle long texts? -- attention
-%         mechanism, attention implementation, different architecture altogether
-
-% \end{itemize}
-
-Though the Transformer~\cite{vaswani2017attention} proved to be performant
+Though the Transformer~\cite{vaswani2017attention} has proven to be performant
 architecture (TODO: citations) in the world of natural language processing (or
 \emph{NLP}) it has one inherent disadvantage when it comes to longer sequences
 of text. The self-attention, which is the principal part of the transformer
-architecture, consumes quadratic amount of memory to the input length. This
+architecture, consumes quadratic amount of memory in the length of input. This
 significantly limits transformer's applicability to variety of tasks that
 require longer contexts such as document retrieval or summarization.
 
-There are several ways how to address this limitation. Most of them fall into
-the following three categories:
+Thanks to the popularity of the transformer architecture, there is a large
+amount of research that is focused on making transformers more
+efficient~\cite{tay2022efficient}. Most of these efforts fall into one of the
+following categories:
 
 \begin{enumerate}
 
-    \item designing a new memory efficient attention mechanism,
+    \item designing a new memory-efficient attention mechanism,
 
-    \item using custom attention implementation, or
+    \item using a custom attention implementation, or
 
     \item designing new transformer architecture altogether.
 
 \end{enumerate}
 
-We go over each category separately, though often these approaches can be and
-sometimes are combined (TODO: at least one link).
+We go over each category separately, though these approaches are often
+combined. In the section dedicated to custom implementation of self-attention
+we also mention commonly used implementation strategies that make transformers
+more efficient in practice.
 
-\subsection{Attention mechanisms}
+\subsection{Efficient self-attention mechanisms}
 
-\begin{itemize}
+% Goal of this chapter is to give the reader an idea how long inputs can be
+% tackled with transformers and what are the new limitations.
+% There is no need to describe each paper/idea in detail, but rather to point
+% out to it and say roughly what the paper's importance for my thesis.
 
-    \item Efficient Transformers~\cite{tay2022efficient} -- nice overview of
-    efficient transformers
+% \begin{itemize}
 
-    \item Longformer~\cite{beltagy2020longformer} -- the easiest implementation
-        of sparse attention
+%     \item Efficient Transformers~\cite{tay2022efficient} -- nice overview of
+%     efficient transformers
 
-    \item BigBird~\cite{zaheer2020big} -- has some insights both about
-    sparse attentions (only cover very briefly) and about document processing, a
-        bit more complex approach to attention
+%     \item Longformer~\cite{beltagy2020longformer} -- the easiest implementation
+%         of sparse attention
 
-    \item BigBird-ETC
+%     \item BigBird~\cite{zaheer2020big} -- has some insights both about
+%     sparse attentions (only cover very briefly) and about document processing, a
+%         bit more complex approach to attention
 
-    \item Sparse transformer~\cite{child2019generating} -- even more complex
-        attention implementation
+%     \item BigBird-ETC
 
-    \item Reformer/Performer -- some other transformer that uses other method
-        than just sparsifying attention pattern
+%     \item Sparse transformer~\cite{child2019generating} -- even more complex
+%         attention implementation
 
-    \item Transformer-XL
-
-\end{itemize}
+%     \item Reformer/Performer -- some other transformer that uses other method
+%         than just sparsifying attention pattern
 
 
-Designing more efficient self-attention mechanism in practice means trading of
-some of the performance of standard full attention for better efficiency. There
-are several methods that sacrifice performance in different ways.
+% \end{itemize}
+
+As self-attention is the most resource-hungry component of the transformer
+architecture, it is only natural to focus on it in order to make the transformer
+more efficient. The core of the problem is the multiplication of $N\times d$
+query matrix and $N\times d$ key matrix, where $N$ is input length and $d$ is a
+dimensionality of the self-attention. Efficient attention mechanisms approximate
+this multiplication and thereby avoid computing and storing the $N\times N$
+resulting matrix.
 
 \subsubsection{Sparse attention}
 
-Classical self-attention~\cite{vaswani2017attention} computes the following
-equation:
+% summarize popular findings and models that use sparse attention
+%  - what is sparse attention
+%  - how models use it
+%     - sparse transformer -- propagation of information
+%     - longformer -- combination of global token plus local attention
+%     - bigbird -- blocks
+%  - summarization -- combination of local and global attention
 
-\begin{equation}
-    Attnention(Q, K, V) = \text{softmax}(\frac{QK^T}{\sqrt d}) V = WV
-\end{equation}
+Sparse attention approximates full attention by ignoring dot products between
+some query and key vectors. Though it may seem like a crude approximation, there
+is research that shows that the full attention focuses mainly on few query-key
+vector combinations. For instance \cite{kovaleva2019revealing} shown that full
+attentions exhibit only few repeated patterns and that by disabling some
+attention heads we can increase the model's performance. Both of these findings
+suggest that full attention is over-parametrized and its pruning may be
+beneficial. \cite{child2019generating} shown that repeating attention patterns
+can be found also when processing images and that by approximating full
+attention using such sparse patterns we can increase the efficiency of the model
+while not sacrificing performance.
 
-where $Q, K, V \in \mathcal{R}^{n\times d}$ are query, key and value matrices
-respectively and $W \in \mathcal{R}^{n\times n}$ is a matrix of weights. Note
-the matrix multiplication $QK^T$ which requires $O(n^2)$ memory. But by
-zeroing-out some areas in $W$, or more concretely by not computing them both
-when when multiplying $QK^T$ and $WV$ one could significantly save memory as
-well as time. Such attention is typically called \emph{sparse} compared to the
-classical \emph{full}. Based on what areas we leave out, the sparse attention
-typically falls into one of the following categories:
+Sparse attentions typically compose several attention patterns. One of these
+patterns is often full attention that is limited only to a certain neighbourhood
+of a given token. This corresponds to findings of \cite{clark2019does}, who
+found that full attention gives a lot of focus on previous and next tokens.
+Another sparse attention pattern is usually dedicated to enable broader exchange
+of information between tokens. In Sparse Transformer~\cite{child2019generating}
+distant tokens are connected by sever pre-selected tokens uniformly distributed
+throughout the input. In Longformer~\cite{beltagy2020longformer} every token can
+attend to every $k$-th distant token to increase its field of vision.
+BigBird~\cite{zaheer2020big} computes dot products between randomly chosen
+combinations of query and key vectors. These serve as a connecting nodes for
+other tokens when they exchange information. The last typical sparse attention
+pattern is some kind of global attention that is computed only on few tokens.
+Though such attention pattern is costly it is essential for tasks which require
+a representation of the whole input~\cite{beltagy2020longformer}. In Longformer
+some significant input tokens such as the \texttt{[CLS]} token, attend to all
+other tokens and vice-versa. BigBird additionally computes global attention on
+few extra tokens that are added to the input.
 
-\begin{itemize}
+Sparse attention pattern doesn't have to be fixed, but can also change
+throughout the training. \cite{sukhbaatar2019adaptive} train a transformer that
+learns optimal attention span. In their experiments most heads learn to attend
+only to few neighbouring tokens and thus make the model more efficient.
+Reformer~\cite{kitaev2020reformer} computes full self-attention only between
+close key, query tokens, while letting the model decide which two tokens are
+``close'' and which are not. To a certain degree this enables the model to learn
+optimal attention patterns between tokens.
 
-    \item \emph{local attention} -- tokens attend only to their neighbouring tokens --
-        Figure~\ref{fig:attn_pattern_local},
+\subsubsection{Low-rank approximations and kernel tricks}
 
-    \item \emph{dilated local attention} -- tokens attend to their $k$-th neighbouring
-        tokens -- Figure~\ref{fig:attn_pattern_dilated_local},
+Besides sparsifying the attention pattern, there are other techniques to make
+the self-attention more efficient in both memory and time.
+\cite{wang2020linformer} show that the attention matrix $A :=
+\softmax(\frac{QK^T}{d})$ is of low-rank and show that it can be approximated
+in less dimensions. By projecting the $(N \times d)$-dimensional key and value
+matrices into $(k \times d)$ matrices, where $k << N$ they avoid the expensive
+$N\times N$ matrix multiplication. The authors show that empirical performance
+of their model is on par with standard transformer models such as
+RoBERTa~\cite{liu2019roberta} or BERT~\cite{devlin2019bert}.
 
-    \item \emph{global attention} -- tokens attend to all other tokens such as in full
-        attention -- Figure~\ref{fig:attn_pattern_global},
+In another effort, \cite{choromanski2020rethinking} look at the standard
+softmax self-attention through the lens of kernels. Using clever feature
+engineering, the authors are able to approximate the elements of the above
+mentioned attention matrix $A$ as dot products of query and key feature
+vectors. Self-attention can be then approximated as multiplication of four
+matrices the projected query and key matrices, the normalization matrix
+substituting the division by $d$ and the value matrix. This allows to reorder
+the matrix multiplications, first multiplying the projected key and the value
+matrix and only after multiplying by the projected query matrix. Such
+reordering saves on time and space by a factor of $O(N)$ making the
+self-attention linear in input length.
 
-    \item \emph{random attention} -- tokens attend to randomly chosen tokens --
-        Figure~\ref{fig:attn_pattern_random}, or
+\subsection{Implementation enhancements}
 
-    \item combination of any of the above mentioned attention patterns --
-        Figure~\ref{fig:attn_pattern_combination} displays combination of
-        local, global and random attentions.
+% \begin{itemize}
 
-\end{itemize}
+%     \item Flash Attention 2 -- mention it, just to show there are approaches that
+%     completely ditch sparse attentions (such as LLama2 Long)
 
-Making the attention pattern more sparse is relatively easy way how to trade off
-performance for efficiency. All types of attention except dilated local
-attention can be efficiently implemented by splitting $Q, K$ and $V$ matrices
-into blocks and do calculations separately on each block~\cite{zaheer2020big}.
-Such calculation takes linear amount of memory in input length.
+%     \item xFormers -- dtto
 
-Typically only a subset of the sparse attention types is used for each model.
-For instance Longformer~\cite{beltagy2020longformer} uses only local, dilated
-local and global attentions, BigBird~\cite{zaheer2020big} uses local, random and
-global attentions and Sparse Transformer~\cite{child2019generating} uses only
-local, dilated local and global attentions.
+%     \item Llama 2 Long -- bringing long context to the extreme, only uses full
+%         attention
 
-\begin{figure}
-\centering
+%     \item To make the computation more effective different tricks can be used at
+%         the implementation level.
 
-    \begin{subfigure}{0.15\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{./img/full_attention.png}
-        \caption{}\label{fig:attn_pattern_full}
-    \end{subfigure}
-    \begin{subfigure}{0.15\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{./img/local_attention.png}
-        \caption{}\label{fig:attn_pattern_local}
-    \end{subfigure}
-    \begin{subfigure}{0.15\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{./img/local_strided_attention.png}
-        \caption{}\label{fig:attn_pattern_dilated_local}
-    \end{subfigure}
-    \begin{subfigure}{0.15\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{./img/global_attention.png}
-        \caption{}\label{fig:attn_pattern_global}
-    \end{subfigure}
-    \begin{subfigure}{0.15\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{./img/random_attention.png}
-        \caption{}\label{fig:attn_pattern_random}
-    \end{subfigure}
-    \begin{subfigure}{0.15\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{./img/mix_attention.png}
-        \caption{}\label{fig:attn_pattern_combination}
-    \end{subfigure}
+%     \item Although these tricks can be applied to other network architectures as
+%         well, they are particularly useful here since they can decrease the
+%         memory usage by quite a lot.
 
-    \caption{Self-attention patterns visualized as result of multiplication of
-    query and key matrices. Colored areas are computed, while blank ones are
-    not. From left to right these are called (a)~full, (b)~local, (c)~dilated
-    local, (d)~global, (e)~random, and (f)~combination of local, random and
-    global attentions.}\label{fig:combined}
+%     \item fp16
 
-\end{figure}
+%     \item gradient checkpointing
 
-\subsubsection{}
+%     \item reformer and its reversible stuff
 
-\subsection{Attention implementation}
+% \end{itemize}
 
-\begin{itemize}
+Transformer models can be made more efficient by using various implementation
+tricks. As modern hardware gets faster and has more memory, implementation
+enhancements can render theoretical advancements such as sparse attentions
+unnecessary. For example, \cite{xiong2023effective} train a 70B model on
+sequences up to 32K tokens with full self-attention. Nevertheless, the
+necessary hardware to train such models is still unavailable to many and
+therefore there is still need to use theoretical advancements together with
+optimized implementation. For instance \cite{jiang2023mistral} trained an
+efficient transformer that uses both sparse attention and its optimized
+implementation. The resulting model beats competitive models with twice as many
+parameters in several benchmarks.
 
-    \item Flash Attention 2 -- mention it, just to show there are approaches that
-    completely ditch sparse attentions (such as LLama2 Long)
+\subsubsection{Optimized self-attention implementation}
 
-    \item xFormers -- dtto
+Efficient self-attention implementations view the operation as a whole rather
+than a series of matrix multiplications. This enables optimizations that would
+not be otherwise possible. The result is a single GPU kernel, that accepts the
+query, key and value vectors and outputs the result of a standard
+full-attention. \cite{rabe2021self} proposed an implementation of full
+self-attention in the Jax
+library\footnote{\url{https://github.com/google/jax}} for TPUs that uses
+logarithmic amount of memory in the length of the input.
+\cite{dao2022flashattention} introduced \emph{Flash Attention} that focuses on
+optimizing IO reads and writes and achieves non-trivial speedups. Flash
+Attention offers custom CUDA kernels for both block-sparse and full
+self-attentions. Later, \cite{dao2023flashattention} improved Flash Attention's
+parallelization and increased its the efficiency even more. Though using
+optimized kernel is more involved than spelling the operations out, libraries
+like xFormers\footnote{\url{https://github.com/facebookresearch/xformers}} and
+recent versions of
+PyTorch\footnote{\url{https://pytorch.org/docs/2.2/generated/torch.nn.functional.scaled_dot_product_attention.html}}
+make it much more straightforward.
 
-    \item Llama 2 Long -- bringing long context to the extreme, only uses full attention
+\subsubsection{Mixed precision, gradient checkpointing and accumulation}
 
-\end{itemize}
+Besides the above recent implementation enhancements, there are tricks that
+have been used for quite some time and not just in conjunction with
+transformers. We mention them here, mainly for completeness, since they
+dramatically lower the required memory of a transformer model and thus allow
+training with longer sequences.
 
-\subsection{Implementation tricks}
+\cite{micikevicius2017mixed} introduced mixed precision training which almost
+halves the memory requirements of the model as almost all of the activations
+and the gradients are computed in half precision. As the authors show, using
+additional techniques such as loss scaling, mixed precision does not worsen the
+results compared to traditional single precision training. In another effort to
+lower the amount of memory required to train a model, \cite{chen2016training}
+introduced gradient checkpointing that can trade speed for memory. With
+gradient checkpointing activations of some layers are dropped or overwritten in
+order to save memory, but then need to be recomputed again during backward
+pass. Another popular technique is gradient accumulation, which may effectively
+increase batch size while maintaining the same memory footprint. With gradient
+accumulation, gradients of batches are not applied immediately. Instead they
+are accumulated for $k$ batches and only then applied to weights. This has a
+similar effect as multiplying the batch size by $k$, but not equivalent as
+operations like Batch Normalization~\cite{ioffe2015batch} or methods like
+in-batch negatives behave differently. Nevertheless gradient accumulation is a
+good alternative, especially if the desired batch size cannot fit into the GPU
+memory.
 
-\begin{itemize}
+\subsection{Combination of model architectures}
 
-    \item To make the computation more effective different tricks can be used at
-        the implementation level.
+To circumvent the problem of memory-hungry self-attention layer, some research
+efforts explored combining the transformer architecture with another
+architectural concept, namely recursive and hierarchical networks. The common
+approach of these models is to not modify the self-attention, nor the maximum
+length of input the transformer is able to process, but to instead use
+transformers to process smaller pieces of text separately and contextualize
+them separately. \cite{dai2019transformer} proposes using recursive
+architecture of transformer nodes, where each transformer receives the hidden
+states of the previous one. Since gradients do not travel between the nodes,
+processing longer sequences requires only constant memory. The resulting model
+achieves SOTA performance on language modelling tasks with parameter count
+comparable with the competition. Simpler approach was used by
+\cite{yang2020beyond}, who proposed a hierarchical model composed of
+transformers. First, transformers individually process segments of text
+producing segment-level representations, which are together with their position
+embeddings fed to another document-level transformer. The authors pretrain with
+both word-masking and segment masking losses and together with finetuning on
+the target tasks the model beats scores previously set by recurrent networks.
 
-    \item Although these tricks can be applied to other network architectures as
-        well, they are particularly useful here since they can decrease the
-        memory usage by quite a lot.
-
-    \item fp16
-
-    \item gradient checkpointing
-
-\end{itemize}
-
-\subsection{Different transformer architectures}
-
-\begin{itemize}
-
-    \item Siamese Multi-depth Transformer-base Hierarchical (SMITH)
-    encoder~\cite{yang2020beyond} -- approach to long inputs using hierarchies
-    rather than changing type of attention
-
-    \item Hierarchical Attention Network (HAN)~\cite{yang2016hierarchical} --
-    hierarchical approach along text objects (words, sentences, paragraphs) for
-    document classification
-
-\end{itemize}
 
 \section{Training approaches}
 

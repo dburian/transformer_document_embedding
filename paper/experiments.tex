@@ -6,7 +6,6 @@
     \item how we searched -- step by step
 \end{itemize}
 
-
 \section{Base model}
 
 To test our finetuning method we used a model pretrained using Masked
@@ -84,6 +83,31 @@ pretraining corpus, but is more focused on longer pieces of text. It includes:
   \item one third of Realnews dataset~\cite{zellers2019defending}, and
   \item one third of the Stories corpus~\cite{trinh2018simple}.
 \end{itemize}
+
+\section{Evaluation metrics}
+
+\subsection{Depth evaluation metrics}
+\subsection{Breadth evaluation metrics}
+
+\section{Training with depth teacher only}
+\subsection{Loss selection}
+% mse/cos/contrastive_mse/contrastive_cos
+\subsubsection{Max-marginals losses}
+% finetuning max-marginals losses
+
+\section{Training with breadth teacher only}
+\subsection{Obtaining Paragraph Vector embeddings}
+\subsection{Loss selection}
+% finetune loss + projection together but separately
+% for each loss
+\subsubsection{Mean Squared Error}
+\subsubsection{Vanilla CCA}
+\subsubsection{SoftCCA}
+
+\section{Training with both depth and breadth teachers}
+\subsection{Balancing depth and breadth}
+% Length balancing goes here
+
 
 \section{Ablation studies}
 

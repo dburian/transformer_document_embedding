@@ -223,6 +223,24 @@
   year={2016}
 }
 
+% HAN with transformers
+@inproceedings{pappagari2019hierarchical,
+  title={Hierarchical transformers for long document classification},
+  author={Pappagari, Raghavendra and Zelasko, Piotr and Villalba, Jes{\'u}s and Carmiel, Yishay and Dehak, Najim},
+  booktitle={2019 IEEE automatic speech recognition and understanding workshop (ASRU)},
+  pages={838--844},
+  year={2019},
+  organization={IEEE}
+}
+
+
+@article{dai2019transformer,
+  title={Transformer-xl: Attentive language models beyond a fixed-length context},
+  author={Dai, Zihang and Yang, Zhilin and Yang, Yiming and Carbonell, Jaime and Le, Quoc V and Salakhutdinov, Ruslan},
+  journal={arXiv preprint arXiv:1901.02860},
+  year={2019}
+}
+
 @article{tay2022efficient,
 author = {Tay, Yi and Dehghani, Mostafa and Bahri, Dara and Metzler, Donald},
 title = {Efficient Transformers: A Survey},
@@ -270,6 +288,7 @@ keywords = {attention, neural networks, Transformers, deep learning}
 }
 
 % Research on adaptive attention span in sparse transformers
+% Learnable span of full attention
 @misc{sukhbaatar2019adaptive,
       title={Adaptive Attention Span in Transformers},
       author={Sainbayar Sukhbaatar and Edouard Grave and Piotr Bojanowski and Armand Joulin},
@@ -327,4 +346,112 @@ keywords = {attention, neural networks, Transformers, deep learning}
   author={Child, Rewon and Gray, Scott and Radford, Alec and Sutskever, Ilya},
   journal={arXiv preprint arXiv:1904.10509},
   year={2019}
+}
+
+% Reformer
+@article{kitaev2020reformer,
+  title={Reformer: The efficient transformer},
+  author={Kitaev, Nikita and Kaiser, {\L}ukasz and Levskaya, Anselm},
+  journal={arXiv preprint arXiv:2001.04451},
+  year={2020}
+}
+
+% Overparametrization of BERT (or full-self attentions)
+@article{kovaleva2019revealing,
+  title={Revealing the dark secrets of BERT},
+  author={Kovaleva, Olga and Romanov, Alexey and Rogers, Anna and Rumshisky, Anna},
+  journal={arXiv preprint arXiv:1908.08593},
+  year={2019}
+}
+
+% Full attention considers local neighbourhood a lot
+@article{clark2019does,
+  title={What does bert look at? an analysis of bert's attention},
+  author={Clark, Kevin and Khandelwal, Urvashi and Levy, Omer and Manning, Christopher D},
+  journal={arXiv preprint arXiv:1906.04341},
+  year={2019}
+}
+
+
+@article{wang2020linformer,
+  title={Linformer: Self-attention with linear complexity},
+  author={Wang, Sinong and Li, Belinda Z and Khabsa, Madian and Fang, Han and Ma, Hao},
+  journal={arXiv preprint arXiv:2006.04768},
+  year={2020}
+}
+
+% Performers
+@article{choromanski2020rethinking,
+  title={Rethinking attention with performers},
+  author={Choromanski, Krzysztof and Likhosherstov, Valerii and Dohan, David and Song, Xingyou and Gane, Andreea and Sarlos, Tamas and Hawkins, Peter and Davis, Jared and Mohiuddin, Afroz and Kaiser, Lukasz and others},
+  journal={arXiv preprint arXiv:2009.14794},
+  year={2020}
+}
+
+% Llama 2, Long
+@article{xiong2023effective,
+  title={Effective long-context scaling of foundation models},
+  author={Xiong, Wenhan and Liu, Jingyu and Molybog, Igor and Zhang, Hejia and Bhargava, Prajjwal and Hou, Rui and Martin, Louis and Rungta, Rashi and Sankararaman, Karthik Abinav and Oguz, Barlas and others},
+  journal={arXiv preprint arXiv:2309.16039},
+  year={2023}
+}
+
+% Mistral
+@article{jiang2023mistral,
+  title={Mistral 7B},
+  author={Jiang, Albert Q and Sablayrolles, Alexandre and Mensch, Arthur and Bamford, Chris and Chaplot, Devendra Singh and Casas, Diego de las and Bressand, Florian and Lengyel, Gianna and Lample, Guillaume and Saulnier, Lucile and others},
+  journal={arXiv preprint arXiv:2310.06825},
+  year={2023}
+}
+
+% Flash Attention
+@article{dao2022flashattention,
+  title={Flashattention: Fast and memory-efficient exact attention with io-awareness},
+  author={Dao, Tri and Fu, Dan and Ermon, Stefano and Rudra, Atri and R{\'e}, Christopher},
+  journal={Advances in Neural Information Processing Systems},
+  volume={35},
+  pages={16344--16359},
+  year={2022}
+}
+
+% Flash attention 2
+@article{dao2023flashattention,
+  title={Flashattention-2: Faster attention with better parallelism and work partitioning},
+  author={Dao, Tri},
+  journal={arXiv preprint arXiv:2307.08691},
+  year={2023}
+}
+
+% Google on self-attention implementation
+@article{rabe2021self,
+  title={Self-attention Does Not Need {$O(n^2)$} Memory},
+  author={Rabe, Markus N and Staats, Charles},
+  journal={arXiv preprint arXiv:2112.05682},
+  year={2021}
+}
+
+
+@article{micikevicius2017mixed,
+  title={Mixed precision training},
+  author={Micikevicius, Paulius and Narang, Sharan and Alben, Jonah and Diamos, Gregory and Elsen, Erich and Garcia, David and Ginsburg, Boris and Houston, Michael and Kuchaiev, Oleksii and Venkatesh, Ganesh and others},
+  journal={arXiv preprint arXiv:1710.03740},
+  year={2017}
+}
+
+% Gradient checkpointing
+@article{chen2016training,
+  title={Training deep nets with sublinear memory cost},
+  author={Chen, Tianqi and Xu, Bing and Zhang, Chiyuan and Guestrin, Carlos},
+  journal={arXiv preprint arXiv:1604.06174},
+  year={2016}
+}
+
+% Batch normalization
+@inproceedings{ioffe2015batch,
+  title={Batch normalization: Accelerating deep network training by reducing internal covariate shift},
+  author={Ioffe, Sergey and Szegedy, Christian},
+  booktitle={International conference on machine learning},
+  pages={448--456},
+  year={2015},
+  organization={pmlr}
 }
