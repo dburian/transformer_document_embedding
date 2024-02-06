@@ -134,3 +134,7 @@ Results:
     - so contrastive losses might be a bit finnicky when it comes to the tested
       dataset, and `cos_dist` might be the best option overall -- to test this
       I should do evaluation on *more datasets*
+- its important to highlight that `contrastive_cos_dist` did not have cos SBERT
+  as good as `cos_dist` yet it is clearly on par or better
+    - this suggests that `cos` with SBERT is not *the* metric to watch, but
+      evaluation on more datasets should confirm this

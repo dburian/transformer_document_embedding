@@ -72,6 +72,7 @@ Longformer, both, in between                       |   .47714   |   .19376   |  
 model                                                 |   MRR      |   MPR      |   HR@10    |   HR@100   | notes
 ---                                                   |   ---      |   ---      |   ---      |   ---      | ---
 Longformer                                            |   .37290   |   .20994   |   .11382   |   .44063   | pooler_type='mean'
+ SBERT                                                |   .43672   | **.16117** |   .15607   | **.56489** | transformer_model='all-mpnet-base-v2' |
 _                                                     | _          | _          | _          | _          | _
 Longformer, only depth, short, `contrastive_cos_dist` |   .43270   |   .15193   |   .14902   |   .58815   | depth_loss_short/m.k.d_l_k.l_t=contrastive_cos_dist
 Longformer, only depth, short, best cos               |   .43462   |   .14920   |   .15859   |   .58512   | depth_loss_short/m.k.d_l_k.l_t=cos_dist
@@ -81,6 +82,8 @@ Longformer, only depth, `contrastive_cos_dist`        | **.47337** | **.14185** 
 Longformer, only depth, best cos                      |   .46829   |   .14257   | **.16303** |   .58729   | depth_loss/m.k.d_l_k.l_t=cos_dist
 Longformer, only depth, worst mse                     |   .46252   |   .14472   |   .15642   |   .57418   | depth_loss/m.k.d_l_k.l_t=contrastive_mse
 Longformer, only depth, best mse & worst cos          |   .45882   |   .16423   |   .13158   |   .54830   | depth_loss/m.k.d_l_k.l_t=mse
+_                                                     | _          | _          | _          | _          | _
+PV 100 DBOW                                           | **.47576** |   .18726   |   .14905   |   .49109   |
 _                                                     | _          | _          | _          | _          | _
 Longformer, only breadth, 100 DBOW, best cca          |   .42714   | **.20533** | **.13278** | **.48654** | soft_cca_projections_dbow_100/m.k.b_l_k.t_p=[f=256-a=relu-n=None,f=768-a=None-n=None]-m.k.b_l_k.b_p=[f=128-a=None-n=None,f=768-a=None-n=None]
 Longformer, only breadth, 100 DBOW, second best cca   |   .42942   |   .22727   |   .11737   |   .43047   | soft_cca_projections_dbow_100/m.k.b_l_k.t_p=[f=256-a=relu-n=None,f=768-a=None-n=None]-m.k.b_l_k.b_p=[f=32-a=None-n=None,f=768-a=None-n=None], had almost the same CCA as best CCA
@@ -95,6 +98,7 @@ Longformer, only breadth, 768 DBOW, worst cca         | **.44600** |   .23143   
 model                                                 |   MRR      |   MPR      |   HR@10    |   HR@100   | notes
 ---                                                   |   ---      |   ---      |   ---      |   ---      | ---
 Longformer                                            |   .48848   |   .19274   |   .13796   |   .31651   | pooler_type='mean'
+SBERT                                                 |   .51713   |   .18915   |   .16493   |   .39141   | transformer_model='all-mpnet-base-v2' |
 _                                                     | _          | _          | _          | _          | _
 Longformer, only depth, short, `contrastive_cos_dist` |   .48844   | **.18570** |   .15122   |   .36987   | depth_loss_short/m.k.d_l_k.l_t=contrastive_cos_dist
 Longformer, only depth, short, best cos               |   .50092   |   .20209   |   .15054   |   .36688   | depth_loss_short/m.k.d_l_k.l_t=cos_dist
@@ -104,6 +108,8 @@ Longformer, only depth, `contrastive_cos_dist`        |   .51317   |   .19551   
 Longformer, only depth, best cos                      | **.52884** |   .19853   | **.15768** |   .37479   | depth_loss/m.k.d_l_k.l_t=cos_dist
 Longformer, only depth, best mse & worst cos          |   .51018   |   .19676   |   .15679   |   .37211   | depth_loss/m.k.d_l_k.l_t=mse
 Longformer, only depth, worst mse                     |   .45011   |   .21369   |   .13731   |   .34732   | depth_loss/m.k.d_l_k.l_t=contrastive_mse
+_                                                     | _          | _          | _          | _          | _
+PV 100 DBOW                                           | **.62673** |   .15368   |   .19234   |   .48516   |
 _                                                     | _          | _          | _          | _          | _
 Longformer, only breadth, 100 DBOW, best cca          |   .45131   | **.18882** |   .12843   |   .34058   | soft_cca_projections_dbow_100/m.k.b_l_k.t_p=[f=256-a=relu-n=None,f=768-a=None-n=None]-m.k.b_l_k.b_p=[f=128-a=None-n=None,f=768-a=None-n=None]
 Longformer, only breadth, 100 DBOW, second best cca   |   .42199   |   .21193   |   .12354   |   .33443   | soft_cca_projections_dbow_100/m.k.b_l_k.t_p=[f=256-a=relu-n=None,f=768-a=None-n=None]-m.k.b_l_k.b_p=[f=32-a=None-n=None,f=768-a=None-n=None], had almost the same CCA as best CCA

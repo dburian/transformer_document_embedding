@@ -323,3 +323,4 @@ Results:
       (many dimensions seem dependent on others) which caused in a dataset, with
       higher positive/negative answers to a query, to have high precision
 - higher dimensional PV embeddings may not be as good as lower dimensional
+- good news is that we surpassed vanilla longformer on all but one metric (MRR)
