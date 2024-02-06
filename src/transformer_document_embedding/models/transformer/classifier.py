@@ -69,6 +69,7 @@ class TransformerClassifier(TransformerBase):
         max_grad_norm: float,
         log_every_step: int,
         lr_scheduler_type: str,
+        lr: float,
         validate_every_step: Optional[int],
         freeze_transformer: bool,
         save_best: bool,
@@ -87,7 +88,8 @@ class TransformerClassifier(TransformerBase):
             val_batches = self._to_dataloader(val_split, training=False)
 
         optimizer = torch.optim.AdamW(
-            train_utils.get_optimizer_params(self._model, weight_decay), lr=3e-5
+            train_utils.get_optimizer_params(self._model, weight_decay),
+            lr=lr,
         )
 
         lr_scheduler = train_utils.get_lr_scheduler(

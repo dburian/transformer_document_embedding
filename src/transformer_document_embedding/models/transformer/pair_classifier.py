@@ -74,6 +74,7 @@ class TransformerPairClassifier(TransformerBase):
         log_every_step: int,
         save_best: bool,
         lr_scheduler_type: str,
+        lr: float,
         freeze_transformer: bool,
         validate_every_step: Optional[int],
         device: Optional[str] = None,
@@ -89,7 +90,8 @@ class TransformerPairClassifier(TransformerBase):
             val_data = self._to_dataloader(validation_split, training=False)
 
         optimizer = torch.optim.AdamW(
-            train_utils.get_optimizer_params(self._model, weight_decay), lr=3e-5
+            train_utils.get_optimizer_params(self._model, weight_decay),
+            lr=lr,
         )
 
         lr_scheduler = train_utils.get_lr_scheduler(
