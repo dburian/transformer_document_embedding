@@ -10,7 +10,7 @@ from typing import Callable
 
 if TYPE_CHECKING:
     from transformer_document_embedding.models.paragraph_vector.paragraph_vector import (  # noqa: E501
-        ParagraphVector,
+        PV,
     )
     from datasets.arrow_dataset import Dataset
 
@@ -44,7 +44,7 @@ class IterableFeaturesDataset(IterableDataset):
         self,
         docs: Dataset,
         text_pre_processor: TextPreProcessor,
-        pv: ParagraphVector,
+        pv: PV,
         lookup_vectors: bool,
     ) -> None:
         super().__init__()
