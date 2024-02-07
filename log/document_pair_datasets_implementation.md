@@ -29,5 +29,5 @@ dataset | train pairs | unique train docs
 ---     | ---         | ---
 OC      | 240 000     | 458 219
 S2ORC   | 152 000     | 233 243
-AAC     | 106 592     |  11 895
+AAN     | 106 592     |  11 895
 PAN     |  17 968     |  26 254

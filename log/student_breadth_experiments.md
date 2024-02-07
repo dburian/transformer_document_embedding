@@ -322,5 +322,8 @@ Results:
       correlation may suggest that this caused embeddings to have low variance
       (many dimensions seem dependent on others) which caused in a dataset, with
       higher positive/negative answers to a query, to have high precision
-- higher dimensional PV embeddings may not be as good as lower dimensional
 - good news is that we surpassed vanilla longformer on all but one metric (MRR)
+- after doing [experiments with PV](./pv_tuning.md) it turns out that
+  performance of PV is in inverse order than performance of student with given
+  PV: on wines 768 is better in all metrics, on games 100 is better in all
+  metrics
