@@ -40,7 +40,6 @@ class CheckpointSave(CallbackAny2Vec):
     def on_epoch_end(self, _) -> None:
         if self._epoch in self._epoch_checkpoints:
             model_path = os.path.join(self._save_dir, f"after_epoch_{self._epoch}")
-            os.makedirs(model_path, exist_ok=True)
             self._pv.save_weights(model_path)
 
         self._epoch += 1
