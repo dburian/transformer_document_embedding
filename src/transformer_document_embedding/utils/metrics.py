@@ -15,6 +15,7 @@ import numpy as np
 import torch
 from torcheval.metrics import Max, Mean, Metric
 from torcheval.metrics.toolkit import clone_metric
+from transformer_document_embedding.datasets import col
 
 from transformer_document_embedding.utils.cca_losses import CCALoss
 
@@ -106,7 +107,7 @@ class EmbeddingMSEWithCol(TrainingMetric):
         outputs: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
     ) -> None:
-        model_embeddings = outputs["embedding"]
+        model_embeddings = outputs[col.EMBEDDING]
         col_emebddings = batch[self.col_name]
         if self.normalize:
             model_embeddings /= torch.linalg.vector_norm(model_embeddings)
@@ -117,7 +118,7 @@ class EmbeddingMSEWithCol(TrainingMetric):
         mse = mse.sum(dim=1)
 
         if self.max_input_length is not None:
-            mask = batch["length"] <= self.max_input_length
+            mask = batch[col.LENGTH] <= self.max_input_length
             # mask is 1D
             non_masked_idxs = mask.nonzero().squeeze()
             mse = mse.index_select(0, non_masked_idxs)
@@ -156,12 +157,12 @@ class EmbeddingCosineDistanceWithCol(TrainingMetric):
         batch: dict[str, torch.Tensor],
     ) -> None:
         cos_dist = 1 - torch.nn.functional.cosine_similarity(
-            outputs["embedding"],
+            outputs[col.EMBEDDING],
             batch[self.col_name],
             dim=1,
         )
         if self.max_input_length is not None:
-            mask = batch["length"] <= self.max_input_length
+            mask = batch[col.LENGTH] <= self.max_input_length
             # mask is 1D
             non_masked_idxs = mask.nonzero().squeeze()
             cos_dist = cos_dist.index_select(0, non_masked_idxs)

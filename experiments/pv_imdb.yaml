@@ -1,0 +1,51 @@
+model:
+  module: pv:ParagraphVector
+  kwargs:
+    dm: 0
+    negative: 5
+    epochs: 1
+    sample: 0
+    min_count: 2
+    vector_size: 100
+    dm_concat: 0
+
+head:
+  module: ClassificationHead
+  kwargs:
+    in_features: 100
+    out_features: 2
+    hidden_features: 25
+    hidden_activation: relu
+    hidden_dropout: 0.5
+    label_smoothing: 0.1
+
+train_pipeline:
+  kind: concat
+  kwargs:
+    pipelines:
+      - kind: pv
+        kwargs:
+          start_at_epoch: null
+          save_at_epochs: null
+      - kind: pv_cls_head
+        kwargs:
+          epochs: 5
+          batch_size: 32
+          weight_decay: 0.1
+          lr: 0.001
+          lr_scheduler_type: cos
+          warmup_steps: 0
+          fp16: True
+          grad_accumulation_steps: 1
+          max_grad_norm: 1.0
+          patience: 10
+          save_best: False
+          save_after_steps: False
+          log_every_step: 2
+          validate_every_step: 1200
+
+dataset:
+  module: imdb:IMDB
+  kwargs:
+    validation_source: train
+    validation_source_fraction: 0.2

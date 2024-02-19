@@ -51,13 +51,15 @@ def init_type(spec: ModuleSpec) -> Any:
 
 
 def log_results(log_path: str, results: dict[str, float]) -> None:
-    import tensorflow as tf
+    import torch
+    from torch.utils.tensorboard.writer import SummaryWriter
 
-    with tf.summary.create_file_writer(log_path).as_default():
-        for name, res in results.items():
-            tf.summary.scalar(name, res, step=1)
+    writer = SummaryWriter(log_path)
 
-        tf.summary.flush()
+    for metric, score in results.items():
+        writer.add_scalar(metric, torch.tensor(score), 0)
+
+    writer.flush()
 
 
 def save_results(results: dict[str, float], out_dir: str) -> None:

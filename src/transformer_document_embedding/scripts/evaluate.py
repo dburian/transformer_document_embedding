@@ -1,137 +1,206 @@
-"""Evaluate pre-trained model on a number of tasks at once."""
+"""Evaluates previously trained embedding models.
+
+For each dataset a correct head is selected and fine-tuned. The whole model is
+evaluated and the results are aggregated into single file.
+"""
 from __future__ import annotations
-
-import argparse
-from dataclasses import asdict
-import logging
 import os
+import logging
+import pprint
+from typing import Optional, TYPE_CHECKING
 
-from tqdm.auto import tqdm
-import yaml
-
-
-from typing import TYPE_CHECKING
-from transformer_document_embedding.scripts.pipelines import add_common_args
-
+import coolname
+from transformer_document_embedding.scripts.common import evaluate
 from transformer_document_embedding.scripts.config_specs import (
-    ExperimentSpec,
-    EvaluationSpec,
+    EmbeddingModelSpec,
+    EvaluationInstanceSpec,
+    EvaluationsSpec,
 )
+
 from transformer_document_embedding.scripts.utils import (
-    init_type,
     load_yaml,
-    log_results,
+    save_config,
+    save_results,
 )
+import argparse
+from transformer_document_embedding.pipelines.finetune_factory import finetune_factory
+from transformer_document_embedding.utils.net_helpers import save_model_weights
 
 if TYPE_CHECKING:
-    from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
-    from transformer_document_embedding.models.experimental_model import (
-        ExperimentalModel,
-    )
-
-
-EVALUATIONS_OUTPUT_BASE_PATH = "./evaluations"
+    from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    add_common_args(parser, output_base_path=EVALUATIONS_OUTPUT_BASE_PATH)
+    parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument(
-        "--experiment_config",
-        "-e",
-        nargs="+",
-        action="extend",
+        "-c",
+        "--config",
         type=str,
-        help="Paths to configuration of the saved model to evaluate.",
+        help="Path to yaml evaluation config.",
+        required=True,
     )
 
     parser.add_argument(
-        "--model_dir",
-        default="model",
+        "-m",
+        "--model_path",
         type=str,
-        help="Relative path from configuration to directory with saved model",
+        action="extend",
+        nargs="+",
+        help="Paths to root directories of experiments with learned embedding models.",
+        required=True,
+    )
+    parser.add_argument(
+        "--output_base_path",
+        type=str,
+        default="./evaluations",
+        help="Path to directory containing all evaluation results.",
+    )
+
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        default="_".join(coolname.generate(2)),
+        help="Name of the evaluation. If no name is given, one is generated.",
+    )
+
+    parser.add_argument(
+        "--save_trained_model",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="Whether to save trained model.",
+    )
+
+    parser.add_argument(
+        "--save_trained_head",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="Whether to save trained head.",
     )
 
     return parser.parse_args()
 
 
-def evaluate_single(
-    config: EvaluationSpec,
-    model: ExperimentalModel,
-    model_name: str,
+def eval_single_dataset(
+    config: EvaluationInstanceSpec,
     args: argparse.Namespace,
-) -> list[dict[str, float]]:
-    exp_path = os.path.join(
-        args.output_base_path,
-        args.name,
-        model_name,
+    model: EmbeddingModel,
+    exp_path: str,
+) -> dict[str, float]:
+    save_config(config, exp_path)
+
+    dataset = config.dataset.initialize()
+    head = None if config.head is None else config.head.initialize()
+
+    training_pipeline = finetune_factory(
+        dataset.EVALUATION_KIND, config.finetune_pipeline_kwargs
     )
-    logging.info(
-        "Evaluating model '%s' on '%s'.",
-        model_name,
-        ",".join((task_spec.module for task_spec in config.tasks)),
-    )
+    training_pipeline(model, head, dataset, exp_path)
 
-    metrics = []
-    for task_spec in tqdm(
-        config.tasks, desc="Tasks evaluated", total=len(config.tasks)
-    ):
-        task: ExperimentalTask = init_type(task_spec)
+    if args.save_trained_model:
+        save_path = os.path.join(exp_path, "trained_model")
+        model.save_weights(save_path)
 
-        if "test" not in task.splits:
-            logging.error("Task %s does not have a 'test' split. Skipping...", task)
-            continue
+    if head is not None and args.save_trained_head:
+        save_model_weights(head, os.path.join(exp_path, "trained_head"))
 
-        test_predictions = model.predict(task.splits["test"])
-        task_metrics = task.evaluate(task.splits["test"], test_predictions)
-        logging.info("Evaluation done. Results:\n%s", metrics)
+    return evaluate(model, head, dataset, exp_path)
 
-        metrics.append(task_metrics)
 
-        test_log_path = os.path.join(exp_path, task_spec.name)
-        log_results(test_log_path, task_metrics)
+def find_config(path: str) -> Optional[str]:
+    folders = os.path.split(path)
+    while len(folders) > 0:
+        config_path = os.path.join(*folders, "config.yaml")
+        if os.path.isfile(config_path):
+            return config_path
 
-    with open(
-        os.path.join(exp_path, "results.yaml"), mode="w", encoding="utf8"
-    ) as results_file:
-        results_with_spec = [
-            asdict(task_spec) | {"results": task_metrics}
-            for task_spec, task_metrics in zip(config.tasks, metrics, strict=True)
-        ]
-        yaml.dump(results_with_spec, results_file)
+        folders = folders[:-1]
 
-    return metrics
+    return None
+
+
+def get_unique_names(paths: list[str]) -> list[str]:
+    for num_levels in range(1, max(len(os.path.split(path)) for path in paths)):
+        names = ["-".join(os.path.split(path)[-num_levels:]) for path in paths]
+
+        if len(names) == len(set(names)):
+            return names
+
+    return ["-".join(os.path.split(path)) for path in paths]
+
+
+def evaluate_model(
+    eval_config: EvaluationsSpec,
+    model_config: EmbeddingModelSpec,
+    args: argparse.Namespace,
+    model_weights_path: str,
+    model_name: str,
+) -> None:
+    model_eval_path = os.path.join(args.output_base_path, args.name, model_name)
+
+    model = model_config.initialize()
+    model.load_weights(model_weights_path)
+
+    results = {}
+    for eval_name, eval_spec in eval_config.evaluations.items():
+        eval_path = os.path.join(model_eval_path, eval_name)
+        os.makedirs(eval_path, exist_ok=True)
+
+        config = EvaluationInstanceSpec(
+            model=model_config,
+            dataset=eval_spec.dataset,
+            head=eval_spec.head,
+            finetune_pipeline_kwargs=eval_spec.finetune_pipeline_kwargs,
+        )
+
+        logging.info(
+            "Starting evaluation of '%s' on '%s' with config:\n%s",
+            model_name,
+            eval_name,
+            pprint.pformat(config, indent=1),
+        )
+        results[eval_name] = eval_single_dataset(
+            config,
+            args,
+            model,
+            eval_path,
+        )
+
+    save_results(results, model_eval_path)
 
 
 def main() -> None:
     args = parse_args()
+    logger = logging.getLogger(__name__)
 
     logging.basicConfig(
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
 
-    tasks_config = load_yaml(args.config)
+    eval_config = EvaluationsSpec.from_dict(load_yaml(args.config))
 
-    for model_config_path in args.experiment_config:
-        model_config = ExperimentSpec.from_dict(load_yaml(model_config_path)).model
+    unique_names = get_unique_names([os.path.dirname(path) for path in args.model_path])
 
-        model: ExperimentalModel = init_type(model_config)
-        model_config_dir = os.path.dirname(model_config_path)
-        model_load_dir = os.path.join(model_config_dir, args.model_dir)
-        model.load_weights(model_load_dir)
+    for model_path, model_name in zip(args.model_path, unique_names, strict=True):
+        config_path = find_config(model_path)
+        if config_path is None:
+            logger.error(
+                "Cannot find `config.yaml` file for model saved at '%s'. Skipping...",
+                model_path,
+            )
+            continue
 
-        eval_config = EvaluationSpec.from_dict(
-            {
-                **tasks_config,
-                "model": asdict(model_config),
-                "evaluated_model_path": model_load_dir,
-            }
+        logger.info("Evaluating model with config '%s'", config_path)
+        model_config = EmbeddingModelSpec.from_dict(load_yaml(config_path)["model"])
+
+        evaluate_model(
+            eval_config,
+            model_config,
+            args,
+            model_weights_path=model_path,
+            model_name=model_name,
         )
-        model_name = os.path.basename(model_config_dir)
-
-        evaluate_single(eval_config, model, model_name, args)
 
 
 if __name__ == "__main__":

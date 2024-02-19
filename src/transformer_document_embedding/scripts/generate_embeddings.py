@@ -5,30 +5,80 @@ import os
 import argparse
 
 import logging
-
+import pprint
 
 from datasets import Dataset, DatasetDict, concatenate_datasets
 import datasets.utils.logging as hf_logging
+from transformer_document_embedding.datasets import col
+from transformer_document_embedding.scripts.common import load_train_save
 from transformer_document_embedding.scripts.config_specs import ExperimentSpec
-from transformer_document_embedding.scripts.pipelines import (
-    InitializeModelAndTask,
-    TrainingPipeline,
-    add_common_args,
-)
 from transformer_document_embedding.scripts.utils import (
     load_yaml,
+    save_config,
 )
-from transformer_document_embedding.utils.evaluation import smart_unbatch
 
-training_pipeline = TrainingPipeline()
-initialization_pipeline = InitializeModelAndTask()
+import coolname
+
+from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
-    training_pipeline.add_args(parser)
-    initialization_pipeline.add_args(parser)
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        help="Path to yaml experiment file.",
+        required=True,
+    )
+    parser.add_argument(
+        "--output_base_path",
+        type=str,
+        default="./results",
+        help=(
+            "Path to directory containing all experiment results. Default:"
+            # f" '{output_base_path}'."
+        ),
+    )
+
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        default="_".join(coolname.generate(2)),
+        help="Name of the experiment. If no name is given, one is generated.",
+    )
+
+    parser.add_argument(
+        "--save_trained_model",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        # default=self._save_trained,
+        help="Whether to save trained model.",
+    )
+
+    parser.add_argument(
+        "--save_trained_head",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        # default=self._save_trained,
+        help="Whether to save trained head.",
+    )
+
+    parser.add_argument(
+        "--load_model_weights_path",
+        type=str,
+        default=None,
+        help="Path from where to load model's weights.",
+    )
+
+    parser.add_argument(
+        "--load_head_weights_path",
+        type=str,
+        default=None,
+        help="Path from where to load head's weights.",
+    )
 
     parser.add_argument(
         "--splits",
@@ -41,7 +91,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--embedding_col_name",
         type=str,
-        default="embedding",
+        default=col.EMBEDDING,
         help="Column name for embedding of an input example that will be added to"
         "the dataset.",
     )
@@ -53,8 +103,6 @@ def parse_args() -> argparse.Namespace:
         help="Maximum size of generated shards.",
     )
 
-    add_common_args(parser)
-
     return parser.parse_args()
 
 
@@ -63,16 +111,24 @@ def generate_embeddings(
     args: argparse.Namespace,
 ) -> None:
     exp_path = os.path.join(
-        args.output_base_path,
-        config.task.module,
-        config.model.module,
-        args.name,
+        args.output_base_path, config.dataset.module, config.model.module, args.name
     )
     os.makedirs(exp_path, exist_ok=True)
+    logging.info(
+        "Generating embeddings '%s' with config:\n%s",
+        args.name,
+        pprint.pformat(config, indent=1),
+    )
+    save_config(config, exp_path)
 
-    model, task = initialization_pipeline.run(args.name, exp_path, config)
-
-    training_pipeline.run(args, model, task, exp_path, config)
+    model, _, dataset = load_train_save(
+        config,
+        save_trained_model=args.save_trained_model,
+        save_trained_head=args.save_trained_head,
+        load_model_weights_path=args.load_model_weights_path,
+        load_head_weights_path=args.load_head_weights_path,
+        exp_path=exp_path,
+    )
 
     # The gymnastics with generators, new dataset and concatenation is not
     # straightforward, but:
@@ -84,19 +140,17 @@ def generate_embeddings(
     # - `add_column` can accept generator, but it is not documented and thus it
     #   feels like a hacky solution
     def embed_generator(split: Dataset):
-        for embed in smart_unbatch(model.predict(split), 1):
+        for embed in smart_unbatch(model.predict_embeddings(split), 1):
             yield {args.embedding_col_name: embed}
 
     embeddings = DatasetDict()
 
-    # TODO: We're relying on HF Task interface. Do we really need the basic
-    # task? Should the basic task also have `splits` property?
-    splits = args.splits.split(",") if args.splits != "all" else task.split_names.keys()
+    splits = args.splits.split(",") if args.splits != "all" else dataset.splits.keys()
 
     hf_logging.disable_progress_bar()
     for split_name in splits:
         logging.info("Generating embeddings for split '%s'", split_name)
-        split = task.split_names.get(split_name, None)
+        split = dataset.splits.get(split_name, None)
         if split is None:
             logging.warn(
                 "Split '%s' doesn't exist for this dataset. Skipping...", split_name
@@ -122,7 +176,6 @@ def main():
     )
 
     config = ExperimentSpec.from_dict(load_yaml(args.config))
-
     generate_embeddings(config, args)
 
 

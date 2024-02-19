@@ -1,0 +1,15 @@
+model:
+  module: tfidf:TFIDF
+  kwargs:
+    word_filter_no_below: 10
+    word_filter_no_above: 0.8
+    smartirs: lfn
+
+head: null
+train_pipeline: null
+
+dataset:
+  module: wikipedia_similarities:WikipediaSimilarities
+  kwargs:
+    path: ../data/wikipedia_similarities.py
+    dataset: game

@@ -1,41 +1,35 @@
-from typing import Iterable, Optional
+from __future__ import annotations
+from typing import Iterator, Optional, TYPE_CHECKING
 
-import numpy as np
-from datasets import Dataset
 from gensim.corpora import Dictionary
 from gensim.matutils import sparse2full
 from gensim.models import TfidfModel
+from transformer_document_embedding.datasets import col
+from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
-from transformer_document_embedding.models.experimental_model import ExperimentalModel
-from transformer_document_embedding.tasks.experimental_task import ExperimentalTask
+
+import torch
+
+if TYPE_CHECKING:
+    from datasets import Dataset
 
 
-class TFIDF(ExperimentalModel):
+class TFIDF(EmbeddingModel):
     def __init__(
         self,
-        word_filter_no_below: int = 10,
-        word_filter_no_above: float = 0.8,
-        smartirs: str = "lfn",
+        word_filter_no_below: int,
+        word_filter_no_above: float,
+        smartirs: str,
     ) -> None:
         self._word_filter_no_below = word_filter_no_below
         self._word_filter_no_above = word_filter_no_above
 
         self._smartirs = smartirs
 
-    def train(
-        self,
-        task: ExperimentalTask,
-        *,
-        log_dir: Optional[str] = None,
-        save_best_path: Optional[str] = None,
-        early_stopping: bool = False,
-    ) -> None:
-        pass
-
-    def predict(self, inputs: Dataset) -> Iterable[np.ndarray]:
-        words_dataset = inputs.map(
-            lambda doc: {"words": doc["text"].lower().split()},
-            remove_columns=["id", "text"],
+    def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
+        words_dataset = dataset.map(
+            lambda doc: {"words": doc[col.TEXT].lower().split()},
+            remove_columns=[col.ID, col.TEXT],
         )
         word_dict = self._get_word_dictionary(words_dataset)
 
@@ -47,7 +41,7 @@ class TFIDF(ExperimentalModel):
 
         for article_words in words_dataset["words"]:
             sparse_vec = model[word_dict.doc2bow(article_words)]
-            yield sparse2full(sparse_vec, embed_dim)
+            yield torch.from_numpy(sparse2full(sparse_vec, embed_dim))
 
     def _get_word_dictionary(
         self,
@@ -65,8 +59,8 @@ class TFIDF(ExperimentalModel):
 
         return gensim_dict
 
-    def save_weights(self, dir_path: str) -> None:
+    def save_weights(self, path: str) -> None:
         pass
 
-    def load_weights(self, dir_path: str) -> None:
+    def load_weights(self, path: str, *, strict: bool = False) -> None:
         pass

@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Generic, Mapping, MutableMapping, TypeVar
 import torch
 from torch.utils.data import DataLoader, Sampler
 
+from transformer_document_embedding.datasets import col
+
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerBase
     from transformers.utils import PaddingStrategy
@@ -52,7 +54,7 @@ class FastDataCollator:
         # Convert from list of dicts to dict of lists
         batch = {}
         for key in features[0].keys():
-            if isinstance(features[0][key], str) and key != "text":
+            if isinstance(features[0][key], str) and key != col.TEXT:
                 continue
 
             batch[key] = [example[key] for example in features]
@@ -61,8 +63,8 @@ class FastDataCollator:
             if isinstance(batch[key][0], torch.Tensor):
                 batch[key] = torch.stack(batch[key])
 
-        texts = batch["text"]
-        del batch["text"]
+        texts = batch[col.TEXT]
+        del batch[col.TEXT]
 
         tokenized_batch = self.tokenizer(
             texts,
@@ -81,7 +83,7 @@ class FastDataCollator:
         )
 
         if self.return_length:
-            tokenized_batch["length"] = torch.sum(
+            tokenized_batch[col.LENGTH] = torch.sum(
                 tokenized_batch["input_ids"] > self._max_special_token_id, axis=1
             )
 
@@ -89,11 +91,8 @@ class FastDataCollator:
 
         batch.update(tokenized_batch)
 
-        if "label" in batch:
-            batch["labels"] = batch["label"]
-            del batch["label"]
         if "label_ids" in batch:
-            batch["labels"] = batch["label_ids"]
+            batch[col.LABEL] = batch["label_ids"]
             del batch["label_ids"]
         return batch
 
@@ -199,7 +198,7 @@ class ConsistentLenghtDistSampler(Sampler):
         return len(self._dataset)
 
     def __iter__(self) -> Iterator[int]:
-        idx_length_iter = enumerate(self._dataset["length"])
+        idx_length_iter = enumerate(self._dataset[col.LENGTH])
 
         # Add an input to buffer so we kick-start the pipeline
         idx, length = next(idx_length_iter)
@@ -402,10 +401,20 @@ def create_tokenized_data_loader(
         raise TypeError("Both `batch_size` and `batch_size_in_tokens` cannot be None.")
 
     data = data.with_format("torch")
-    data = data.remove_columns(["id"])
+    data = data.remove_columns(
+        list({col.ID, col.ID_1, col.ID_0} & set(data.column_names))
+    )
 
     if training:
         data = data.shuffle()
+    else:
+        # Remove all supervised columns
+        data = data.remove_columns(
+            list(
+                {col.LABEL, col.STRUCTURAL_EMBED, col.CONTEXTUAL_EMBED}
+                & set(data.column_names)
+            )
+        )
 
     collator = FastDataCollator(
         padding="longest",

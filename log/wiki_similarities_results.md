@@ -10,7 +10,7 @@ Explanation of metrics is in the [description of the task](../notes/wikipedia_si
 
 | model      | MRR        | MPR        | HR@10      | HR@100     | notes |
 | ---------- | ---------- | ---------- | ---------- | ---------- | ----- |
-| SBERT      |   .43672   | **.16117** |   .15607   | **.56489** | transformer_model='all-mpnet-base-v2' |
+| SBERT      |   .46864   | **.15892** |   .15854   | **.57480** | transformer_model='all-mpnet-base-v2' |
 | SBERT      |   .41420   |   .20348   |   .13222   |   .49683   | transformer_model='all-distilroberta-v1' |
 | TFIDF      |   .45667   |   .16755   | **.17940** |   .54329   | smartirs='lfn' |
 | PV DBOW    | **.47576** |   .18726   |   .14905   |   .49109   | |
@@ -21,7 +21,7 @@ Explanation of metrics is in the [description of the task](../notes/wikipedia_si
 
 | model      | MRR        | MPR        | HR@10      | HR@100     | notes |
 | ---------- | ---------- | ---------- | ---------- | ---------- | ----- |
-| SBERT      |   .51713   |   .18915   |   .16493   |   .39141   | transformer_model='all-mpnet-base-v2' |
+| SBERT      |   .53445   |   .18226   |   .15636   |   .39948   | transformer_model='all-mpnet-base-v2' |
 | SBERT      |   .53365   |   .19913   |   .16221   |   .37689   | transformer_model='all-distilroberta-v1' |
 | TFIDF      |   .51965   | **.13868** | **.19995** | **.53637** | smartirs='lfn' |
 | PV DBOW    | **.62673** |   .15368   |   .19234   |   .48516   | |
@@ -72,7 +72,7 @@ Longformer, both, in between                       |   .47714   |   .19376   |  
 model                                                 |   MRR      |   MPR      |   HR@10    |   HR@100   | notes
 ---                                                   |   ---      |   ---      |   ---      |   ---      | ---
 Longformer                                            |   .37290   |   .20994   |   .11382   |   .44063   | pooler_type='mean'
- SBERT                                                |   .43672   | **.16117** |   .15607   | **.56489** | transformer_model='all-mpnet-base-v2' |
+SBERT                                                 |   .46864   |   .15892   |   .15854   |   .57480   | transformer_model='all-mpnet-base-v2' |
 _                                                     | _          | _          | _          | _          | _
 Longformer, only depth, short, `contrastive_cos_dist` |   .43270   |   .15193   |   .14902   |   .58815   | depth_loss_short/m.k.d_l_k.l_t=contrastive_cos_dist
 Longformer, only depth, short, best cos               |   .43462   |   .14920   |   .15859   |   .58512   | depth_loss_short/m.k.d_l_k.l_t=cos_dist
@@ -98,14 +98,14 @@ Longformer, only breadth, 768 DBOW, worst cca         | **.44600** |   .23143   
 model                                                 |   MRR      |   MPR      |   HR@10    |   HR@100   | notes
 ---                                                   |   ---      |   ---      |   ---      |   ---      | ---
 Longformer                                            |   .48848   |   .19274   |   .13796   |   .31651   | pooler_type='mean'
-SBERT                                                 |   .51713   |   .18915   |   .16493   |   .39141   | transformer_model='all-mpnet-base-v2' |
+SBERT                                                 | **.53445** |   .18226   |   .15636   | **.39948** | transformer_model='all-mpnet-base-v2' |
 _                                                     | _          | _          | _          | _          | _
 Longformer, only depth, short, `contrastive_cos_dist` |   .48844   | **.18570** |   .15122   |   .36987   | depth_loss_short/m.k.d_l_k.l_t=contrastive_cos_dist
 Longformer, only depth, short, best cos               |   .50092   |   .20209   |   .15054   |   .36688   | depth_loss_short/m.k.d_l_k.l_t=cos_dist
 Longformer, only depth, short, best mse & worst cos   |   .48175   |   .19242   |   .14513   |   .36145   | depth_loss_short/m.k.d_l_k.l_t=mse
 Longformer, only depth, short, worst mse              |   .39400   |   .21290   |   .12815   |   .33849   | depth_loss_short/m.k.d_l_k.l_t=contrastive_mse
-Longformer, only depth, `contrastive_cos_dist`        |   .51317   |   .19551   |   .15588   | **.38260** | depth_loss/m.k.d_l_k.l_t=contrastive_cos_dist
-Longformer, only depth, best cos                      | **.52884** |   .19853   | **.15768** |   .37479   | depth_loss/m.k.d_l_k.l_t=cos_dist
+Longformer, only depth, `contrastive_cos_dist`        |   .51317   |   .19551   |   .15588   |   .38260   | depth_loss/m.k.d_l_k.l_t=contrastive_cos_dist
+Longformer, only depth, best cos                      |   .52884   |   .19853   | **.15768** |   .37479   | depth_loss/m.k.d_l_k.l_t=cos_dist
 Longformer, only depth, best mse & worst cos          |   .51018   |   .19676   |   .15679   |   .37211   | depth_loss/m.k.d_l_k.l_t=mse
 Longformer, only depth, worst mse                     |   .45011   |   .21369   |   .13731   |   .34732   | depth_loss/m.k.d_l_k.l_t=contrastive_mse
 _                                                     | _          | _          | _          | _          | _

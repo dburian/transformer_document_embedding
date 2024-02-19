@@ -263,7 +263,7 @@ class StochasticDecorrelationLoss(torch.nn.Module):
     def __init__(
         self,
         dimension: int,
-        alpha: float = 0.8,
+        alpha: float,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
         *args,
@@ -327,19 +327,19 @@ class DeepNet(torch.nn.Module):
             layers = []
             layers.append(torch.nn.Linear(in_features, out_features))
 
-            if block_config["normalization"] is not None:
+            if block_config.get("normalization", None) is not None:
                 layers.append(
                     get_normalization(block_config["normalization"])(out_features)
                 )
 
-            if block_config["activation"] is not None:
+            if block_config.get("activation", None) is not None:
                 # No activation in the last layer
                 layers.append(get_activation(block_config["activation"])())
 
             in_features = out_features
             blocks.append(torch.nn.Sequential(*layers))
 
-        self._features = [c["features"] for c in blocks_config]
+        self._features = [input_features] + [c["features"] for c in blocks_config]
 
         # Use ModuleList instead of Sequential to allow empty layers
         self.layers = torch.nn.ModuleList(modules=blocks)
@@ -349,12 +349,9 @@ class DeepNet(torch.nn.Module):
         return self._features
 
     def forward(self, inputs: torch.Tensor) -> list[torch.Tensor]:
-        outputs = inputs
-
-        layer_outputs = []
+        layer_outputs = [inputs]
         for layer in self.layers:
-            outputs = layer(outputs)
-            layer_outputs.append(outputs)
+            layer_outputs.append(layer(layer_outputs[-1]))
 
         return layer_outputs
 
@@ -362,8 +359,8 @@ class DeepNet(torch.nn.Module):
 class ProjectionLoss(torch.nn.Module):
     def __init__(
         self,
-        net1: Optional[DeepNet],
-        net2: Optional[DeepNet],
+        net1: DeepNet,
+        net2: DeepNet,
         loss_fn: torch.nn.Module,
         *args,
         **kwargs,
@@ -377,14 +374,10 @@ class ProjectionLoss(torch.nn.Module):
     def forward(
         self, view1: torch.Tensor, view2: torch.Tensor
     ) -> dict[str, Union[torch.Tensor, list[torch.Tensor]]]:
-        projected_views1 = self.net1(view1) if self.net1 is not None else [view1]
-        projected_views2 = self.net2(view2) if self.net2 is not None else [view2]
+        projected_views1 = self.net1(view1)
+        projected_views2 = self.net2(view2)
 
         loss_outputs = self.loss_fn(projected_views1[-1], projected_views2[-1])
-
-        # For MSE and CosineDistanceLoss
-        if isinstance(loss_outputs, torch.Tensor):
-            loss_outputs = {"loss": loss_outputs}
 
         return {
             **loss_outputs,

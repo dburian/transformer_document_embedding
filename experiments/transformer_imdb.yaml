@@ -1,0 +1,42 @@
+model:
+  module: transformer:TransformerEmbedder
+  kwargs:
+    transformer_name: allenai/longformer-base-4096
+    pooler_type: mean
+
+head:
+  module: ClassificationHead
+  kwargs:
+    in_features: 768
+    hidden_features: 50
+    hidden_dropout: 0.5
+    hidden_activation: relu
+    out_features: 2
+    label_smoothing: 0.1
+
+
+train_pipeline:
+  kind: torch_cls
+  kwargs:
+    batch_size: 3
+    epochs: 5
+    warmup_steps: 100
+    grad_accumulation_steps: 2
+    weight_decay: 0.01
+    fp16: True
+    lr_scheduler_type: cos
+    lr: 1.0e-4
+    max_grad_norm: 1.0
+    log_every_step: 1
+    validate_every_step: 100
+    save_best: True
+    patience: 2
+
+dataset:
+  module: imdb:IMDB
+  kwargs:
+    validation_source: train
+    validation_source_fraction: 0.2
+    data_size_limit:
+      train: 1000
+      test: 500

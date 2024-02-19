@@ -1,0 +1,23 @@
+model:
+  module: pv:ParagraphVector
+  kwargs:
+    dm: 0
+    max_vocab_size: 6.0e+7 # ~60GBs of memory
+    negative: 5
+    epochs: 5
+    sample: 0
+    min_count: 2
+    vector_size: 100
+    workers: 4
+
+head: null
+train_pipeline:
+  kind: pv
+  kwargs:
+    start_at_epoch: null
+    save_at_epochs: null
+
+dataset:
+  module: teacher_embedding:TeacherEmbedding
+  kwargs:
+    path: /mnt/data/datasets/wikipedia_sample_with_eval

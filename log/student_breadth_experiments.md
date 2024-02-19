@@ -326,4 +326,6 @@ Results:
 - after doing [experiments with PV](./pv_tuning.md) it turns out that
   performance of PV is in inverse order than performance of student with given
   PV: on wines 768 is better in all metrics, on games 100 is better in all
-  metrics
+  metrics. Keep in mind the PV we are comparing were trained on different
+  datasets. PV evaluated on wines/games was trained on them whereas PV for
+  student was trained on Wikipedia corpus.

@@ -1,0 +1,16 @@
+model:
+  module: transformer:TransformerEmbedder
+  kwargs:
+    # transformer_name: allenai/longformer-base-4096
+    transformer_name: sentence-transformers/all-mpnet-base-v2
+    pooler_type: mean
+
+head: null
+
+train_pipeline: null
+
+dataset:
+  module: wikipedia_similarities:WikipediaSimilarities
+  kwargs:
+    path: ../data/wikipedia_similarities.py
+    dataset: game

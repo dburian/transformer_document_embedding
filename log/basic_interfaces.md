@@ -2,52 +2,83 @@
 
 # Basic interfaces
 
-This document records the basic interfaces that are used in scripts. The idea is
-to abstract away the peculiarities of each model and task such that they can be
-combined almost arbitrarily.
+I tried to avoid strict rules and interfaces as I've found I need the
+flexibility, while avoiding having script for each single experiment. There are,
+however, some things that are common for all the code base. There are:
 
-There are two basic interfaces:
+- Embedding models -- models that produce an embedding for a text
+- Heads -- models that transform embeddings into task-specific output and
+  compute loss
+- Pipeline -- sometimes configurable object that does stuff (training,
+  finetuning, evaluation)
+- Document Dataset -- object wrapping a HuggingFace dataset that is used for
+  training/finetuning/evaluation
 
-- `ExperimentalTask`, and
-- `ExperimentalModel`.
+There are few scripts that operate with these objects:
 
-Using these interfaces scripts can load up a dataset and a model, train the
-model on the dataset, evaluate it and save everything.
+- `train` -- trains a model on a dataset, evaluates it, optionally saves it
+- `evaluate` -- loads saved embedding models, and with finetuned head
+  evaluates it on multiple tasks
+- `hp_search` -- does a grid search or one search over parameters. With each
+  option it does pretty much the same as `train`
+- `generate_emebeddings` -- trains a model on a dataset and generates embeddings
+  for it
 
-Its clear that each task is going to have some type (e.g. classification,
-retrieval based, classification of pairs, ...). This needs to be mirrored on the
-side of the models (e.g. classification model cannot be used when generating
-embeddings and vice versa). *This is not explicitly mentioned in code*.
+## Interfaces in detail
 
-## `ExperimentalTask`
+### Embedding models
 
-Wraps a dataset and defines the method how it is evaluated.
+Since I don't want to be limited by what I can do with a model I've kept the
+interface minimal:
 
-## `ExperimentalModel`
+- `generate_embeddings` -- generates embeddings for given dataset
+- `save_weights`/`load_weights` -- saving/loading the model
 
-Wraps a model and its training/prediction setup.
+Everything else must be done via a specialized pipeline. This is almost as if
+I had a script for each model, but much better since the relationship of model
+to pipeline can be n-to-n. Plus the pipeline defines the only thing that really
+changes and doesn't need to specify all the params and high-level logic.
 
-- `save_weights`/`load_weights` -- saves/loads model's weights in a manner such
-  that the same model of different type will be able to reuse weights from shared
-  architecture (e.g. a Longformer classifier should be able to reuse the weights
-  of the Longformer, with weights of the classification head randomly
-  initialized).
-
-### Notes
-
-- all arguments that are required only for the training should go into
-  `train_kwargs` in [configuration files][configuration_files]
-
-## General implementation advice
-
-- do not define default values for arguments -- configuration files are then
-  incomplete and one has to search back to the default value that was default
-  when the configuration file was created. Instead leave all but helper
-  arguments as obligatory to force the configuration file to include all values
-  necessary
+The models should be as dumb as possible to allow pipelines to operate directly
+on them.
 
 
-## Thought process
+### Heads
+
+All the heads are just `torch.nn.Module`s that accept serializable arguments.
+
+### Pipeline
+
+Here I would rather not to state any strict rules or facts. But currently there
+are
+
+- training pipelines which are fully configurable,
+- head-finetuning pipelines which are chosen based on dataset and have configurable parameters and
+- evaluation pipelines which are also chosen based on the dataset, but do not
+  have configurable parameters
+
+The reasons are obvious:
+
+- multiple trainings can be done with single model, maximal flexibility needed
+- finetuning heads is largely the same once we know the type of task and have
+  the embeddings of the model
+- evaluation should be done in a same manner for given type of task
+
+### Document dataset
+
+Just a class that serves as a dataset creation class. Everywhere else
+"dataset" means `Dataset` from hugging face `datasets` library.
+
+
+### Configuration
+
+Do not define default values for arguments -- configuration files are then
+incomplete and one has to search back to the default value that was default when
+the configuration file was created. Instead leave all but helper arguments as
+obligatory to force the configuration file to include all values necessary
+
+
+## History & process
 
 The initial though behind an evaluation environment was to unify models and
 tasks so we can easily evaluate particular task with particular model. As the
@@ -58,60 +89,25 @@ work went on I learned:
    amount of code required to run each model is fairly small. This means there
    is small need for unification for the purposes of avoiding code duplication.
 
-The result is we have some unification, but not much since we are trying to have
-lots of experiments, not a really though-out framework for evaluating models.
-The unification is there to have scripts that can operate on multiple model-task
-pairs. There is still plenty of value in that:
+The result was that each model had several subclasses (which lowered the amount
+of duplicated code) each of which was suited for a given task. Ergo it had a
+`train` method which assumed a given type of training data. This was nice in the
+sense that training scripts could operate with any task x model combination, as
+long as they matched each other. However, later it became clear that it was
+unpractical to have `train` method bound with the model. It is because:
 
-1. we can move from a model implementation to trying it out really quickly,
-2. easy arguments loading, which are also automatically saved
-3. avoiding *some* code repetition (though not as much as initially planned)
-4. automatic and systematic saving of experiment results and logging
+- multiple models are trained equally (e.g. heads), having a single "function"
+  would dramatically save on code
+- the same model can be trained multiple ways, while this could be achieved with
+  having a different subclass, implementing an entire model just for different
+  training technique is bad,
+- separating heads and models became a necessity as I needed to do a bunch of
+  operations on the level of the script with separate head or separate model.
+  E.g. saving a model, loading a model with different head, finetuning a given
+  head on some arbitrary model, ... To do this I would need subclasses of each
+  model that would implement in its `train` method all these deviations from
+  common training.
 
-### The Why-s
-
-- **Why this does not matter that much.**
-
-The main goal is to write experiments, not code. Do not over-optimize for stuff
-that you'll never need.
-
-- Separating pure models and experimental models
-
-Pure models are easily portable. ExperimentalModels are not. This is the main
-reason why the code is separated as so. Models can be written in pytorch or
-tensorflow, ExperimentalModels also act as an adaptors.
-
-- importing models and tasks by package path
-
-Can be done differently (e.g. w/ dictionary), but this requires the least amount
-of extra code. This is more flexible at the cost of being more error-prone.
-
-- evaluation in model vs evaluation in task
-
-I decided against evaluation in model, mainly because I want each model to be
-evaluated equally. This also minimizes the code which should evaluate
-predictions, which would have to be in every model. Also there could be problems
-with getting the evaluations out of the models.
-
-- all data given to model when training
-
-This is from experience. Some models do unsupervised training on all inputs.
-
-- in defence of HF dataset format
-
-HF dataset is great because:
-    - it has all kinds of useful transformations,
-    - it can be loaded from all kinds of files,
-    - it is sharable (so if some dataset is not in this format I can create it and
-    publish it)
-    - it should work with all transformers in HF out of the box
-    - it has documentation (though hard to navigate)
-    - caching
-
-- Defining task's and model's type in code:
-
-It is not explicitly mentioned in the code that each task and model has certain
-type and that they need to match. This is because enforcing matching of types of
-model and task currently wouldn't contribute to the result of this thesis and
-would only add bulk. Instead it is up to the researcher that runs the scripts to
-use to correct model for given task.
+This is where we are now. We have pipelines that implement all the things we can
+do with a model. We keep the model classes lean and the pipeline's interfaces
+set but ready to change so we are not limited in any regard.

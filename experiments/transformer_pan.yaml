@@ -1,0 +1,41 @@
+model:
+  module: transformer:TransformerEmbedder
+  kwargs:
+    transformer_name: sentence-transformers/all-mpnet-base-v2
+    pooler_type: mean
+
+head:
+  module: ClassificationHead
+  kwargs:
+    in_features: 1536
+    out_features: 2
+    hidden_features: 25
+    hidden_activation: relu
+    hidden_dropout: 0.5
+    label_smoothing: 0.1
+
+train_pipeline:
+  kind: torch_pair_cls
+  kwargs:
+    batch_size: 3
+    epochs: 2
+    warmup_steps: 100
+    grad_accumulation_steps: 2
+    weight_decay: 0.01
+    fp16: True
+    lr_scheduler_type: cos
+    lr: 1.0e-4
+    max_grad_norm: 1.0
+    log_every_step: 1
+    validate_every_step: 100
+    save_best: True
+    patience: 2
+
+dataset:
+  module: document_pair_classification:DocumentPairClassification
+  kwargs:
+    path: ../data/MDA/PAN
+    data_size_limit:
+      train: 1000
+      validation: 500
+      test: 500

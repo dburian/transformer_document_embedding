@@ -3,6 +3,7 @@
 Semi-required interface:
 
 - Should support masking of inputs to use them in `BreadthDepthLoss`.
+- All return dicts (for consistency)
 """
 
 from __future__ import annotations
@@ -20,8 +21,11 @@ class ContrastiveLoss(torch.nn.Module):
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        self.dissimilarity_fn = dissimilarity_fn
+        self._dissimilarity_module = dissimilarity_fn
         self.lam = lam
+
+    def dissimilarity_fn(self, *args, **kwargs) -> torch.Tensor:
+        return self._dissimilarity_module(*args, **kwargs)["loss"]
 
     def forward(
         self,
@@ -58,21 +62,22 @@ class ContrastiveLoss(torch.nn.Module):
 class MaskedCosineDistance(torch.nn.CosineSimilarity):
     def forward(
         self, x1: torch.Tensor, x2: torch.Tensor, mask: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    ) -> dict[str, torch.Tensor]:
         cos_dist = 1 - super().forward(x1, x2)
 
         if mask is None:
-            return cos_dist.mean()
+            return {"loss": cos_dist.mean()}
 
         # Cos dist has dimension of 1
         cos_dist *= mask.squeeze()
         total_weight = mask.sum()
 
-        return (
+        loss = (
             cos_dist.sum() / total_weight
             if total_weight > 0
             else torch.zeros_like(cos_dist)
         )
+        return {"loss": loss}
 
 
 class MaskedMSE(torch.nn.MSELoss):
@@ -81,15 +86,16 @@ class MaskedMSE(torch.nn.MSELoss):
 
     def forward(
         self, x1: torch.Tensor, x2: torch.Tensor, mask: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    ) -> dict[str, torch.Tensor]:
         mse = super().forward(x1, x2)
 
         if mask is None:
-            return mse.mean()
+            return {"loss": mse.mean()}
 
         mse *= mask
+        loss = mse.sum() / mask.sum()
 
-        return mse.sum() / mask.sum()
+        return {"loss": loss}
 
 
 def create_sim_based_loss(loss_type: str, **kwargs) -> torch.nn.Module:

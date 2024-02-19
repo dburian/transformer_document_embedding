@@ -1,0 +1,60 @@
+model:
+  module: transformer:TransformerEmbedder
+  kwargs:
+    # transformer_name: allenai/longformer-base-4096
+    transformer_name: sentence-transformers/all-mpnet-base-v2
+    pooler_type: mean
+
+head:
+  module: StructuralContextualHead
+  kwargs:
+    max_structural_length: null
+    lam: 1
+    structural_head_kwargs:
+      loss_type: contrastive_mse
+      contrastive_lam: 1
+    contextual_head_kwargs:
+      student_dim: 768
+      contextual_dim: 100
+      student_projection:
+        - features: 256
+          activation: relu
+        - features: 768
+      contextual_projection:
+        - features: 768
+      loss_type: soft_cca
+      soft_cca_lam: 0.15
+      soft_cca_sdl_alpha: 0.95
+
+
+train_pipeline:
+  kind: student
+  kwargs:
+    batch_size: 4
+    epochs: 0
+    warmup_steps: 100
+    grad_accumulation_steps: 2
+    weight_decay: 0.01
+    fp16: True
+    lr_scheduler_type: cos
+    lr: 1.0e-4
+    max_grad_norm: 1.0
+    log_every_step: 1
+    validate_every_step: 100
+    save_best: True
+    patience: 2
+    global_attention_type: cls
+    dataloader_sampling: consistent
+    sampler_kwargs:
+      bucket_limits: [512, 1024, 2048, 4096]
+
+dataset:
+  module: teacher_embedding:TeacherEmbedding
+  kwargs:
+    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    contextual_embedding_col: dbow
+    structural_embedding_col: sbert
+    data_size_limit:
+      train: 100
+      validation: 50
+      test: 50

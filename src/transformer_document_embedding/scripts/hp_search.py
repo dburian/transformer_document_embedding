@@ -1,52 +1,140 @@
-"""Runs hyperparameter search on a model and a task."""
-
+"""a __doc__"""
 from __future__ import annotations
-import argparse
 from copy import deepcopy
-import re
 from itertools import product
+import re
+import os
 import logging
-from transformer_document_embedding.scripts.config_specs import ExperimentSpec
+import pprint
+from typing import TYPE_CHECKING, Iterable
 
+import coolname
+from transformer_document_embedding.scripts.common import evaluate, load_train_save
+from transformer_document_embedding.scripts.config_specs import ExperimentSpec
 
 from transformer_document_embedding.scripts.utils import (
     load_yaml,
-    log_results,
-    save_results,
+    save_config,
 )
-from transformer_document_embedding.scripts.pipelines import (
-    InitializeModelAndTask,
-    TrainingPipeline,
-    add_common_args,
-)
+import argparse
 
-import os
-from typing import Any, Iterable
+if TYPE_CHECKING:
+    from typing import Any
 
 
-HS_BASE_PATH = "./hp_searches"
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
 
-training_pipeline = TrainingPipeline(train=True)
-initialization_pipeline = InitializeModelAndTask()
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        help="Path to yaml experiment file.",
+        required=True,
+    )
+    parser.add_argument(
+        "--grid_config",
+        "--gc",
+        type=str,
+        default=None,
+        help="Path to yaml file defining parameters to grid search.",
+    )
+    parser.add_argument(
+        "--one_config",
+        "--oc",
+        type=str,
+        default=None,
+        help="Path to yaml file defining parameters to 'one' search.",
+    )
+
+    parser.add_argument(
+        "--output_base_path",
+        type=str,
+        default="./hp_searches",
+        help="Path to directory containing all experiment results.",
+    )
+
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        default="_".join(coolname.generate(2)),
+        help="Name of the experiment. If no name is given, one is generated.",
+    )
+
+    parser.add_argument(
+        "--save_trained_model",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        # default=self._save_trained,
+        help="Whether to save trained model.",
+    )
+
+    parser.add_argument(
+        "--save_trained_head",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        # default=self._save_trained,
+        help="Whether to save trained head.",
+    )
+
+    parser.add_argument(
+        "--load_model_weights_path",
+        type=str,
+        default=None,
+        help="Path from where to load model's weights.",
+    )
+
+    parser.add_argument(
+        "--load_head_weights_path",
+        type=str,
+        default=None,
+        help="Path from where to load head's weights.",
+    )
+
+    return parser.parse_args()
 
 
-def log_hparams(
-    flattened_hparams: dict[str, Any], trial_id: str, output_path: str
-) -> None:
-    import tensorflow as tf
-    from tensorboard.plugins.hparams import api as hp
+def generate_filename(input: Any) -> str:
+    if isinstance(input, list):
+        return f"[{','.join(map(generate_filename, input))}]"
 
-    with tf.summary.create_file_writer(output_path).as_default():
-        # tf is unable to log NoneTypes
-        for key, value in flattened_hparams.items():
-            if value is None:
-                flattened_hparams[key] = "None"
-            if isinstance(value, list) or isinstance(value, dict):
-                flattened_hparams[key] = str(value)
+    if isinstance(input, dict):
+        name_parts = []
+        for key, value in input.items():
+            short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
+            value_str = generate_filename(value)
+            name_parts.append(f"{short_key}={value_str}")
 
-        hp.hparams(flattened_hparams, trial_id)
+        return "-".join(name_parts)
 
-        tf.summary.flush()
+    return str(input)
+
+
+def search_single(
+    config: ExperimentSpec, flattened_hparams: dict[str, Any], args: argparse.Namespace
+) -> dict[str, float]:
+    exp_name = generate_filename(flattened_hparams)
+    exp_path = os.path.join(args.output_base_path, args.name, exp_name)
+    os.makedirs(exp_path, exist_ok=True)
+
+    logging.info(
+        "Starting experiment '%s' with config:\n%s",
+        args.name,
+        pprint.pformat(config, indent=1),
+    )
+    save_config(config, exp_path)
+
+    model, head, dataset = load_train_save(
+        config,
+        load_model_weights_path=args.load_model_weights_path,
+        load_head_weights_path=args.load_head_weights_path,
+        save_trained_head=args.save_trained_head,
+        save_trained_model=args.save_trained_model,
+        exp_path=exp_path,
+    )
+
+    return evaluate(model, head, dataset, exp_path)
 
 
 def deep_update_with_flatten(
@@ -90,83 +178,6 @@ def one_search(
         yield flattened_hparams, ExperimentSpec.from_dict(new_values)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--grid_config",
-        "--gc",
-        type=str,
-        default=None,
-        help="Path to yaml file defining parameters to grid search.",
-    )
-    parser.add_argument(
-        "--one_config",
-        "--oc",
-        type=str,
-        default=None,
-        help="Path to yaml file defining parameters to 'one' search.",
-    )
-
-    parser.add_argument(
-        "--evaluate",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to evaluate each model on test data after training.",
-    )
-
-    add_common_args(parser, output_base_path=HS_BASE_PATH)
-    training_pipeline.add_args(parser)
-    initialization_pipeline.add_args(parser)
-
-    return parser.parse_args()
-
-
-def generate_filename(input: Any) -> str:
-    if isinstance(input, list):
-        return f"[{','.join(map(generate_filename, input))}]"
-
-    if isinstance(input, dict):
-        name_parts = []
-        for key, value in input.items():
-            short_key = re.sub("([a-zA-Z])[a-zA-Z]+", r"\1", key)
-            value_str = generate_filename(value)
-            name_parts.append(f"{short_key}={value_str}")
-
-        return "-".join(name_parts)
-
-    return str(input)
-
-
-def search_single(
-    config: ExperimentSpec,
-    flattened_hparams: dict[str, Any],
-    args: argparse.Namespace,
-) -> None:
-    exp_name = generate_filename(flattened_hparams)
-    exp_path = os.path.join(args.output_base_path, args.name, exp_name)
-    os.makedirs(exp_path, exist_ok=True)
-
-    model, task = initialization_pipeline.run(exp_name, exp_path, config)
-
-    training_pipeline.run(args, model, task, exp_path, config)
-
-    trial_id = os.path.join(args.name, exp_name.replace("/", "-"))
-    log_hparams(flattened_hparams, trial_id, exp_path)
-
-    if args.evaluate:
-        logging.info("Evaluating on test data...")
-        test_predictions = model.predict(task.splits["test"])
-        results = task.evaluate(task.splits["test"], test_predictions)
-        logging.info("Evaluation done. Results:\n%s", results)
-
-        save_results(results, exp_path)
-
-        test_log_path = os.path.join(exp_path, "test")
-        log_results(test_log_path, results)
-
-
 def main() -> None:
     args = parse_args()
 
@@ -180,14 +191,14 @@ def main() -> None:
     )
 
     reference_config = load_yaml(args.config)
-    for search_fn, config_path in [
+    for search_fn, search_config_path in [
         (grid_search, args.grid_config),
         (one_search, args.one_config),
     ]:
-        if config_path is None:
+        if search_config_path is None:
             continue
 
-        hparams = load_yaml(config_path)
+        hparams = load_yaml(search_config_path)
 
         for hparam_instance, experiment_spec in search_fn(hparams, reference_config):
             search_single(experiment_spec, hparam_instance, args)

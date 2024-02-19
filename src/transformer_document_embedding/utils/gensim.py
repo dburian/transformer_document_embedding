@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import torch
 from typing import TYPE_CHECKING, Iterator, Optional, cast, Any
 from gensim.models import doc2vec
 from nltk.stem import PorterStemmer
-from torch.utils.data import IterableDataset
 from typing import Callable
+
+from transformer_document_embedding.datasets import col
 
 
 if TYPE_CHECKING:
-    from transformer_document_embedding.models.paragraph_vector.paragraph_vector import (  # noqa: E501
-        PV,
-    )
     from datasets.arrow_dataset import Dataset
 
 
@@ -34,47 +31,9 @@ class GensimCorpus:
 
     def doc_to_gensim_doc(self, doc: dict[str, Any]) -> dict[str, Any]:
         return {
-            "words": self._text_preprocessor(doc["text"]),
-            "tag": doc["id"],
+            "words": self._text_preprocessor(doc[col.TEXT]),
+            "tag": doc[col.ID],
         }
-
-
-class IterableFeaturesDataset(IterableDataset):
-    def __init__(
-        self,
-        docs: Dataset,
-        text_pre_processor: TextPreProcessor,
-        pv: PV,
-        lookup_vectors: bool,
-    ) -> None:
-        super().__init__()
-
-        self._docs = docs
-        self._text_preprocessor = text_pre_processor
-        self._pv = pv
-        self._lookup_vectors = lookup_vectors
-
-    def __len__(self) -> int:
-        return len(self._docs)
-
-    def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
-        for doc in self._docs:
-            # To get rid of warnings that doc can also be a list
-            doc = cast(dict[str, Any], doc)
-
-            embedding = (
-                self._pv.get_vector(doc["id"])
-                if self._lookup_vectors
-                else self._pv.infer_vector(self._text_preprocessor(doc["text"]))
-            )
-            input = {
-                "embeddings": torch.tensor(embedding),
-            }
-
-            if "label" in doc:
-                input["labels"] = torch.tensor(doc["label"])
-
-            yield input
 
 
 TextPreProcessor = Callable[[str], list[str]]
