@@ -148,7 +148,7 @@ class TransformerEmbedder(torch.nn.Module, EmbeddingModel):
 
     @torch.inference_mode()
     def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
-        batch_size = 16
+        batch_size = 8
 
         batches = create_tokenized_data_loader(
             dataset,
