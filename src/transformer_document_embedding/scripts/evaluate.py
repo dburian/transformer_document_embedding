@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
 
+logger = logging.getLogger(__name__)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
 
@@ -140,6 +143,7 @@ def evaluate_model(
     model_eval_path = os.path.join(args.output_base_path, args.name, model_name)
 
     model = model_config.initialize()
+    logger.info("Loading weights for '%s' from '%s'.", model_name, model_weights_path)
     model.load_weights(model_weights_path)
 
     results = {}
