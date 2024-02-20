@@ -329,26 +329,28 @@ class StudentTrainPipeline(TorchTrainPipeline):
                     ),
                 )
 
-            corr_window_size = min_dim * 5
+            crosscorr_window = min_dim * 5
+            net1_window = net1_feats[net1_layer_ind] * 5
+            net2_window = net2_feats[net2_layer_ind] * 5
             projection_metrics.extend(
                 [
                     TrainingMetric(
-                        f"crosscorr_projection{layer_specifier}_x{corr_window_size}",
-                        WindowedAbsCrossCorrelationMetric(corr_window_size),
+                        f"crosscorr_projection{layer_specifier}_x{crosscorr_window}",
+                        WindowedAbsCrossCorrelationMetric(crosscorr_window),
                         log_freq,
                         both_views_update_fn,
                         reset_after_log=False,
                     ),
                     TrainingMetric(
-                        f"corr_student_projection{layer_specifier}_x{corr_window_size}",
-                        WindowedAbsCorrelationMetric(corr_window_size),
+                        f"corr_student_projection[{net1_layer_ind}]_x{net1_window}",
+                        WindowedAbsCorrelationMetric(net1_window),
                         log_freq,
                         view1_update_fn,
                         reset_after_log=False,
                     ),
                     TrainingMetric(
-                        f"corr_contextual_projection{layer_specifier}_x{corr_window_size}",
-                        WindowedAbsCorrelationMetric(corr_window_size),
+                        f"corr_contextual_projection[{net2_layer_ind}]_x{net2_window}",
+                        WindowedAbsCorrelationMetric(net2_window),
                         log_freq,
                         view2_update_fn,
                         reset_after_log=False,
