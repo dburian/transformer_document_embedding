@@ -166,6 +166,9 @@ class TransformerEmbedder(torch.nn.Module, EmbeddingModel):
             train_utils.batch_to_device(batch, device)
             yield self(**batch)[col.EMBEDDING]
 
+        # Move the model back to cpu when not in use
+        self.to("cpu")
+
     def save_weights(self, filepath: str) -> None:
         save_model_weights(self, filepath)
 
