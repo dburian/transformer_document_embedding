@@ -112,7 +112,7 @@ def eval_single_dataset(
 
 
 def find_config(path: str) -> Optional[str]:
-    folders = os.path.split(path)
+    folders = path.split(os.path.sep)
     while len(folders) > 0:
         config_path = os.path.join(*folders, "config.yaml")
         if os.path.isfile(config_path):
@@ -125,7 +125,7 @@ def find_config(path: str) -> Optional[str]:
 
 def get_unique_names(paths: list[str]) -> list[str]:
     for num_levels in range(1, max(len(os.path.split(path)) for path in paths)):
-        names = ["-".join(os.path.split(path)[-num_levels:]) for path in paths]
+        names = ["-".join(path.split(os.path.sep)[-num_levels:]) for path in paths]
 
         if len(names) == len(set(names)):
             return names
