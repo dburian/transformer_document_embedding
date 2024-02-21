@@ -122,8 +122,6 @@ class GenericTorchFinetune(TrainPipeline):
             log_dir, self.get_train_metrics(self.log_every_step, head)
         )
 
-        # TODO: Add classification train metrics
-
         trainer = TorchTrainer(
             model=head,
             optimizer=optimizer,
