@@ -54,7 +54,6 @@ def parse_args() -> argparse.Namespace:
         required=True,
     )
     parser.add_argument(
-        "--mn",
         "--model_name",
         type=str,
         help="Format string that for split model's path gives model's name.",
@@ -141,7 +140,7 @@ def evaluate_model(
 
     model = model_config.initialize()
     logger.info("Loading weights for '%s' from '%s'.", model_name, model_weights_path)
-    model.load_weights(model_weights_path)
+    model.load_weights(model_weights_path, strict=False)
 
     results = {}
     for eval_name, eval_spec in eval_config.evaluations.items():
