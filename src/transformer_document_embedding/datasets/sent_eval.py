@@ -12,6 +12,8 @@ import logging
 
 PREDEFINED_PARAMS = {
     "debug": {
+        # Predict all embeddings at once
+        "batch_size": 1000000,
         "usepytorch": True,
         "kfold": 5,
         "classifier": {
@@ -23,6 +25,8 @@ PREDEFINED_PARAMS = {
         },
     },
     "default": {
+        # Predict all embeddings at once
+        "batch_size": 1000000,
         "usepytorch": True,
         "kfold": 10,
         "classifier": {
