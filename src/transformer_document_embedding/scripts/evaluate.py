@@ -54,6 +54,13 @@ def parse_args() -> argparse.Namespace:
         required=True,
     )
     parser.add_argument(
+        "--mn",
+        "--model_name",
+        type=str,
+        help="Format string that for split model's path gives model's name.",
+        default="{whole_path}",
+    )
+    parser.add_argument(
         "--output_base_path",
         type=str,
         default="./evaluations",
@@ -123,16 +130,6 @@ def find_config(path: str) -> Optional[str]:
     return None
 
 
-def get_unique_names(paths: list[str]) -> list[str]:
-    for num_levels in range(1, max(len(os.path.split(path)) for path in paths)):
-        names = ["-".join(path.split(os.path.sep)[-num_levels:]) for path in paths]
-
-        if len(names) == len(set(names)):
-            return names
-
-    return ["-".join(os.path.split(path)) for path in paths]
-
-
 def evaluate_model(
     eval_config: EvaluationsSpec,
     model_config: EmbeddingModelSpec,
@@ -184,9 +181,11 @@ def main() -> None:
 
     eval_config = EvaluationsSpec.from_dict(load_yaml(args.config))
 
-    unique_names = get_unique_names([os.path.dirname(path) for path in args.model_path])
-
-    for model_path, model_name in zip(args.model_path, unique_names, strict=True):
+    for model_path in args.model_path:
+        model_name = args.model_name.format(
+            *model_path.split(os.path.sep),
+            whole_path="-".join(model_path.split(os.path.sep)),
+        )
         config_path = find_config(model_path)
         if config_path is None:
             logger.error(
