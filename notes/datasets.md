@@ -65,6 +65,17 @@ because that's where you can gain the most by having good document embeddings.
 Longer documents because there are models which probably will produce something
 better for shorter ones.
 
+### Mix
+
+- [SciRepEval](https://arxiv.org/abs/2211.13308) -- evaluation of embeddings of
+  scientific papers
+    - includes 24 tasks, 8 with train+dev+test splits, 16 with test split
+    - 4 type of tasks:
+        - proximity -- ranking paper to papers similarity
+        - ad-hoc search -- ranking query to papers similarity
+        - classification -- linear SVM on top of embedding
+        - regression -- prediction of continuous quantity from embedding
+
 ### Similarity
 
 Testing whether the embeddings capture test similarity. Do not think about the

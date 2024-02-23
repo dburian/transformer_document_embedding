@@ -6,7 +6,7 @@
 # BigBird
 
 Model introduced by [Zaheer et al. in 2020][paper]. Code, examples, links to
-pre-trained weights are available on [Github][github]. Has cca 121M parameters.
+pre-trained weights are available on [Github][github]. Has cca 127M parameters.
 
 ## Summary
 

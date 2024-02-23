@@ -29,38 +29,152 @@
 [radev_13]: https://link.springer.com/article/10.1007/s10579-012-9211-2
 [howard_18]: https://arxiv.org/pdf/1801.06146.pdf
 [tay_22]: https://dl.acm.org/doi/full/10.1145/3530811
+[kitaev_20]: https://arxiv.org/abs/2001.04451
 
 # Related work
 
 All the sources in the field to give me some inspiration with my thing.
 
-## Document embeddings wo/ Transformers
+## Efficient transformers
 
-- [Paragraph vector][paragraph_vector]
-- [LASER][laser] -- learning sentence embeddings using parallel texts and
-  forcing the multilingual representations to be close to each other, while also
-  describing the content of the sentence.
+For overall picture see [Efficient transformes: A survey][tay_22] --
+Summarization of efficient transformer models in recent years.
 
-## Document embeddings w/ Transformers
+For comparison see [Long Range Arena][tay_20] -- systematic evaluation of
+transformers for long sequences
+  - there is task to see how well models compress information, testing on [AAN
+    dataset][radev_13].
 
-- [Self-Supervised Document Similarity Ranking][ginzburg_21]
-    - Really helpful related work, talks about all I should talk about as well.
-    - Introduces *SDR* model w/ RoBERTa backbone. Trained in an unsupervised
-      fashion with masked LM and contrastive loss -- from a set of documents
-      positive and negative pairs of sentences are picked (positive are from the
-      same document).
-    - TODO: there are links to other useful papers in here
+### Fixed patterns
+
+- [BigBird 2021][bigbird]
+- [Sparse transformers by OpenAI][child_19] --- focuses only on autoregressive
+  models
+- [Longformer (2020)][longformer]
+
+### Learnable patterns
+
+- [Reformer][kitaev_20]
+
+### Recurrence
+
+- [Transformer XL (2019)][transformer_xl] -- example of left-to-right transformer
+  (rather than with sparse attention)
+
+### Kernel tricks
+
+- Performer
+
+### Low-rank methods
+
+- Linformer
+
+### Sparse
+
+> Updating only some parameters via Mixture of experts-like mechanisms.
+
+- [Adaptively Sparse Transformers](https://arxiv.org/abs/1909.00015) -- maybe a
+  relevant model
+
+### Mics
+
+- Encoder+Decoder [LongT5](https://arxiv.org/pdf/2112.07916.pdf)
+- Distraction issue of long contexts: [Focused
+  Transformer](https://arxiv.org/pdf/2307.03170.pdf)
+- How to finetune attention span: [Adaptive Attention Span in
+  Transformers](https://arxiv.org/abs/1905.07799) -- for sure relevant
+  especially if we choose different attention spans for Longformer
+
+
+## Document Embedding models
+
+### Old-school neural networks
+
+- [Paragraph vector][paragraph_vector] -- see extensions as well
+- [Zamani et al. (2018)](https://dl.acm.org/doi/pdf/10.1145/3269206.3271800)
+    - sparse representations designed solely for IR
+    - word embeddings to sparse n-gram embeddings which are averaged
+    - trained with hinge loss that gets embedding of positive, negative document
+      both first multiplied with query embedding (all are sparse)
+
+### Variation Autoencoders
+
+The models where we obtain $\mu$ and $\sigma$ through FC layers, to create a
+distribution (e.g. $\mathcal{N}(0, 1) \sigma + \mu$) from which we sample.
+
+- [Holmer et al. (2018)](https://arxiv.org/pdf/1806.01620.pdf)
+    - train two sets of word embeddings, one for global context, one for local
+    - the global embeddings are used to create the distribution from which a
+      document embedding is sampled, this is concatenated with local embedding
+      computed from $1:k$ words to predict the $k+1$-th word
+    - experiments were done on classification tasks (20Newsgroups, RCV1-v2,
+      IMDB)
+- [Wang et al.
+  (2019)](https://proceedings.neurips.cc/paper_files/paper/2019/file/3a029f04d76d32e79367c4b3255dda4d-Paper.pdf)
+    - extension of VAE, modelling not one document embedding but pairs of
+      document embeddings
+    - I just skimmed it, read into it if necessary
+
+### Transformer
+
+- [Open AI embedding with contrastive loss](https://arxiv.org/abs/2201.10005) --
+  contrastive learning, training at scale, large batches, 300M-175B models
+  - All related work regarding embedding models done
+- [SPECTER2](https://arxiv.org/pdf/2211.13308.pdf) -- different embeddings for
+  different tasks
+  - All related work regarding embedding models done
 - [SPECTER - scientific article embedding based on SciBert][cohan_20] -- SciBert
   (Bert trained on scientific documents) further trained using triplet loss and
   examples generated using citations (positives are papers sharing a citation).
   The embedding of an abstract is used as the document embedding.
-- [CDLM -- Cross-Document language modeling][cdlm] --- adaptation of Longformer
-  for cross-document tasks. Interesting use of global attention and new masked
-  LM objective forcing the longformer to query information (to predict the
-  masked word) from other "similar" document. Evaluation done on cross-document
-  tasks. Only comparable task is the one introduced by [Multilingual text
-  alignment with Cross Document Attention (CDA)][zhou_20], where CDLM achieves
-  SOTA performance on 3 out of 4 tasks.
+  - evaluated on classification, citation prediction, visualization
+  - All related work regarding embedding models done
+- [Ostendorff et al. (2022)](https://arxiv.org/pdf/2202.06671.pdf)
+    - follows SPECTER in model and methodology -- SciBert initialization, use
+      with triplet loss
+    - the difference is controlled sampling of negatives from citation graph
+    - evaluation on SciDocs (outdated version of SciRepEval)
+- [Izacard et al. (2022)](https://arxiv.org/pdf/2112.09118v4.pdf)
+    - train a transformer using contrastive loss on unlabelled corpora
+    - positive pairs are augmented versions of the same document
+    - studies how term-frequency models (e.g. BM25) surpass dense vector
+      representations on IR tasks, when few data is available
+    - highlight: dense representations are good in multilingual retrieval (where
+      term-frequency models are not transferable) and in scenarios where
+      some training data exist (where term-frequency models cannot adjust their
+      weights, but dense embedders can)
+    - evaluation on
+        - two question-answering datasets, where answers are picked from a
+          collection of documents (e.g. wikipedia dump)
+        - BEIR benchmark
+        - few-shot retrieval scenario where only a few training data is
+          available
+        - multilingual retrieval
+
+### Convolution architectures
+
+- [Liu et al. (2018)](https://arxiv.org/pdf/1711.04168.pdf)
+    - convolution above word embeddings
+    - trained on predicting next words
+    - evaluation on classification tasks
+
+### Recurrent networks
+
+- [van den Oord et al. (2019)](https://arxiv.org/pdf/1807.03748.pdf)
+    - learn representations of multiple modalities using RNNs over embedded
+      tokens of the modality (e.g. words for text)
+    - the loss is a special one (read more)
+    - evaluation on classification tasks
+
+### Graph networks
+
+- [Xu et al. (2021)](https://aclanthology.org/2021.findings-emnlp.327.pdf)
+    - training document embeddings with graphs
+    - I would need to read-up on this to know how graph networks work
+    - evaluation on retrieval and classification tasks
+
+### Mixed architectures
+
 - [Siamese Multi-depth Transformer-based Hierarchical (SMITH) Encoder for
   Long-Form Document Matching][yang_20]
     - another hierarchical approach using Transformers. Sentences are greadily
@@ -71,56 +185,40 @@ All the sources in the field to give me some inspiration with my thing.
       proxies for assuming similarity.
     - There is section on competing models, so look into that for more related
       work.
-- [Semantic Text Matching for Long-Form Documents][jiang_19]
-    - Hierarchical RNN with attention
-    - introduces similarity Wikipedia dataset which uses links as proxi for
-      assuming similarity
-- [Transformer based Multilingual document embedding model][li_20] - transformer
-  version of LASER with a special distant constraint loss
-- [Hierarchical Attention Network (HAN)][yang_16] -- built on the
-  word/sentence/document hierarchy. First each word token is contextualized
-  (using BERT or BiRNN), each sentence is aggregation of its contextualized word
-  vectors and is after contextualized with other sentences (using transformer
-  [Pappagari et al. 2019][pappagari_19] or again BiRNN), each document is an
-  aggregation of its contextualized sentence representations.
-    - Pappagari used 20Newsgroups and some automatically/manually generated
-      conversation transcripts from audio. I cannot tell if the findings were
-      anything to write home about.
-    - HANs were augmented using a cross-document attention in [Multilingual text
-      alignment with cross document attention (CDA)][zhou_20]
 
-
-## Backbones
+## Sentence embedding models
 
 - [SBERT][d/sbert]
-- [BigBird 2021][bigbird]
-- [Sparse transformers by OpenAI][child_19] --- focuses only on autoregressive
-  models
-- [Longformer (2020)][longformer]
-- [Reformer][kitaev_20]
+- [SimCSE](https://arxiv.org/pdf/2104.08821.pdf) -- contrastive learning on
+  sentences
 
-- [Efficient transformes: A survey][tay_22] -- Summarization of efficient
-  transformer models in recent years
+## Similarity models
 
-TODO: Learn about these more - how are global attentions trained, initialized in
-inference, what makes them different
-- [Longformer (2020)][longformer]
-- [BigBird (2021)][bigbird]
-- [Transformer XL (2019)][transformer_xl] -- example of left-to-right transformer
-  (rather than with sparse attention)
-- [LongT5](https://arxiv.org/pdf/2112.07916.pdf)
-- [Memorizing transformer](https://arxiv.org/pdf/2203.08913.pdf)
-- [Focused Transformer](https://arxiv.org/pdf/2307.03170.pdf)
+- [Self-Supervised Document Similarity Ranking][ginzburg_21]
+    - Really helpful related work, talks about all I should talk about as well.
+    - Introduces *SDR* model w/ RoBERTa backbone. Trained in an unsupervised
+      fashion with masked LM and contrastive loss -- from a set of documents
+      positive and negative pairs of sentences are picked (positive are from the
+      same document).
+    - TODO: there are links to other useful papers in here
+- [Semantic Text Matching for Long-Form Documents][jiang_19]
+    - Hierarchical RNN with attention
+    - the model computes representation of documents, but the authors then
+      attach a head that computes their similarity. Moreover the authors
+      highlight that using simple function like cosine to compute similarity
+      from the two embeddings doesn't work. So similarity, not embedding.
+    - introduces similarity Wikipedia dataset which uses links as proxi for
+      assuming similarity
 
+## Training
 
-- [Multi-document tranformer for personality detection][yang_21]
+### Extending context length
 
-- [Comparison of transformer-like models in classification][dai_22]
-- [Pretrained Language Models for Sequential Sentence Classification][cohan_19]
-  - Transformer layers that "directly utilize contextual information from all
-    words in all sentences"
+- [Extending Context Window of Large Language Models via Positional
+  Interpolation](https://arxiv.org/abs/2306.15595) -- finetuning to increase
+  context length $\approx$ a way to train embeddings
 
-## Learning
+### Misc
 
 - [FaceNet][shroff_15] - Talks about creating an embedding of pictures for face
   recognition. It uses learning with triplets: anchor, positive, negative and
@@ -163,15 +261,7 @@ $$,
 - [Universal Language Model fine-tuning][howard_18] - SOTA NLP classification
   finetuning approach
 
-## Evaluation
-
-- [Long Range Arena][tay_20] -- systematic evaluation of transformers for long
-  sequences
-  - hard to say which is better, so here is a benchmark
-  - there is task to see how well models compress information, testing on [AAN
-    dataset][radev_13].
-
-## Practical information
+## Vector databases
 
 At some point I'll need to quickly similar documents according to their
 embeddings..Ran across this list of tools:
@@ -181,12 +271,42 @@ embeddings..Ran across this list of tools:
 - [Weaviate][weaviate] - complete and open source vector oriented search engine.
 - [Milvus][milvus] - vector database built for scalable similarity search.
 
-
-I should dedicate some pages to efficiency. Checkout this [benchmark for efficient
-transformers by Tay, Dehghani et al. in 2020][tay_20]
-
-## TODO
+## Misc & TODO
 
 - Attempts to make with the 512 tokens BERT has to offer, instead of creating a
   model without quadratic complexity in the input length -- could probably be a
   baseline. E.g. SpanBERT, ORQA, REALM, RAG (BigBird's related work).
+- [Multi-document transformer for personality detection][yang_21]
+- [Comparison of transformer-like models in classification][dai_22]
+- [Compressive Transformers for Long-Range Sequence
+  Modelling](https://arxiv.org/abs/1911.05507?ref=pragmatic.ml) -- relevant
+  model as it uses different mechanisms to increase context length that I do not
+  mention yet
+- [Pretrained Language Models for Sequential Sentence Classification][cohan_19]
+  - Transformer layers that "directly utilize contextual information from all
+    words in all sentences"
+- DUNNO? [Memorizing transformer](https://arxiv.org/pdf/2203.08913.pdf)
+- [CDLM -- Cross-Document language modeling][cdlm] --- adaptation of Longformer
+  for cross-document tasks. Interesting use of global attention and new masked
+  LM objective forcing the longformer to query information (to predict the
+  masked word) from other "similar" document. Evaluation done on cross-document
+  tasks. Only comparable task is the one introduced by [Multilingual text
+  alignment with Cross Document Attention (CDA)][zhou_20], where CDLM achieves
+  SOTA performance on 3 out of 4 tasks.
+- [Transformer based Multilingual document embedding model][li_20] - transformer
+  version of LASER with a special distant constraint loss
+- [Hierarchical Attention Network (HAN)][yang_16] -- built on the
+  word/sentence/document hierarchy. First each word token is contextualized
+  (using BERT or BiRNN), each sentence is aggregation of its contextualized word
+  vectors and is after contextualized with other sentences (using transformer
+  [Pappagari et al. 2019][pappagari_19] or again BiRNN), each document is an
+  aggregation of its contextualized sentence representations.
+    - Pappagari is focused on document classification, not embedding
+    - Pappagari used 20Newsgroups and some automatically/manually generated
+      conversation transcripts from audio. I cannot tell if the findings were
+      anything to write home about.
+    - HANs were augmented using a cross-document attention in [Multilingual text
+      alignment with cross document attention (CDA)][zhou_20]
+- [Multilingual text alignment with cross document attention (CDA)][zhou_20] --
+  is HAN focused on downstream tasks (like binary classification) straightly,
+  there isn't much talk about embeddings

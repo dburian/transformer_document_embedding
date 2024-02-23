@@ -1,3 +1,4 @@
+[bigbird]: bigbird.md
 [paper]: https://arxiv.org/abs/2004.05150
 [hf_longformer]: https://huggingface.co/allenai/longformer-base-4096
 [i/longformer_attention]: ./imgs/longformer_attention.png
@@ -12,7 +13,9 @@
 
 # Longformer
 
-Introduced by [Beltagy, Peters, Cohan in 2020][paper]. Has cca 141M parameters.
+Introduced by [Beltagy, Peters, Cohan in 2020][paper]. Has cca 148M parameters.
+Initial experiments show that it is more memory efficient than
+[BigBird][bigbird].
 
 
 Longformer is one of the transformer models, whose aim is to alleviate
@@ -80,7 +83,8 @@ There are three implementations:
 - `loop` -- PyTorch loop; extremely slow, though capable of supporting all three
   types of attention,
 - `chunks` -- CUDA; splits the matrix into overlapping chunks, consumes
-  quadratic amount of memory, does not support dilatation,
+  double the amount of memory of a perfect implementation since it computes some
+  chunks that are later zero-ed out, does not support dilatation,
 - `cuda` -- custom CUDA kernel; supports all types of attention, as fast as full
   attention --- to get any faster, one would need to know the ins and outs of a
   particular GPU/TPU. This implementation was used for autoregressive language
