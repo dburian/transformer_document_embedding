@@ -1,6 +1,6 @@
-# Student depth experiments
+# Student structural experiments
 
-The depth part of [teacher-student training](./teacher_student_training.md).
+The structural part of [teacher-student training](./teacher_student_training.md).
 
 ## Hyperparameter tuning
 
@@ -16,7 +16,7 @@ Goal:
 - Find out if optimizing on longer inputs will be somehow harder.
 - Find out if contrastive losses are more effective than their normal versions.
 
-There were two grid searches one with `max_depth_length` set one without.
+There were two grid searches one with `max_structural_length` set one without.
 Each searched:
 - loss:
     - `mse`
@@ -70,8 +70,8 @@ Goals:
 - Confirm that optimizing on longer inputs is not harder.
 - Find out if contrastive losses are more effective than their normal versions.
 
-Two same grid searches: one with `max_depth_length` set to the maximum context
-length of the teacher (labeled as short), one without `max_depth_length`.
+Two same grid searches: one with `max_structural_length` set to the maximum context
+length of the teacher (labeled as short), one without `max_structural_length`.
 
 Hyperparameters of both searches:
 - `loss_type`:
@@ -110,7 +110,7 @@ search](#231-losses-with-fixed-sbert-cos-and-mse-metrics). Scores are [wikipedia
 similarities results.](./wiki_similarities_results.md#second-evaluation-round).
 
 Variants (combinations of):
-- `max_depth_length`:
+- `max_structural_length`:
     - 384
     - null
 - `loss_type`:

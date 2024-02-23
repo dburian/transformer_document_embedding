@@ -2,7 +2,7 @@
 
 Semi-required interface:
 
-- Should support masking of inputs to use them in `BreadthDepthLoss`.
+- Should support masking of inputs to use them in `StructuralContextualHead`.
 - All return dicts (for consistency)
 """
 

@@ -59,9 +59,9 @@ large window (I typically use 10x the dimension of CCA)
 
 Each aspect of the training has a separate file.
 
-- [Depth experiments](./student_depth_experiments.md)
-- [Breadth experiments](./student_breadth_experiments.md)
-- [Both depth and breadth experiments](./student_depth_breadth_experiments.md)
+- [Structural experiments](./student_structural_experiments.md)
+- [Contextual experiments](./student_contextual_experiments.md)
+- [Both structural and contextual experiments](./student_structural_contextual_experiments.md)
 
 
 ### Batch sizes, grad. acc. steps, lr, lr scheduler
@@ -75,7 +75,7 @@ On Metacentrum I run:
 
 Should probably try smaller datasets for grid searches.
 
-- 6 batch size == 11.6GB VMem for only depth or only breadth
+- 6 batch size == 11.6GB VMem for only structural or only contextual
 
 ## Evaluations
 
@@ -90,7 +90,7 @@ Observations:
 - Optimizing SoftCCA with DBOW worsens the results.
 - As we measured CCA on the projections (which rose for training, a bit lowered
   for validation) we are not sure if CCA on outputs correlates with performance
-  when only breadth model is used.
+  when only contextual model is used.
 - Using both DBOW and SBERT improves the performance of the base model, but not
-  as much as when using just SBERT. The most performing variant was when depth
-  and breadth losses were somehow balanced.
+  as much as when using just SBERT. The most performing variant was when
+  structural and contextual losses were somehow balanced.

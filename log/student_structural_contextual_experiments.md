@@ -1,7 +1,7 @@
-# Student depth and breadth experiments
+# Student structural and contextual experiments
 
-Combining the best of [depth experiments](./student_depth_experiments.md) and
-[breadth experiments](./student_breadth_experiments.md).
+Combining the best of [structural experiments](./student_structural_experiments.md) and
+[contextual experiments](./student_contextual_experiments.md).
 
 ## Old stuff
 

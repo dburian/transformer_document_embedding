@@ -1,6 +1,6 @@
-# Student breadth experiments
+# Student contextual experiments
 
-Experiments focused on breadth part of [teacher-student
+Experiments focused on contextual part of [teacher-student
 training](./teacher_student_training.md).
 
 ## Hyperparameter tuning
@@ -11,7 +11,7 @@ These I unfortunately did not log. But I remember there were a lot of [problems
 with CCA metric](./cca_metric_problems.md). Once I started using CCA-Zoo it was
 somehow better.
 
-### 12.12. Breadth losses
+### 12.12. contextual losses
 
 Relevant files: `hp_searches/transformer_student_only_static`
 
@@ -275,7 +275,7 @@ Hyperparameters (grid search):
 - `transformer_projection`:
     - 256(relu)x768
     - 768(relu)x1024(relu)x768
-- `breadth_projection`:
+- `contextual_projection`:
     - []
     - 128(linear)x768
 
