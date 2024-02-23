@@ -145,6 +145,17 @@ def evaluate_model(
     results = {}
     for eval_name, eval_spec in eval_config.evaluations.items():
         eval_path = os.path.join(model_eval_path, eval_name)
+        if os.path.isdir(eval_path):
+            eval_results_path = os.path.join(eval_path, "results.yaml")
+            if os.path.isfile(eval_results_path):
+                logger.info(
+                    "Evaluation of '%s' already exists. Loading results from '%s'.",
+                    eval_name,
+                    eval_results_path,
+                )
+                results[eval_name] = load_yaml(eval_results_path)
+                continue
+
         os.makedirs(eval_path, exist_ok=True)
 
         config = EvaluationInstanceSpec(
