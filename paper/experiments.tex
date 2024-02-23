@@ -1,4 +1,4 @@
-\chapter{Experiments}
+\chapter{Experiments}\label{chapter:experiments}
 
 \begin{itemize}
     \item what metrics we used to evaluate the model
@@ -86,26 +86,212 @@ pretraining corpus, but is more focused on longer pieces of text. It includes:
 
 \section{Evaluation metrics}
 
-\subsection{Depth evaluation metrics}
+Will I even show them? Isn't it too detailed?
+
+\subsection{Structural evaluation metrics}
 \subsection{Breadth evaluation metrics}
 
-\section{Training with depth teacher only}
-\subsection{Loss selection}
-% mse/cos/contrastive_mse/contrastive_cos
-\subsubsection{Max-marginals losses}
-% finetuning max-marginals losses
+\section{Improving structural quality}
 
-\section{Training with breadth teacher only}
+\subsection{Structural loss}\label{section:structural_loss}
+
+% what it does
+% why is it more important than contextual loss
+% we should 'squeeze' out of it all that it has got -> absolute similarity
+% options -- name each, give results for each
+%   - mse
+%   - cos
+%   - max-marginals versions
+
+The structural loss $\Loss_S$ is one of the two losses we use in our
+teacher-student training. The goal of structural loss is to align the student's
+embedding with the embedding of the structural teacher.
+
+The structural loss $\Loss_S$ is one of the two losses our teacher-student
+training will use. For inputs that fit into the maximum context length of the
+structural teacher, the structural loss should minimize the dissimilarity
+between the structural teacher's and the student's embeddings as much as
+possible. This follows our assumption that for inputs that the structural model
+can process whole, the structural model produces an embedding with the deepest
+understanding of the input that is available to us. It is thus important that
+the similarity $\mathcal{L}_D$ should take into account is the absolute
+similarity rather than some approximate measure of it.
+
+(TODO: What else to say about this? What dissimilarity we use will be in
+Experiments chapter as well as deciding "when an input is applicable".)
+
+
+\section{Improving contextual quality}
+
 \subsection{Obtaining Paragraph Vector embeddings}
+
 \subsection{Loss selection}
+
+The contextual loss $\mathcal{L}_B$ minimizes the disagreements between the
+embeddings of the contextual teacher model  and that of the student model.
+There are two major differences between the contextual loss and the structural
+loss. First the contextual loss is always applicable. It might not be the loss
+that reflects our ultimate goal the most for the given input. Nevertheless we
+still assume that for \emph{every} input the contextual teacher model offers
+some information which the structural teacher model does not have. Second the
+contextual loss is not as exact as the structural loss. Instead of forcing the
+teacher model to adhere to two possibly very distinct ways how to encode
+information into a dense vector representation, we give the model a little bit
+of freedom. We do so by letting the model decide how exactly it should encode
+the information contained in the contextual teacher's embedding. We give the
+model more leeway on the breadth side rather than the structural side, because
+we expect that the precision of the embedding is more important than capturing
+every piece of the input.
+
+With the above taken into an account we chose to use a variant of
+\emph{Canonical Correlation Analysis}~\cite{hotelling1992relations} (or
+\emph{CCA}) as a base for our breath loss $\mathcal{L}_B$. A variant of CCA fits
+our needs very nicely as it computes a correlation of outputs after some
+projection. While the projection gives the model the freedom to restructure its
+embeddings, the correlation ensures that the two embeddings agree with each
+other. Before going further let us briefly describe CCA and its variants we
+considered.
+
+\subsubsection{Canonical Correlation Analysis}
+
+Canonical Correlation Analysis (CCA) computes linear projections of two vectors
+such that their projections are maximally correlated. For formal definition
+reference Definition~\ref{def:cca}.
+
+\begin{defn}[Canonical Correlation Analysis]\label{def:cca}
+
+  For two matrices $X_1 \in \mathbb{R}^{n_1 \times m_1}$ and $X_2 \in
+  \mathbb{R}^{n_2 \times m_1}$, Canonical Correlation Analysis finds $p \in
+  \mathbb{R}^m_1$ and $q \in \mathbb{R}^m_2$ that maximize
+
+  \begin{equation}
+    \begin{split}
+      & corr(X_1p, X_2q) = \frac{p^TX_1^TX_2q}{||Xp|| ||Yq||} \\
+      \text{s.t.}\quad &||X_1p|| = ||X_2q|| = 1 \\
+    \end{split}
+  \end{equation}
+
+
+\end{defn}
+
+Definition~\ref{def:cca} suggests that CCA gives only a single number as the
+measure of correlation of two matrices. When the dimensions of the input vectors
+are large enough, however, often there exists at least one combination of
+features that results in correlation of 1. As this would make CCA relatively
+useless in the context of high-dimensional spaces we assume multiple
+correlations for several mutually orthogonal projections. We name such Canonical
+Correlation analysis as CCA for more dimensions and define it formally in
+Definition~\ref{def:cca_more_dim}
+
+\begin{defn}[Canonical Correlation Analysis for more dimensions]\label{def:cca_more_dim}
+
+  For two matrices $X_1 \in \mathbb{R}^{n_1 \times m_1}$ and $X_2 \in
+  \mathbb{R}^{n_2 \times m_1}$, Canonical Correlation Analysis for $k$
+  dimensions finds $P \in \mathbb{R}^{m_1 \times k}$ and $Q \in \mathbb{R}^{m_2
+  \times k}$ that maximize
+
+  \begin{equation}
+    \begin{split}
+      &\sum_{i = 1}^k corr(X_1P_{*i}, X_2Q_{*i}) \\
+      \text{s.t.}\quad &P^TX_1^TX_1P = I_k = Q^TX_2^TX_2Q \\
+    \end{split}
+  \end{equation}
+
+
+\end{defn}
+
+If we consider the conditions in Definition~\ref{def:cca_more_dim}, the
+resulting value can be easily reformulated:
+
+\begin{equation}
+    \sum_{i = 1}^k corr(X_1P_{*i}, X_2Q_{*i}) =
+    trace(P^TX_1^TX_2Q) =
+    trace(P^T\Sigma_{X_1X_2}Q)
+\end{equation}
+
+Where $\Sigma_{X_1X_2}$ is the covariance matrix of $X_1$ and $X_2$.
+
+TODO: analytical solution to pure CCA
+
+As we noted above we would like to use CCA as a base for our contextual loss
+$\mathcal{L}_B$ in order to establish correspondence between the contextual
+teacher's embedding and the student's. The problem using CCA as it was defined
+in Definition~\ref{def:cca_more_dim} as a loss is that it is defined in the
+context of the whole dataset rather than just a minibatch. It is therefore
+unclear how should be CCA computed using just a pair of minibatches.
+
+Someone (TODO: citation) found that using large enough batch size is sufficient
+for the training to converge.
+
+\subsubsection{Deep CCA}
+
+Deep CCA (or DCCA) is an extension of CCA that computes projections using
+neural networks. As such it is more powerful than plain CCA as it allows for
+non-linear projections. To compute DCCA the network has to be trained on the
+pairs of vectors with CCA as its loss.
+
+TODO: graphic of architecture
+
+If CCA is weaker condition than just correlation, DCCA is even weaker since
+there is no limit to how the projections should look like.
+
+\subsubsection{Soft CCA}
+
+Soft CCA reformulates CCA and thus allows its straightforward use in the
+context of minibatches. With constraints from Definition~\ref{def:cca_more_dim}
+taken into account, CCA can be formulated using Forbenious matrix norm:
+
+\begin{align}
+  P^\ast, Q^\ast &= \underset{P, Q}{\argmin} ||X_1P - X_2Q||^2_F \\
+  &= \underset{P, Q}{\argmin} trace\Big((X_1P - X_2Q)^T(X_1P - X_2Q)\Big) \\
+  &= \underset{P, Q}{\argmin} {-2} trace(P^TX_1^TX_2Q) \\
+  &= \underset{P, Q}{\argmax} trace(P^TX_1^TX_2Q) \\
+  &= \underset{P, Q}{\argmax} \sum_{i = 1}^k corr(X_1P_{*i}, X_2Q_{*i})
+\end{align}
+
+So, in essence minimizing CCA is the same as minimizing the difference between
+projections, whose features are decorrelated. This is the formulation Soft CCA
+builds on. Soft CCA decomposes CCA into to parts:
+
+\begin{itemize}
+  \item minimization of the difference between projections
+
+    \begin{equation}
+      ||X_1P - X_2Q||^2_F
+    \end{equation}
+
+  \item decorrelation of each projection $P$
+
+    \begin{equation}
+      \sum_{i \ne j} (P^TX^T_{mini}X_{mini}P)_{ij} = \sum_{i \ne j} \Sigma_{X_{mini}P},
+    \end{equation}
+
+    where $X_{mini}$ is batch-normalized minibatch.
+
+\end{itemize}
+
+To bring correlation matrix of the current minibatch $\Sigma_{X_{mini}P}$
+closer to the true covariance, the decorrelation part is in fact computed from
+a covariance matrix that is incrementally learned.
+
+In this way Soft CCA incrementally decreases CCA through incrementally learned
+approximation of the projections' covariances.
+
+\subsubsection{Loss selection}
+
+\begin{itemize}
+    \item mention which of the CCA variants we chose
+    \item reiterate the formulation in the context of teacher-student training
+\end{itemize}
 % finetune loss + projection together but separately
 % for each loss
+
 \subsubsection{Mean Squared Error}
 \subsubsection{Vanilla CCA}
 \subsubsection{SoftCCA}
 
-\section{Training with both depth and breadth teachers}
-\subsection{Balancing depth and breadth}
+\section{Training with both structural and contextual teachers}
+\subsection{Balancing structural and contextual}
 % Length balancing goes here
 
 
