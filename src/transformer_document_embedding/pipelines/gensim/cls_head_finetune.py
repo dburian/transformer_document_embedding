@@ -19,7 +19,13 @@ if TYPE_CHECKING:
 
 
 class PVClassificationHeadTrain(BinaryClassificationFinetune):
-    """Finetuning pipeline adjusted for PV"""
+    """Finetuning pipeline adjusted for PV.
+
+    The major difference is when training PV's head on the same dataset as we
+    train PV, we can afford to 'predict' embeddings just by indexing into the
+    document embedding matrix. This is not possible during finetuning as we are
+    not sure PV was trained on the same corpus.
+    """
 
     def to_dataloader(
         self,
