@@ -23,7 +23,7 @@ default_cls_head_kwargs: &default_cls_head_kwargs
   hidden_activation: relu
 
 pair_cls_head_kwargs: &pair_cls_head_kwargs
-  in_features: 200
+  in_features: 1536
   out_features: 2
   hidden_features: 50
   hidden_dropout: 0.5
@@ -31,8 +31,8 @@ pair_cls_head_kwargs: &pair_cls_head_kwargs
   hidden_activation: relu
 
 data_limits: &data_limits
-  train: 100
-  validation: 100
+  train: 10000
+  validation: 100000
   test: 300
 
 evaluations:
@@ -90,7 +90,7 @@ evaluations:
         path: ../data/MDA/PAN
         data_size_limit: *data_limits
     head:
-      module: ClassificationHead
+      module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
   oc:
@@ -100,7 +100,7 @@ evaluations:
         path: ../data/MDA/OC
         data_size_limit: *data_limits
     head:
-      module: ClassificationHead
+      module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
   s2orc:
@@ -110,7 +110,7 @@ evaluations:
         path: ../data/MDA/S2ORC
         data_size_limit: *data_limits
     head:
-      module: ClassificationHead
+      module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
   aan:
@@ -120,6 +120,6 @@ evaluations:
         path: ../data/MDA/AAN
         data_size_limit: *data_limits
     head:
-      module: ClassificationHead
+      module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs

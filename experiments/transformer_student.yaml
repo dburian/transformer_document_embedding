@@ -6,7 +6,7 @@ model:
     pooler_type: mean
 
 head:
-  module: StructuralContextualHead
+  module: structural_contextual_head:StructuralContextualHead
   kwargs:
     max_structural_length: null
     lam: 1
