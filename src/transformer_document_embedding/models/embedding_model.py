@@ -11,6 +11,10 @@ if TYPE_CHECKING:
 class EmbeddingModel:
     """Defines the minimal interface for embedding models."""
 
+    @property
+    def embedding_dim(self) -> int:
+        raise NotImplementedError()
+
     @abstractmethod
     def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
         """Returns batched embeddings of a dataset.

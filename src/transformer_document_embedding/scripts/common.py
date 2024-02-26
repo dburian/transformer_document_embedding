@@ -36,7 +36,7 @@ def load_train_save(
     if load_model_weights_path is not None:
         model.load_weights(load_model_weights_path)
 
-    head = None if config.head is None else config.head.initialize()
+    head = None if config.head is None else config.head.initialize(model)
 
     if head is not None and load_head_weights_path is not None:
         load_model_weights(head, load_head_weights_path, strict=True)

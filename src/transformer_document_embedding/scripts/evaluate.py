@@ -147,7 +147,7 @@ def cross_validate_single_dataset(
     for fold in iterate_cross_validation_splits(
         base_dataset, config.cross_validate.split, config.cross_validate.num_folds
     ):
-        head = None if config.head is None else config.head.initialize()
+        head = None if config.head is None else config.head.initialize(model)
 
         training_pipeline = finetune_factory(
             fold.evaluation_kind, config.finetune_pipeline_kwargs
@@ -179,7 +179,7 @@ def evaluate_single_dataset(
         return cross_validate_single_dataset(config, model, exp_path)
 
     dataset = config.dataset.initialize()
-    head = None if config.head is None else config.head.initialize()
+    head = None if config.head is None else config.head.initialize(model)
 
     training_pipeline = finetune_factory(
         dataset.evaluation_kind, config.finetune_pipeline_kwargs

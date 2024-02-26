@@ -60,6 +60,10 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
         # have the need to apply it
         self.text_pre_process = text_pre_process
 
+    @property
+    def embedding_dim(self) -> int:
+        return self.vector_size
+
     @torch.inference_mode()
     def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
         pre_processor = create_text_pre_processor(self.text_pre_process)

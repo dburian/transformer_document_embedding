@@ -45,9 +45,9 @@ def import_type(type_spec: str, *, module_prefix: Optional[str] = None) -> type:
         raise ValueError(f"invalid type path '{module_path}:{type_name}'.") from exc
 
 
-def init_type(spec: ModuleSpec) -> Any:
+def init_type(spec: ModuleSpec, **additional_kwargs) -> Any:
     cls = import_type(spec.module, module_prefix=spec.module_prefix)
-    return cls(**spec.kwargs)
+    return cls(**spec.kwargs, **additional_kwargs)
 
 
 def log_results(log_path: str, results: dict[str, float]) -> None:

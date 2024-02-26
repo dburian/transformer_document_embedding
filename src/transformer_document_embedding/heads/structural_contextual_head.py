@@ -8,6 +8,7 @@ from transformer_document_embedding.utils import cca_losses
 from transformer_document_embedding.utils.similarity_losses import create_sim_based_loss
 
 if TYPE_CHECKING:
+    from transformer_document_embedding.models.embedding_model import EmbeddingModel
     from typing import Optional
 
 
@@ -18,6 +19,7 @@ class StructuralContextualHead(torch.nn.Module):
         max_structural_length: Optional[int],
         contextual_head_kwargs: Optional[dict[str, Any]],
         structural_head_kwargs: Optional[dict[str, Any]],
+        embedding_model: EmbeddingModel,
     ) -> None:
         super().__init__()
 
@@ -29,7 +31,9 @@ class StructuralContextualHead(torch.nn.Module):
         self.contextual_head = (
             None
             if contextual_head_kwargs is None
-            else self.create_contextual_head(**contextual_head_kwargs)
+            else self.create_contextual_head(
+                student_dim=embedding_model.embedding_dim, **contextual_head_kwargs
+            )
         )
 
         self.max_structural_length = max_structural_length

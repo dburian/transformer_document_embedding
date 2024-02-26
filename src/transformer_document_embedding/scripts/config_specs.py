@@ -58,8 +58,8 @@ class DatasetSpec(ModuleSpec):
 class HeadSpec(ModuleSpec):
     module_prefix: str = "transformer_document_embedding.heads"
 
-    def initialize(self) -> Module:
-        return init_type(self)
+    def initialize(self, embedding_model: EmbeddingModel) -> Module:
+        return init_type(self, embedding_model=embedding_model)
 
 
 @dataclass(kw_only=True)
