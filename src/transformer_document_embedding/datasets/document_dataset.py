@@ -1,13 +1,16 @@
 from __future__ import annotations
 from abc import abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Optional, Union
+import pprint
+from typing import TYPE_CHECKING, Optional, Union
 import numpy as np
 import math
+from datasets import DatasetDict
+import logging
 
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from datasets import DatasetDict
     from typing import Any
 
 
@@ -33,12 +36,14 @@ class DocumentDataset:
         add_ids: bool = False,
         validation_source_fraction: Optional[float] = None,
         validation_source: Optional[str] = None,
+        splits: Optional[dict[str, str]] = None,
     ) -> None:
         self._data_size_limit = data_size_limit
 
         self._add_ids = add_ids
         self._validation_fraction = validation_source_fraction
         self._validation_source = validation_source
+        self._splits_transform = splits
         self._splits = None
 
     @property
@@ -69,12 +74,36 @@ class DocumentDataset:
                 split_name: self._data_size_limit for split_name in dataset.keys()
             }
 
+        logger.info(
+            "Shortening splits of %s to:\n%s",
+            self.__class__.__name__,
+            pprint.pformat(self._data_size_limit, indent=1),
+        )
         for name, split in dataset.items():
             limit = self._data_size_limit.get(name, None)
             if limit is not None and len(split) > limit:
                 dataset[name] = split.shuffle().select(range(limit))
 
         return dataset
+
+    def _transform_splits(self, dataset: DatasetDict) -> DatasetDict:
+        if self._splits_transform is None:
+            return dataset
+
+        split_config_str = ""
+        new_splits = {}
+        for new_name, old_name in self._splits_transform.items():
+            new_splits[new_name] = dataset[old_name]
+            split_config_str += f"{new_name}: (previously '{old_name}')\n"
+            split_config_str += pprint.pformat(new_splits[new_name])
+            split_config_str += "\n"
+
+        logger.info(
+            "Transforming splits of %s:\n%s",
+            self.__class__.__name__,
+            split_config_str,
+        )
+        return DatasetDict(new_splits)
 
     def _create_splits(self, dataset: DatasetDict) -> DatasetDict:
         """Creates splits."""
@@ -110,5 +139,6 @@ class DocumentDataset:
             )
 
         dataset = self._shorten_splits(dataset)
+        dataset = self._transform_splits(dataset)
 
         return dataset
