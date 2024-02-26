@@ -14,7 +14,6 @@ head:
       loss_type: contrastive_mse
       contrastive_lam: 1
     contextual_head_kwargs:
-      student_dim: 768
       contextual_dim: 100
       student_projection:
         - features: 256
@@ -31,7 +30,7 @@ train_pipeline:
   kind: student
   kwargs:
     batch_size: 4
-    epochs: 0
+    epochs: 1
     warmup_steps: 100
     grad_accumulation_steps: 2
     weight_decay: 0.01
@@ -51,10 +50,10 @@ train_pipeline:
 dataset:
   module: teacher_embedding:TeacherEmbedding
   kwargs:
-    path: /mnt/data/datasets/wikipedia_sample_with_eval
+    path: /mnt/data/datasets/wikipedia_resampled_eval
     contextual_embedding_col: dbow
-    structural_embedding_col: sbert
+    structural_embedding_col: hf_sbert
     data_size_limit:
-      train: 100
-      validation: 50
+      train: 1000
+      validation: 500
       test: 50
