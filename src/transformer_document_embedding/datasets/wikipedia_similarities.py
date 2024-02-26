@@ -1,7 +1,7 @@
 import copy
 import math
 import random
-from typing import Any, Optional, Union
+from typing import Any
 
 from datasets.dataset_dict import DatasetDict
 from datasets.load import load_dataset
@@ -19,26 +19,23 @@ class WikipediaSimilarities(DocumentDataset):
         self,
         dataset: str,
         path: str,
-        data_size_limit: Optional[Union[int, dict]] = None,
-        validation_source_fraction: Optional[float] = None,
-        validation_source: Optional[str] = None,
+        **kwargs,
     ) -> None:
         assert (
             dataset in self.AVAILABLE_DATASETS
         ), f"`dataset` must be one of: {', '.join(self.AVAILABLE_DATASETS)}"
 
-        super().__init__(
-            data_size_limit=data_size_limit,
-            add_ids=False,
-            validation_source_fraction=validation_source_fraction,
-            validation_source=validation_source,
-        )
+        super().__init__(add_ids=False, **kwargs)
 
         self._path = path
 
         assert self._validation_source is None or self._validation_source == "test", (
             "Constructing validation set from training data does not make sense for"
             " this dataset."
+        )
+        assert self._data_size_limit is None, (
+            "Truncating retrieval datasets is not allowed as it dramatically changes"
+            "the meaning of final scores."
         )
 
         self._dataset = dataset
