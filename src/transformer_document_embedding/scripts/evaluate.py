@@ -161,8 +161,10 @@ def cross_validate_single_dataset(
     results = {}
     for metric_name in set(key for res in fold_results for key in res.keys()):
         metric_scores = [res[metric_name] for res in fold_results if metric_name in res]
-        results[f"{metric_name}_mean"] = np.mean(metric_scores)
-        results[f"{metric_name}_std"] = np.std(metric_scores)
+        results[f"{metric_name}_mean"] = np.mean(metric_scores).item()
+        results[f"{metric_name}_std"] = np.std(metric_scores).item()
+
+    save_results(results, exp_path)
 
     return results
 
