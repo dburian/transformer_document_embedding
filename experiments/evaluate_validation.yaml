@@ -1,4 +1,4 @@
-default_cls_finetune_kwargs: &default_cls_finetune_kwargs
+head_finetune_kwargs: &head_finetune_kwargs
   epochs: 10
   batch_size: 32
   weight_decay: 0.1
@@ -14,7 +14,7 @@ default_cls_finetune_kwargs: &default_cls_finetune_kwargs
   save_best: False
 
 
-cls_head_kwargs: &cls_head_kwargs
+bin_cls_head_kwargs: &bin_cls_head_kwargs
   out_features: 2
   hidden_features: 50
   hidden_dropout: 0.5
@@ -29,6 +29,7 @@ data_limits: &data_limits
 splits: &splits
   train: train
   test: validation
+  validation: validation
 
 evaluations:
   sims_wines:
@@ -52,8 +53,8 @@ evaluations:
         data_size_limit: *data_limits
     head:
       module: classification:ClassificationHead
-      kwargs: *cls_head_kwargs
-    finetune_pipeline_kwargs: *default_cls_finetune_kwargs
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *head_finetune_kwargs
     cross_validate:
       split: train
       num_folds: 5
@@ -66,8 +67,8 @@ evaluations:
         splits: *splits
     head:
       module: classification:PairClassificationHead
-      kwargs: *cls_head_kwargs
-    finetune_pipeline_kwargs: *default_cls_finetune_kwargs
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *head_finetune_kwargs
   oc:
     dataset:
       module: document_pair_classification:DocumentPairClassification
@@ -77,8 +78,8 @@ evaluations:
         splits: *splits
     head:
       module: classification:PairClassificationHead
-      kwargs: *cls_head_kwargs
-    finetune_pipeline_kwargs: *default_cls_finetune_kwargs
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *head_finetune_kwargs
   s2orc:
     dataset:
       module: document_pair_classification:DocumentPairClassification
@@ -88,8 +89,8 @@ evaluations:
         splits: *splits
     head:
       module: classification:PairClassificationHead
-      kwargs: *cls_head_kwargs
-    finetune_pipeline_kwargs: *default_cls_finetune_kwargs
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *head_finetune_kwargs
   aan:
     dataset:
       module: document_pair_classification:DocumentPairClassification
@@ -99,5 +100,5 @@ evaluations:
         splits: *splits
     head:
       module: classification:PairClassificationHead
-      kwargs: *cls_head_kwargs
-    finetune_pipeline_kwargs: *default_cls_finetune_kwargs
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *head_finetune_kwargs
