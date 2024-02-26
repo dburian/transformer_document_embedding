@@ -69,7 +69,7 @@ class DocumentDataset:
         for name, split in dataset.items():
             limit = self._data_size_limit.get(name, None)
             if limit is not None and len(split) > limit:
-                dataset[name] = split.select(range(limit))
+                dataset[name] = split.shuffle().select(range(limit))
 
         return dataset
 
