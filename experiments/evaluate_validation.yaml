@@ -14,16 +14,7 @@ default_cls_finetune_kwargs: &default_cls_finetune_kwargs
   save_best: False
 
 
-default_cls_head_kwargs: &default_cls_head_kwargs
-  in_features: 768
-  out_features: 2
-  hidden_features: 50
-  hidden_dropout: 0.5
-  label_smoothing: 0.1
-  hidden_activation: relu
-
-pair_cls_head_kwargs: &pair_cls_head_kwargs
-  in_features: 1536
+cls_head_kwargs: &cls_head_kwargs
   out_features: 2
   hidden_features: 50
   hidden_dropout: 0.5
@@ -44,7 +35,7 @@ evaluations:
     dataset:
       module: sent_eval:SentEval
       kwargs:
-        path: ../data/SentEval/data/
+        path: ./data/SentEval/data/
         params: debug
         tasks:
           - STS12
@@ -66,17 +57,15 @@ evaluations:
     dataset:
       module: wikipedia_similarities:WikipediaSimilarities
       kwargs:
-        path: ../data/wikipedia_similarities.py
-        dataset: game
-        data_size_limit: *data_limits
+        path: ./data/wikipedia_similarities.py
+        dataset: wine
     head: null
   sims_games:
     dataset:
       module: wikipedia_similarities:WikipediaSimilarities
       kwargs:
-        path: ../data/wikipedia_similarities.py
+        path: ./data/wikipedia_similarities.py
         dataset: game
-        data_size_limit: *data_limits
     head: null
   imdb:
     dataset:
@@ -85,7 +74,7 @@ evaluations:
         data_size_limit: *data_limits
     head:
       module: classification:ClassificationHead
-      kwargs: *default_cls_head_kwargs
+      kwargs: *cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
     cross_validate:
       split: train
@@ -98,39 +87,39 @@ evaluations:
         data_size_limit: *data_limits
         splits: *splits
     head:
-      module: classification:ClassificationHead
-      kwargs: *pair_cls_head_kwargs
+      module: classification:PairClassificationHead
+      kwargs: *cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
   oc:
     dataset:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
-        path: ../data/MDA/OC
+        path: ./data/MDA/OC
         data_size_limit: *data_limits
         splits: *splits
     head:
-      module: classification:ClassificationHead
-      kwargs: *pair_cls_head_kwargs
+      module: classification:PairClassificationHead
+      kwargs: *cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
   s2orc:
     dataset:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
-        path: ../data/MDA/S2ORC
+        path: ./data/MDA/S2ORC
         data_size_limit: *data_limits
         splits: *splits
     head:
-      module: classification:ClassificationHead
-      kwargs: *pair_cls_head_kwargs
+      module: classification:PairClassificationHead
+      kwargs: *cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
   aan:
     dataset:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
-        path: ../data/MDA/AAN
+        path: ./data/MDA/AAN
         data_size_limit: *data_limits
         splits: *splits
     head:
-      module: classification:ClassificationHead
-      kwargs: *pair_cls_head_kwargs
+      module: classification:PairClassificationHead
+      kwargs: *cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
