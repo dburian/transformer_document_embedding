@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from datasets import Dataset, DatasetDict, load_from_disk
+from datasets import DatasetDict, load_from_disk
 from transformer_document_embedding.datasets import col
 from transformer_document_embedding.datasets.document_dataset import (
     DocumentDataset,
@@ -18,8 +18,6 @@ class TeacherEmbedding(DocumentDataset):
 
     See `scripts/generate_embeddings.py` to create such dataset.
     """
-
-    EVALUATION_KIND = EvaluationKind.NONE
 
     def __init__(
         self,
@@ -42,8 +40,8 @@ class TeacherEmbedding(DocumentDataset):
         self.structural_embedding_col = structural_embedding_col
 
     @property
-    def test(self) -> Dataset:
-        return Dataset.from_dict({})
+    def evaluation_kind(self) -> EvaluationKind:
+        return EvaluationKind.NONE
 
     def _retrieve_dataset(self) -> DatasetDict:
         dataset = load_from_disk(self._path_to_dataset)

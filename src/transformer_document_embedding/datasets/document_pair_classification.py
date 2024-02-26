@@ -14,7 +14,7 @@ from datasets import DatasetDict, Dataset
 
 
 if TYPE_CHECKING:
-    from typing import Optional, Union, Any, Iterable
+    from typing import Optional, Any, Iterable
 
 KINDS_TO_FILES = {
     "pan": {
@@ -41,14 +41,11 @@ KINDS_TO_FILES = {
 
 
 class DocumentPairClassification(DocumentDataset):
-    EVALUATION_KIND = EvaluationKind.PAIR_BIN_CLAS
-
     def __init__(
         self,
         path: str,
         kind: Optional[str] = None,
-        add_ids: bool = False,
-        data_size_limit: Optional[Union[int, dict]] = None,
+        **kwargs,
     ) -> None:
         """Initializes document-pair classification tasks.
 
@@ -64,8 +61,7 @@ class DocumentPairClassification(DocumentDataset):
         )
 
         super().__init__(
-            data_size_limit=data_size_limit,
-            add_ids=add_ids,
+            **kwargs,
             validation_source_fraction=None,
             validation_source=None,
         )
@@ -75,6 +71,10 @@ class DocumentPairClassification(DocumentDataset):
             split: os.path.join(path, filenames[split])
             for split in ["train", "validation", "test"]
         }
+
+    @property
+    def evaluation_kind(self) -> EvaluationKind:
+        return EvaluationKind.PAIR_BIN_CLAS
 
     def _retrieve_dataset(self) -> DatasetDict:
         # Record ids of documents across splits

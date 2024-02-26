@@ -74,8 +74,6 @@ logger = logging.getLogger(__name__)
 
 
 class SentEval(DocumentDataset):
-    EVALUATION_KIND = EvaluationKind.SENT_EVAL
-
     def __init__(
         self,
         path: str,
@@ -105,6 +103,10 @@ class SentEval(DocumentDataset):
 
         self.params = PREDEFINED_PARAMS[params] if isinstance(params, str) else params
         self.params["task_path"] = path
+
+    @property
+    def evaluation_kind(self) -> EvaluationKind:
+        return EvaluationKind.SENT_EVAL
 
     def _retrieve_dataset(self) -> DatasetDict:
         # Empty dataset in case somebody would like to train on this

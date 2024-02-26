@@ -66,10 +66,10 @@ def evaluate(
     dataset: DocumentDataset,
     exp_path: str,
 ) -> dict[str, Any]:
-    if dataset.EVALUATION_KIND == EvaluationKind.NONE:
+    if dataset.evaluation_kind == EvaluationKind.NONE:
         return {}
 
-    eval_pipeline = eval_factory(dataset.EVALUATION_KIND)
+    eval_pipeline = eval_factory(dataset.evaluation_kind)
     results = eval_pipeline(model, head, dataset)
     save_results(results, exp_path)
     return results

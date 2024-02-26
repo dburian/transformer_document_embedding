@@ -103,7 +103,7 @@ def eval_single_dataset(
     head = None if config.head is None else config.head.initialize()
 
     training_pipeline = finetune_factory(
-        dataset.EVALUATION_KIND, config.finetune_pipeline_kwargs
+        dataset.evaluation_kind, config.finetune_pipeline_kwargs
     )
     training_pipeline(model, head, dataset, exp_path)
 

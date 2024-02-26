@@ -26,8 +26,6 @@ class DocumentDataset:
     features. Mainly adding ids to documents, and outsourcing validation split
     from other splits."""
 
-    EVALUATION_KIND: ClassVar[EvaluationKind]
-
     def __init__(
         self,
         *,
@@ -51,6 +49,11 @@ class DocumentDataset:
             self._splits = self._create_splits(dataset)
 
         return self._splits
+
+    @property
+    def evaluation_kind(self) -> EvaluationKind:
+        """Returns identifier of the evaluation method of this dataset."""
+        raise NotImplementedError()
 
     @abstractmethod
     def _retrieve_dataset(self) -> DatasetDict:

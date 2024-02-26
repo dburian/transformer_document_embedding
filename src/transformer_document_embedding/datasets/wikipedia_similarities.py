@@ -14,7 +14,6 @@ from transformer_document_embedding.datasets.document_dataset import (
 
 class WikipediaSimilarities(DocumentDataset):
     AVAILABLE_DATASETS = ["wine", "game"]
-    EVALUATION_KIND = EvaluationKind.RETRIEVAL
 
     def __init__(
         self,
@@ -43,6 +42,10 @@ class WikipediaSimilarities(DocumentDataset):
         )
 
         self._dataset = dataset
+
+    @property
+    def evaluation_kind(self) -> EvaluationKind:
+        return EvaluationKind.RETRIEVAL
 
     def _retrieve_dataset(self) -> DatasetDict:
         articles = load_dataset(self._path, f"{self._dataset}_articles", split="train")
