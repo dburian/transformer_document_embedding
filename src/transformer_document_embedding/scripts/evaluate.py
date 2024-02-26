@@ -4,12 +4,22 @@ For each dataset a correct head is selected and fine-tuned. The whole model is
 evaluated and the results are aggregated into single file.
 """
 from __future__ import annotations
+from dataclasses import fields
 import os
 import logging
 import pprint
-from typing import Optional, TYPE_CHECKING
+from typing import Iterator, Optional, TYPE_CHECKING
 
 import coolname
+from datasets import DatasetDict
+from sklearn.model_selection import StratifiedKFold
+from transformer_document_embedding.datasets import col
+from transformer_document_embedding.datasets.explicit_document_dataset import (
+    ExplicitDocumentDataset,
+)
+from transformer_document_embedding.pipelines.classification_finetune import (
+    get_head_features,
+)
 from transformer_document_embedding.scripts.common import evaluate
 from transformer_document_embedding.scripts.config_specs import (
     EmbeddingModelSpec,
@@ -26,7 +36,10 @@ import argparse
 from transformer_document_embedding.pipelines.finetune_factory import finetune_factory
 from transformer_document_embedding.utils.net_helpers import save_model_weights
 
+import numpy as np
+
 if TYPE_CHECKING:
+    from transformer_document_embedding.datasets.document_dataset import DocumentDataset
     from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
 
@@ -91,13 +104,79 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def eval_single_dataset(
+def iterate_cross_validation_splits(
+    base_document_dataset: DocumentDataset, split_name: str, num_folds: int
+) -> Iterator[DocumentDataset]:
+    cv_dataset = base_document_dataset.splits[split_name]
+    labels = cv_dataset.with_format("np")[col.LABEL]
+    feats_placeholder = np.zeros(len(labels))
+
+    fold_gen = StratifiedKFold(n_splits=num_folds)
+    for train_indices, test_indices in fold_gen.split(feats_placeholder, labels):
+        fold = DatasetDict(
+            train=cv_dataset.select(train_indices),
+            test=cv_dataset.select(test_indices),
+        )
+
+        yield ExplicitDocumentDataset(fold, base_document_dataset.evaluation_kind)
+
+
+def cross_validate_single_dataset(
+    config: EvaluationInstanceSpec,
+    model: EmbeddingModel,
+    exp_path: str,
+) -> dict[str, float]:
+    assert config.cross_validate is not None
+    logger.info(
+        "Cross validating '%s' using '%d' folds",
+        config.cross_validate.split,
+        config.cross_validate.num_folds,
+    )
+
+    base_dataset = config.dataset.initialize()
+
+    # Add features for the cross-validated split now to avoid re-generating it
+    # for each fold
+    base_dataset.splits[config.cross_validate.split] = get_head_features(
+        base_dataset.evaluation_kind,
+        base_dataset.splits[config.cross_validate.split],
+        model,
+    )
+
+    fold_results = []
+    for fold in iterate_cross_validation_splits(
+        base_dataset, config.cross_validate.split, config.cross_validate.num_folds
+    ):
+        head = None if config.head is None else config.head.initialize()
+
+        training_pipeline = finetune_factory(
+            fold.evaluation_kind, config.finetune_pipeline_kwargs
+        )
+        training_pipeline(model, head, fold, exp_path)
+
+        fold_results.append(
+            evaluate(model, head, fold, exp_path, write_results_to_disk=False)
+        )
+
+    results = {}
+    for metric_name in set(key for res in fold_results for key in res.keys()):
+        metric_scores = [res[metric_name] for res in fold_results if metric_name in res]
+        results[f"{metric_name}_mean"] = np.mean(metric_scores)
+        results[f"{metric_name}_std"] = np.std(metric_scores)
+
+    return results
+
+
+def evaluate_single_dataset(
     config: EvaluationInstanceSpec,
     args: argparse.Namespace,
     model: EmbeddingModel,
     exp_path: str,
 ) -> dict[str, float]:
     save_config(config, exp_path)
+
+    if config.cross_validate is not None:
+        return cross_validate_single_dataset(config, model, exp_path)
 
     dataset = config.dataset.initialize()
     head = None if config.head is None else config.head.initialize()
@@ -115,18 +194,6 @@ def eval_single_dataset(
         save_model_weights(head, os.path.join(exp_path, "trained_head"))
 
     return evaluate(model, head, dataset, exp_path)
-
-
-def find_config(path: str) -> Optional[str]:
-    folders = path.split(os.path.sep)
-    while len(folders) > 0:
-        config_path = os.path.join(*folders, "config.yaml")
-        if os.path.isfile(config_path):
-            return config_path
-
-        folders = folders[:-1]
-
-    return None
 
 
 def evaluate_model(
@@ -160,9 +227,10 @@ def evaluate_model(
 
         config = EvaluationInstanceSpec(
             model=model_config,
-            dataset=eval_spec.dataset,
-            head=eval_spec.head,
-            finetune_pipeline_kwargs=eval_spec.finetune_pipeline_kwargs,
+            **{
+                field.name: getattr(eval_spec, field.name)
+                for field in fields(eval_spec)
+            },
         )
 
         logging.info(
@@ -171,7 +239,7 @@ def evaluate_model(
             eval_name,
             pprint.pformat(config, indent=1),
         )
-        results[eval_name] = eval_single_dataset(
+        results[eval_name] = evaluate_single_dataset(
             config,
             args,
             model,
@@ -179,6 +247,18 @@ def evaluate_model(
         )
 
     save_results(results, model_eval_path)
+
+
+def find_config(path: str) -> Optional[str]:
+    folders = path.split(os.path.sep)
+    while len(folders) > 0:
+        config_path = os.path.join(*folders, "config.yaml")
+        if os.path.isfile(config_path):
+            return config_path
+
+        folders = folders[:-1]
+
+    return None
 
 
 def main() -> None:

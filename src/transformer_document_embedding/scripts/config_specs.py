@@ -77,10 +77,17 @@ class ExperimentSpec(BaseValuesSpec):
 
 
 @dataclass(kw_only=True)
+class CrossValidateSpec(BaseValuesSpec):
+    split: str
+    num_folds: int
+
+
+@dataclass(kw_only=True)
 class EvaluationSpec(BaseValuesSpec):
     dataset: DatasetSpec
     head: Optional[HeadSpec] = None
     finetune_pipeline_kwargs: dict[str, Any] = field(default_factory=dict)
+    cross_validate: Optional[CrossValidateSpec] = None
 
 
 @dataclass(kw_only=True)

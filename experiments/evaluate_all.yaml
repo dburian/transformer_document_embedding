@@ -15,7 +15,7 @@ default_cls_finetune_kwargs: &default_cls_finetune_kwargs
 
 
 default_cls_head_kwargs: &default_cls_head_kwargs
-  in_features: 100
+  in_features: 768
   out_features: 2
   hidden_features: 50
   hidden_dropout: 0.5
@@ -32,8 +32,12 @@ pair_cls_head_kwargs: &pair_cls_head_kwargs
 
 data_limits: &data_limits
   train: 10000
-  validation: 100000
-  test: 300
+  validation: 10000
+  test: 10000
+
+splits: &splits
+  train: train
+  test: validation
 
 evaluations:
   sent-eval:
@@ -83,12 +87,16 @@ evaluations:
       module: classification:ClassificationHead
       kwargs: *default_cls_head_kwargs
     finetune_pipeline_kwargs: *default_cls_finetune_kwargs
+    cross_validate:
+      split: train
+      num_folds: 5
   pan:
     dataset:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
-        path: ../data/MDA/PAN
+        path: ./data/MDA/PAN
         data_size_limit: *data_limits
+        splits: *splits
     head:
       module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
@@ -99,6 +107,7 @@ evaluations:
       kwargs:
         path: ../data/MDA/OC
         data_size_limit: *data_limits
+        splits: *splits
     head:
       module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
@@ -109,6 +118,7 @@ evaluations:
       kwargs:
         path: ../data/MDA/S2ORC
         data_size_limit: *data_limits
+        splits: *splits
     head:
       module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs
@@ -119,6 +129,7 @@ evaluations:
       kwargs:
         path: ../data/MDA/AAN
         data_size_limit: *data_limits
+        splits: *splits
     head:
       module: classification:ClassificationHead
       kwargs: *pair_cls_head_kwargs

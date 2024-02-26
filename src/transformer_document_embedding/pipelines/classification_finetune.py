@@ -12,6 +12,7 @@ from typing import Optional, TYPE_CHECKING
 from datasets import Dataset
 from torch.utils.data import DataLoader
 from transformer_document_embedding.datasets import col
+from transformer_document_embedding.datasets.document_dataset import EvaluationKind
 from transformer_document_embedding.torch_trainer import MetricLogger, TorchTrainer
 from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
 import transformer_document_embedding.utils.training as train_utils
@@ -25,7 +26,52 @@ if TYPE_CHECKING:
     from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
 
-@dataclass
+def get_default_features(split: Dataset, model: EmbeddingModel) -> Dataset:
+    def gen_embeds():
+        split_columns = split.remove_columns(list({col.ID} & set(split.column_names)))
+        for batch, embedding in zip(
+            split_columns,
+            smart_unbatch(model.predict_embeddings(split), 1),
+            strict=True,
+        ):
+            batch[col.EMBEDDING] = embedding
+            yield batch
+
+    return Dataset.from_generator(gen_embeds)
+
+
+def get_pair_bin_cls_features(split: Dataset, model: EmbeddingModel) -> Dataset:
+    def gen_embeds():
+        split_columns = split.remove_columns(
+            list({col.ID_0, col.ID_1, col.ID} & set(split.column_names))
+        )
+
+        embeds_0 = split_columns.rename_column(col.TEXT_0, col.TEXT)
+        embeds_1 = split_columns.rename_column(col.TEXT_1, col.TEXT)
+        for doc, embed_0, embed_1 in zip(
+            split_columns,
+            smart_unbatch(model.predict_embeddings(embeds_0), 1),
+            smart_unbatch(model.predict_embeddings(embeds_1), 1),
+            strict=True,
+        ):
+            doc[col.EMBEDDING] = torch.concat((embed_0, embed_1), 0)
+            yield doc
+
+    return Dataset.from_generator(gen_embeds)
+
+
+def get_head_features(
+    eval_kind: EvaluationKind, split: Dataset, model: EmbeddingModel
+) -> Dataset:
+    get_features = {
+        EvaluationKind.BIN_CLAS: get_default_features,
+        EvaluationKind.PAIR_BIN_CLAS: get_pair_bin_cls_features,
+    }
+
+    return get_features[eval_kind](split, model)
+
+
+@dataclass(kw_only=True)
 class GenericTorchFinetune(TrainPipeline):
     epochs: int
     batch_size: int
@@ -47,22 +93,17 @@ class GenericTorchFinetune(TrainPipeline):
     save_best: bool
     save_after_steps: Optional[int] = None
 
+    def get_features(self, split: Dataset, model: EmbeddingModel) -> Dataset:
+        return get_default_features(split, model)
+
     def to_dataloader(
         self, split: Dataset, model: EmbeddingModel, training: bool = True
     ) -> DataLoader[torch.Tensor]:
-        def gen_embeds():
-            split_columns = split.remove_columns(
-                list({col.ID} & set(split.column_names))
-            )
-            for batch, embedding in zip(
-                split_columns,
-                smart_unbatch(model.predict_embeddings(split), 1),
-                strict=True,
-            ):
-                batch[col.EMBEDDING] = embedding
-                yield batch
-
-        embeddings = Dataset.from_generator(gen_embeds)
+        embeddings = (
+            split
+            if col.EMBEDDING in split.column_names
+            else self.get_features(split, model)
+        )
         return DataLoader(
             embeddings.with_format("torch"),
             batch_size=self.batch_size,
@@ -174,31 +215,5 @@ class BinaryClassificationFinetune(GenericTorchFinetune):
 
 
 class PairBinaryClassificationFinetune(BinaryClassificationFinetune):
-    def to_dataloader(
-        self,
-        split: Dataset,
-        model: EmbeddingModel,
-        training: bool = True,
-    ) -> DataLoader[torch.Tensor]:
-        def gen_embeds():
-            split_columns = split.remove_columns(
-                list({col.ID_0, col.ID_1, col.ID} & set(split.column_names))
-            )
-
-            embeds_0 = split_columns.rename_column(col.TEXT_0, col.TEXT)
-            embeds_1 = split_columns.rename_column(col.TEXT_1, col.TEXT)
-            for doc, embed_0, embed_1 in zip(
-                split_columns,
-                smart_unbatch(model.predict_embeddings(embeds_0), 1),
-                smart_unbatch(model.predict_embeddings(embeds_1), 1),
-                strict=True,
-            ):
-                doc[col.EMBEDDING] = torch.concat((embed_0, embed_1), 0)
-                yield doc
-
-        embeddings = Dataset.from_generator(gen_embeds)
-        return DataLoader(
-            embeddings.with_format("torch"),
-            batch_size=self.batch_size,
-            shuffle=training,
-        )
+    def get_features(self, split: Dataset, model: EmbeddingModel) -> Dataset:
+        return get_pair_bin_cls_features(split, model)
