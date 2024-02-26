@@ -31,28 +31,6 @@ splits: &splits
   test: validation
 
 evaluations:
-  sent-eval:
-    dataset:
-      module: sent_eval:SentEval
-      kwargs:
-        path: ./data/SentEval/data/
-        params: debug
-        tasks:
-          - STS12
-          - STS13
-          - STS14
-          - STS15
-          - STS16
-          - STSBenchmark
-          - SICKRelatedness
-          - MR
-          - CR
-          - SUBJ
-          - MPQA
-          - SST2
-          - TREC
-          - MRPC
-
   sims_wines:
     dataset:
       module: wikipedia_similarities:WikipediaSimilarities
