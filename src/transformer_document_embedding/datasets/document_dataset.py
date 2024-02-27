@@ -5,8 +5,10 @@ import pprint
 from typing import TYPE_CHECKING, Optional, Union
 import numpy as np
 import math
-from datasets import DatasetDict
+from datasets import Dataset, DatasetDict
 import logging
+
+from transformer_document_embedding.datasets import col
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,32 @@ class DocumentDataset:
         """Obtains the dataset. By default using the load_dataset function."""
         raise NotImplementedError()
 
+    def _shorten_split(self, split: Dataset, size_limit: int) -> Dataset:
+        if col.LABEL not in split.column_names:
+            return split.select(range(size_limit))
+
+        label_counts = {value: 0 for value in split.unique(col.LABEL)}
+
+        for label in split[col.LABEL]:
+            label_counts[label] += 1
+
+        for value, count in label_counts.items():
+            label_counts[value] = math.floor(count / len(split) * size_limit)
+
+        while sum(label_counts.values()) < size_limit:
+            value_with_min_count = min(
+                label_counts.keys(), key=lambda value: label_counts[value]
+            )
+            label_counts[value_with_min_count] += 1
+
+        selected_inds = []
+        for label_value, count in label_counts.items():
+            pool = (i for i, doc in enumerate(split) if doc[col.LABEL] == label_value)
+            for _, index in zip(range(count), pool, strict=False):
+                selected_inds.append(index)
+
+        return split.select(selected_inds)
+
     def _shorten_splits(self, dataset: DatasetDict) -> DatasetDict:
         if self._data_size_limit is None:
             return dataset
@@ -82,7 +110,7 @@ class DocumentDataset:
         for name, split in dataset.items():
             limit = self._data_size_limit.get(name, None)
             if limit is not None and len(split) > limit:
-                dataset[name] = split.shuffle().select(range(limit))
+                dataset[name] = self._shorten_split(split, limit)
 
         return dataset
 
