@@ -2,27 +2,31 @@
 # # Testing of samplers
 
 # %%
+from __future__ import annotations
 from transformer_document_embedding.utils import tokenizers
-import torch
 from datasets import load_from_disk
 from transformers import AutoTokenizer
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 
 # %%
-ds = load_from_disk("/mnt/data/datasets/wikipedia_sample")["train"]
+plt.rc("figure", figsize=(16, 10))
+
 # %%
-ds_sample = ds.select(range(min(100000, len(ds))))
+ds = load_from_disk("/mnt/data/datasets/wikipedia_resampled_eval")["train"]
+# %%
+ds_sample = ds.select(range(min(15000, len(ds))))
 
 # %%
 tokenizer = AutoTokenizer.from_pretrained("allenai/longformer-base-4096")
 
 # %%
-effective_batch_size = 32
-batch_size = 4
-bucket_limits = [384, 512, 1024, 1536, 2048, 2560, 3072]
+batch_size = 6
+effective_batch_size = batch_size * 4
+bucket_limits = [512, 1024, 3072]
 
 # %% [markdown]
 # ### Correct lengths
@@ -36,7 +40,7 @@ dataloader = tokenizers.create_tokenized_data_loader(
     sampler_kwargs={
         "effective_batch_size": effective_batch_size,
         "bucket_limits": bucket_limits,
-        "mega_batch_size": 33,
+        "mega_batch_size": 4096,
     },
 )
 
@@ -44,12 +48,13 @@ dataloader = tokenizers.create_tokenized_data_loader(
 len(ds_sample)
 
 # %%
-len(dataloader)
-
-# %%
 lengths = []
+extended_buckets = np.array(bucket_limits + [float("inf")])
 for i, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
-    assert torch.all(batch["length"] == torch.sum(batch["attention_mask"], axis=1))
+    # bucket_sizes = {
+    #     f"length_dist_{i}": bucket_size
+    #     for i, bucket_size in enumerate(dataloader.sampler._buffer.bucket_sizes)
+    # }
     lengths.extend(
         [
             {
@@ -57,26 +62,45 @@ for i, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
                 "batch": i,
                 "effective_batch": i // effective_batch_size,
                 "length": length,
+                "bucket": len(extended_buckets) - np.sum(length < extended_buckets),
+                # **bucket_sizes,
             }
             for j, length in enumerate(batch["length"].numpy(force=True))
         ]
     )
 
 # %%
-print(f"In DataLoader: {(i+1) * batch_size} elements, in dataset: {len(ds_sample)}")
+print(f"In DataLoader: {len(lengths)} elements, in dataset: {len(ds_sample)}")
 
 # %%
 lengths = pd.DataFrame(lengths)
 
 # %%
-sns.kdeplot(lengths, x="length", hue="effective_batch")
+ax = sns.kdeplot(lengths, x="length", hue="effective_batch")
+
 
 # %%
-max_length = lengths["length"].max()
-max_length
+in_batches = lengths.groupby("batch")["length"].agg("mean")
+in_batches = in_batches.reset_index()
 
 # %%
-extended_bucket_limits = np.array(bucket_limits + [max_length + 1])
+in_eff_batches = lengths.groupby("effective_batch")["length"].agg("mean").reset_index()
+in_eff_batches
+
+# %%
+sns.lineplot(in_batches, x="batch", y="length")
+
+# %%
+sns.lineplot(in_eff_batches, x="effective_batch", y="length")
+
+# %%
+ax = sns.lineplot(lengths, x="input", y="length_dist_0")
+for i in range(1, 9):
+    ax = sns.lineplot(lengths, x="input", y=f"length_dist_{i}", ax=ax)
+ax.set_yscale("log")
+
+# %%
+extended_bucket_limits = np.array(bucket_limits + [float("inf")])
 length_smaller_than_threshold = (
     lengths["length"].to_numpy()[:, None] < extended_bucket_limits[None, :]
 )
@@ -95,6 +119,18 @@ lengths.dtypes
 
 # %%
 np.all(lengths["bucket"] > lengths["length"])
+
+# %%
+sns.lineplot(lengths[lengths["input"] < 10000], y="length", x="input")
+
+# %%
+ax = sns.histplot(
+    lengths,
+    x="length",
+    hue="effective_batch",
+    bins=extended_bucket_limits,
+    element="step",
+)
 
 # %%
 sns.boxplot(lengths, x="length", y="bucket", orient="h")
