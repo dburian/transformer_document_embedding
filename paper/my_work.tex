@@ -1,15 +1,14 @@
-\chapter{Finetuning method to increase quality of document
+\chapter{Distilling structural and contextual qualities of document
 embeddings}\label{chapter:training_method}
 
-In this chapter we describe our method of training document embeddings. Our
-approach is based on teacher-student training approach, where we distil the
+In this chapter we describe our method of finetuning document embeddings. Our
+method is based on teacher-student training approach, where we distil the
 knowledge of two teacher embedding models into a single student model. In
 Section~\ref{section:training_method} we explain our training method in detail
 and roughly define the used loss function. Then in
-Section~\ref{section:teacher_models} we describe the two teacher models, which
-we use in the rest of the thesis. Finally, in
-Sections~\ref{section:structural_loss}~and~\ref{section:contextual_loss} we
-walk through each of the two loss components in detail.
+Section~\ref{section:teacher_models} we describe the two teacher models we use
+in the rest of the thesis. Finally, in Section~\ref{section:student_model} we
+describe the architecture and pre-training of the student model.
 
 \section{Training methodology}\label{section:training_method}
 
@@ -98,9 +97,9 @@ $\Loss_C$ and $\lambda(x)$ in Chapter~\ref{chapter:experiments}.
 In this section we present the teacher models we use during our experiments in
 Chapter~\ref{chapter:experiments}. We highlight why we choose the particular
 models and how we obtain the their embeddings. We chose
-Sentence-BERT~\citep{reimers2020making} (or \emph{SBERT}) as the structural
-teacher model, and Paragraph Vector~\citep{le2014distributed} (or \emph{PV}) as
-the context teacher model.
+Sentence-BERT~\citep{reimers2020making} as the structural teacher model, and
+Paragraph Vector~\citep{le2014distributed} (or \emph{PV}) as the context teacher
+model.
 
 \subsection{SBERT}
 
@@ -161,3 +160,71 @@ TODO: my own graphic here
     \includegraphics[width=0.4\textwidth]{./img/pv-dbow.png}
     \caption{PV-DM and PV-DBOW architectures.\label{fig:pv-dm_pv-dbow}}
 \end{figure}
+
+\section{Student model}\label{section:student_model}
+
+
+To test our finetuning method we used a student model already pretrained using
+Masked Language Modelling on a large corpus. Since our training method relies on
+the model's basic natural language understanding, we would have to pre-train the
+model either way. Additionally by using a checkpoint of a pretrained model we
+dramatically save on resources.
+
+When choosing our model, we valued the following properties. Since we are
+limited in resources, we needed the student model to be reasonably small and
+memory efficient. Also, as we are embedding documents, the model needed to have
+larger maximum input length. We also valued the model's performance, ease of use
+and simplicity of the model. In the end we have chosen
+Longformer~\citep{beltagy2020longformer} as it is reasonably small, memory
+efficient, performs above averege in comparison to other similar
+models~\citep{tay2020long} and its self-attention mechanism is straightforward.
+
+We emphasize that our training method can be applied theoretically to any
+transformer-based model. We, therefore view this decision as a practical one
+that allows us to test our method more easily, rather then theoretical one that
+is part of our method.
+
+\subsection{Longformer}
+
+Longformer~\citep{beltagy2020longformer}, is a transformer encoder that is able
+to process input sequences longer than traditional Transformer using its
+efficient implementation of self-attention.
+
+\subsubsection{Self-attention mechanism}
+
+Longformer uses sparse self-attention that does not compute the full $N \times
+N$ attention matrix. Instead Longformer's self-attention relies on composition
+of several patterns. We use two patterns: sliding window attention and global
+attention. With sliding window attention each token attends to
+$\frac{1}{2}\omega$ tokens on its either side. The neighbourhood size $\omega$
+can vary across transformer layers. This can be helpful when we try to save on
+the number of floating point operations per second (or \emph{FLOPS}) while
+minimizing the negative impact on performance~\citep{sukhbaatar2019adaptive}.
+With global attention only few tokens selected at runtime attend to all other
+tokens. Longformer uses two different set of weights for local and global
+attentions. For easier reproducibility of our experiments we avoid the custom
+CUDA kernel, and use the author's python block implementation.
+
+\subsubsection{Training}
+
+Longformer is warm-started from a RoBERTa~\citep{liu2019roberta} checkpoint with
+its learned positional embeddings copied 8 times to support inputs up to 4096
+tokens long. Copying RoBERTa's positional embeddings showed to be an effective
+way how to increase the maximum context length of a transformer with learned
+positional embeddings. Then it was trained further using MLM on long documents
+for 65k gradient steps.
+
+The specially compiled training corpus has some overlap with RoBERTa's
+pretraining corpus, but is more focused on longer pieces of text. It includes
+the following datasets.
+
+\begin{itemize}
+  \item Book corpus~\citep{zhu2015aligning}
+
+  \item English Wikipedia
+
+  \item One third of Realnews dataset~\citep{zellers2019defending}
+
+  \item One third of the Stories corpus~\citep{trinh2018simple}
+
+\end{itemize}

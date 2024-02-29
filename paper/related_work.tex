@@ -10,17 +10,16 @@ embedding of long pieces of text using the transformer architecture. First we
 summarize efforts that have gone into making transformer more efficient so that
 it can process long inputs. These advancements are crucial to embedding
 documents which are oftentimes much longer than 512 tokens. The next section is
-dedicated to typical approaches to training embedding models. For completeness,
-we also mention uncommon approaches to embedding documents.
+dedicated to typical approaches to training embedding models.
 
-\section{Efficient transformers}
+\section{Efficient transformers}\label{section:efficient_transformers}
 
 % - How long inputs=documents are handled by transformers?
 % - Why they cannot be handled by classical architectures?
 % - What can be done for transformer to handle long texts? -- attention
 %    mechanism, attention implementation, different architecture altogether
 
-Though the Transformer~\citep{vaswani2017attention} has proven to be performant
+Though Transformer~\citep{vaswani2017attention} has proven to be performant
 architecture (TODO: citations) in the world of NLP it has one inherent
 disadvantage when it comes to longer sequences of text. The self-attention,
 which is the principal part of the transformer architecture, consumes quadratic
@@ -50,33 +49,6 @@ more efficient in practice.
 
 \subsection{Efficient self-attention mechanisms}
 
-% Goal of this chapter is to give the reader an idea how long inputs can be
-% tackled with transformers and what are the new limitations.
-% There is no need to describe each paper/idea in detail, but rather to point
-% out to it and say roughly what the paper's importance for my thesis.
-
-% \begin{itemize}
-
-%     \item Efficient Transformers~\cite{tay2022efficient} -- nice overview of
-%     efficient transformers
-
-%     \item Longformer~\cite{beltagy2020longformer} -- the easiest implementation
-%         of sparse attention
-
-%     \item BigBird~\cite{zaheer2020big} -- has some insights both about
-%     sparse attentions (only cover very briefly) and about document processing, a
-%         bit more complex approach to attention
-
-%     \item BigBird-ETC
-
-%     \item Sparse transformer~\cite{child2019generating} -- even more complex
-%         attention implementation
-
-%     \item Reformer/Performer -- some other transformer that uses other method
-%         than just sparsifying attention pattern
-
-
-% \end{itemize}
 
 As self-attention is the most resource-hungry component of the transformer
 architecture, it makes sense to focus on it in order to make the transformer
@@ -87,14 +59,6 @@ this multiplication and thereby avoid computing and storing the $N\times N$
 resulting matrix.
 
 \subsubsection{Sparse attention}
-
-% summarize popular findings and models that use sparse attention
-%  - what is sparse attention
-%  - how models use it
-%     - sparse transformer -- propagation of information
-%     - longformer -- combination of global token plus local attention
-%     - bigbird -- blocks
-%  - summarization -- combination of local and global attention
 
 Sparse attention approximates the full attention by ignoring dot products between
 some query and key vectors. Though it may seem like a crude approximation, there
@@ -120,9 +84,9 @@ can attend to every $k$-th distant token to increase its field of vision.
 BigBird~\citep{zaheer2020big} computes dot products between randomly chosen
 combinations of query and key vectors. These serve as a connecting nodes for
 other tokens when they exchange information. The last typical sparse attention
-pattern is some kind of global attention that is computed only on a few tokens.
-Though such attention pattern is costly it is essential for tasks which require
-a representation of the whole input~\citep{beltagy2020longformer}. In Longformer
+pattern is a global attention that is computed only on a few tokens. Though such
+attention pattern is costly it is essential for tasks which require a
+representation of the whole input~\citep{beltagy2020longformer}. In Longformer
 some significant input tokens such as the \texttt{[CLS]} token, attend to all
 other tokens and vice-versa. BigBird additionally computes global attention on
 few extra tokens that are added to the input.
@@ -161,31 +125,6 @@ reordering saves on time and space by a factor of $O(N)$ making the
 self-attention linear in input length.
 
 \subsection{Implementation enhancements}
-
-% \begin{itemize}
-
-%     \item Flash Attention 2 -- mention it, just to show there are approaches that
-%     completely ditch sparse attentions (such as LLama2 Long)
-
-%     \item xFormers -- dtto
-
-%     \item Llama 2 Long -- bringing long context to the extreme, only uses full
-%         attention
-
-%     \item To make the computation more effective different tricks can be used at
-%         the implementation level.
-
-%     \item Although these tricks can be applied to other network architectures as
-%         well, they are particularly useful here since they can decrease the
-%         memory usage by quite a lot.
-
-%     \item fp16
-
-%     \item gradient checkpointing
-
-%     \item reformer and its reversible stuff
-
-% \end{itemize}
 
 Transformer models can be made more efficient by using various implementation
 tricks. As modern hardware gets faster and has more memory, implementation
@@ -269,76 +208,114 @@ both word-masking and segment masking losses and together with finetuning on
 the target tasks the model beats scores previously set by recurrent networks.
 
 
-\section{Training approaches}
+\section{Training document embedding models}
 
-\begin{itemize}
+% as we are designing new finetuning/training method to improve embeddings we
+% should dedicate a section to how others do it, what other options are there
 
-    \item How can be (long) text embeddings trained?
-
-\end{itemize}
-
-\subsection{Autoregressive Language Modelling}
-
-\begin{itemize}
-
-    \item Standard pre-training for many transformers
-
-    \item Paragraph Vector~\citep{le2014distributed} -- just mentioned it. It is
-    already surpassed methodology.
+% highlight how other approaches differ and why they are worse than our method
 
 
-\end{itemize}
 
-\subsection{Siamese networks}
+When we train a document embedding model we aim to improve the performance of
+the model's embeddings on downstream tasks. There are many types of downstream
+tasks such as classification, retrieval, clustering or visualizations and an
+embedding model is generally expected to perform well an all of them. Therefore
+there is no clear optimization objective, neither there is an objective which
+is universally agreed to outperform others. This makes the field of training
+document embedding models particularly interesting and diverse. All training
+techniques however, have to adapt to currently available training document
+corpora. The selection of supervised corpora of documents is significantly
+smaller compared to corpora of shorter sequences such as sentences. This is due
+to higher annotation costs and complexity. Nevertheless we may find corpora
+of documents linked via citations or links that offer some additional data for
+the researches to take advantage of.
 
+ % Compared to shorter text sequences, documents
+% contain more inter-connected information making training of their embeddings
+% much harder. Also, there are less supervised corpora of documents, as annotation
+% of documents is costly and in some cases just too hard for an annotator to do.
+% Consider for example specifying how similar are two randomly chosen Wikipedia
+% articles on a scale from 0 to 1. In face of these challenges, document embedding
+% models are oftentimes trained on unsupervised data, or use its structure as a
+% proxy for the documents' properties.
 
-\begin{itemize}
+In the simplest case, embedding models are trained only through some kind of
+word or token prediction. Paragraph Vector~\citep{le2014distributed} is trained
+on prediction of masked-out word given the embeddings of the surrounding words
+and of the whole document. However not all models can learn document embedding
+through word prediction such as Paragraph Vector. An example of such model is
+Transformer~\cite{vaswani2017attention}. Embedding models based on
+Transformer's architecture use a combination of pre-training on large
+unlabelled corpora, where the model gains most of its knowledge, and a
+finetuning method that increases the quality of the model's embeddings.
+\cite{cohan2020specter} warm start their embedding model focused on scientific
+literature from SciBERT~\citep{beltagy2019scibert}, which was trained using
+Masked Language Modelling (or \emph{MLM}) on scientific text.
+\cite{neelakantan2022text} use large generative model as an initial checkpoint
+for their text embedding model. \cite{izacard2021unsupervised} warm-start their
+embedding model from BERT~\citep{devlin2019bert}, which is another model
+trained using MLM. These models however differ in how they then finetune their
+document embeddings. \cite{cohan2020specter} use a triplet loss that takes
+three documents: a query, positive and a negative document. Triplet loss then
+minimizes the distance between the query and the positive document while
+maximizing the distance between the query and the negative document. To obtain
+a positive and a negative document for given query document the authors
+leverage the structure of Semantic Scholar
+corpus~\citep{ammar2018construction}. \cite{ostendorff2022neighborhood} repeats
+the experiment, but shows that with more elaborate method of sampling of
+negative papers it is possible to improve the model.
 
-      \item SBERT~\citep{reimers2019sentence} -- did pretty much the same as us
-        (took a model and finetuned it so that the produced embeddings are good),
-        except for sentences
+Another popular technique is to train the model by contrasting several inputs'
+embedding against each other. Again for each input there is at least one
+similar to it (positive), while the others are usually deemed as dissimilar
+(negative). The loss would then minimize cross-entropy between the true
+similarities and the similarities computed from the input's embeddings. As is
+the case with the triplet loss, the main difference between models is how they
+obtain the positive and negative documents. \cite{neelakantan2022text} use the
+input itself as a positive, while all other inputs in given batch are
+considered as negatives. Using in-batch negatives is very efficient since the
+model can utilize each input once as a positive and several times as a
+negative. As the authors point out, the key of this technique is to have large
+batch sizes -- the authors suggest batch sizes of several thousand documents.
+\cite{izacard2021unsupervised} obtain positives by augmenting the original
+document. The authors also use negatives computed in previous batches. While
+using these out-of-batch negatives avoids the need for a large batch size, they
+introduce a new set of problems such as making sure that the trained model does
+not change too quickly, which would make the stored negatives irrelevant and
+possibly harmful to the training. The authors solve this issue by using a
+secondary network, that is updated using the parameters of the primary
+embedding model.
 
-      \item MPNet~\citep{song2020mpnet} -- best SBERT model and the model we are
-        working with
+Though an embedding is usually expected to perform well on any type of task,
+\cite{singh2022scirepeval} train an embedding model whose embeddings are
+finetuned for a given type of downstream task. The model's task-specific
+modules are trained in an end-to-end manner on supervised data collected by the
+authors. Thanks to the use of control codes and a layer connecting all
+task-specific modules, the proposed model is able to share knowledge across all
+types of tasks. While the idea seems reasonable, the authors achieve only small
+improvement over state-of-the-art models that generate only single embedding.
 
-\end{itemize}
+\subsection{Comparison to the proposed training method}
 
-\subsection{Knowledge distillation}
-
-\begin{itemize}
-
-      \item That paper where SBERT is finetuned on low-resource language with
-          teacher-student training~\citep{reimers2020making}
-
-\end{itemize}
-
-\subsection{Contrastive loss}
-
-\begin{itemize}
-
-      \item OpenAI embedding paper -- use contrastive loss, mention large batches
-        and the memory constraints it brings
-
-      \item Specter~\citep{cohan2020specter} -- focused on scientific documents, use
-        of contrastive loss based on citations
-
-      \item Transformer based Multilingual document embedding
-        model~\citep{li2020transformer} -- transformer version of LASER, embeds
-        documents
-
-\end{itemize}
-
-\section{Unorthodox document embedding approaches}
-
-\begin{itemize}
-
-    \item Self-Supervised Document Similarity Ranking~\citep{ginzburg2021self} --
-    really focused on generating semantically meaningful representations of
-    documents, but with an extra cost and complexity
-
-
-    \item Cross-Document Language Modelling~\citep{caciularu2021cdlm} -- uses
-    Longformer for cross-document task. Illustrates that Longformer can be
-    flexible and useful for document processing.
-
-\end{itemize}
+As other transformer-based embedding models, ours is also warm-started from a
+pre-trained model. However, the following finetuning of the produced embeddings
+avoids some of the downsides of the previously mentioned methods. First it does
+not require any structure in the training data. This is important as there are
+only limited amount of structured corpora of documents. Typically these would
+be scientific papers related via citations or Wikipedia articles connected via
+links. Our training method allows to use any document corpora such as a set of
+books or news articles. Secondly, it does not require large batch sizes.
+Despite the advancements mentioned in
+Section~\ref{section:efficient_transformers}, using consumer-grade GPU card for
+embedding long inputs with transformers can still pose a practical challenge.
+In this context, using a batch size of several thousand is unimaginable. Third,
+our method does not require to maintain any secondary network while training
+the main model. Though, our method uses embeddings of other models, these can
+be generated beforehand and thus not take up resources needed to train the main
+embedding model. Fourth, our goal is to obtain a model that is applicable to
+any type of continuous text. We do not limit our embedding model only to
+specific field such as scientific literature. Finally, our model generates a
+single embedding which we evaluate on a diverse set of tasks that includes
+classification of individual documents, classification of document pairs and
+document retrieval.
