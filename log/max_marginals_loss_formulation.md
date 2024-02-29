@@ -1,6 +1,6 @@
-# Contrastive loss with embeddings
+# Max-marginals loss with embeddings
 
-Contrastive loss is very popular for learning embeddings. We can try similar
+Max-marginals loss is very popular for learning embeddings. We can try similar
 approach but applied to similarity to teacher embeddings. E.g. let's say we are
 training a student model from teacher embeddings and we have a batch $x_1,
 \ldots x_n$ of student embeddings and $y_1, \ldots, y_n$ of teacher embeddings.

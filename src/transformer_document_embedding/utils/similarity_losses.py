@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
-class ContrastiveLoss(torch.nn.Module):
+class MaxMarginalsLoss(torch.nn.Module):
     def __init__(
         self, dissimilarity_fn: torch.nn.Module, lam: float, *args, **kwargs
     ) -> None:
@@ -54,8 +54,8 @@ class ContrastiveLoss(torch.nn.Module):
 
         return {
             "loss": positive + negative,
-            "contrastive_positive": positive,
-            "contrastive_negative": negative,
+            "marginals_positive": positive,
+            "marginals_negative": negative,
         }
 
 
@@ -103,23 +103,23 @@ def create_sim_based_loss(loss_type: str, **kwargs) -> torch.nn.Module:
         return MaskedMSE()
     elif loss_type == "cos_dist":
         return MaskedCosineDistance()
-    elif loss_type.startswith("contrastive"):
-        contrastive_lam = kwargs.get("contrastive_lam", None)
+    elif loss_type.startswith("max_marginals"):
+        max_marginals_lam = kwargs.get("max_marginals_lam", None)
         assert (
-            contrastive_lam is not None
-        ), "To use contrastive loss `contrastive_lam` needs to be set."
+            max_marginals_lam is not None
+        ), "To use max-marginals loss `max_marginals_lam` needs to be set."
 
         dissimilarity = None
-        if loss_type == "contrastive_mse":
+        if loss_type == "max_marginals_mse":
             dissimilarity = MaskedMSE()
-        elif loss_type == "contrastive_cos_dist":
+        elif loss_type == "max_marginals_cos_dist":
             dissimilarity = MaskedCosineDistance()
 
         assert dissimilarity is not None, "Unknown `loss_type`."
 
-        return ContrastiveLoss(
+        return MaxMarginalsLoss(
             dissimilarity_fn=dissimilarity,
-            lam=contrastive_lam,
+            lam=max_marginals_lam,
         )
 
     raise ValueError("Unknown loss type: {}".format(loss_type))

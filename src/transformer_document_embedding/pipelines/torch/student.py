@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Optional
 
 import torch
 
-from transformer_document_embedding.utils.similarity_losses import ContrastiveLoss
+from transformer_document_embedding.utils.similarity_losses import MaxMarginalsLoss
 
 if TYPE_CHECKING:
     from transformer_document_embedding.models.transformer import (
@@ -189,24 +189,23 @@ class StudentTrainPipeline(TorchTrainPipeline):
                     ]
                 )
 
-            if isinstance(model.head.contextual_head.loss_fn, ContrastiveLoss):
+            if isinstance(model.head.contextual_head.loss_fn, MaxMarginalsLoss):
                 loss_metrics.extend(
                     [
                         TrainingMetric(
-                            # TODO: Rename contrastive to MaxMarginals
-                            "contextual_contrastive_positive",
+                            "contextual_marginals_positive",
                             Mean(),
                             log_freq,
                             lambda metric, outputs, _: metric.update(
-                                outputs["contextual_contrastive_positive"]
+                                outputs["contextual_marginals_positive"]
                             ),
                         ),
                         TrainingMetric(
-                            "contextual_contrastive_negative",
+                            "contextual_marginals_negative",
                             Mean(),
                             log_freq,
                             lambda metric, outputs, _: metric.update(
-                                outputs["contextual_contrastive_negative"]
+                                outputs["contextual_marginals_negative"]
                             ),
                         ),
                     ]
@@ -243,23 +242,23 @@ class StudentTrainPipeline(TorchTrainPipeline):
                 ]
             )
 
-        if isinstance(model.head.structural_head, ContrastiveLoss):
+        if isinstance(model.head.structural_head, MaxMarginalsLoss):
             loss_metrics.extend(
                 [
                     TrainingMetric(
-                        "structural_contrastive_positive",
+                        "structural_marginals_positive",
                         Mean(),
                         log_freq,
                         lambda metric, outputs, _: metric.update(
-                            outputs["structural_contrastive_positive"]
+                            outputs["structural_marginals_positive"]
                         ),
                     ),
                     TrainingMetric(
-                        "structural_contrastive_negative",
+                        "structural_marginals_negative",
                         Mean(),
                         log_freq,
                         lambda metric, outputs, _: metric.update(
-                            outputs["structural_contrastive_negative"]
+                            outputs["structural_marginals_negative"]
                         ),
                     ),
                 ]

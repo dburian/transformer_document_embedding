@@ -40,11 +40,11 @@ class StructuralContextualHead(torch.nn.Module):
         self._lam = lam
 
     def create_structural_head(
-        self, loss_type: str, contrastive_lam: Optional[float] = None
+        self, loss_type: str, max_marginals_lam: Optional[float] = None
     ) -> torch.nn.Module:
         return create_sim_based_loss(
             loss_type=loss_type,
-            contrastive_lam=contrastive_lam,
+            max_marginals_lam=max_marginals_lam,
         )
 
     def create_contextual_head(
@@ -57,7 +57,7 @@ class StructuralContextualHead(torch.nn.Module):
         cca_output_dim: Optional[int] = None,
         soft_cca_lam: Optional[float] = None,
         soft_cca_sdl_alpha: Optional[float] = None,
-        contrastive_lam: Optional[float] = None,
+        max_marginals_lam: Optional[float] = None,
     ) -> cca_losses.ProjectionLoss:
         student_net = cca_losses.DeepNet(
             blocks_config=student_projection, input_features=student_dim
@@ -91,7 +91,9 @@ class StructuralContextualHead(torch.nn.Module):
                 lam=soft_cca_lam,
             )
         else:
-            loss_fn = create_sim_based_loss(loss_type, contrastive_lam=contrastive_lam)
+            loss_fn = create_sim_based_loss(
+                loss_type, max_marginals_lam=max_marginals_lam
+            )
 
         return cca_losses.ProjectionLoss(
             net1=student_net,
