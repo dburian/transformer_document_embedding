@@ -113,9 +113,8 @@ class EmbeddingMSEWithCol(TrainingMetric):
             model_embeddings /= torch.linalg.vector_norm(model_embeddings)
             col_emebddings /= torch.linalg.vector_norm(col_emebddings)
 
-        # TODO: Mean instead of sum
         mse = (model_embeddings - col_emebddings) ** 2
-        mse = mse.sum(dim=1)
+        mse = mse.mean(dim=1)
 
         if self.max_input_length is not None:
             mask = batch[col.LENGTH] <= self.max_input_length
