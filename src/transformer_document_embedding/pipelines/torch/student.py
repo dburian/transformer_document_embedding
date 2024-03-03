@@ -373,24 +373,25 @@ class StudentTrainPipeline(TorchTrainPipeline):
             ),
         ]
 
-        for net_name in ["net1", "net2"]:
-            net = getattr(model.head.contextual_head, net_name)
-            layer_count = len(net.layers)
-            sample_projection_weight_path = (
-                f"head.contextual_head.{net_name}.layers.{layer_count-1}.0.weight"
-            )
-
-            grad_metrics.append(
-                TrainingMetric(
-                    f"max_abs_{net_name}_grad",
-                    Max(),
-                    log_freq,
-                    partial(
-                        log_max_abs_grad,
-                        param_name=sample_projection_weight_path,
-                        model=model,
-                    ),
+        if model.head.contextual_head is not None:
+            for net_name in ["net1", "net2"]:
+                net = getattr(model.head.contextual_head, net_name)
+                layer_count = len(net.layers)
+                sample_projection_weight_path = (
+                    f"head.contextual_head.{net_name}.layers.{layer_count-1}.0.weight"
                 )
-            )
+
+                grad_metrics.append(
+                    TrainingMetric(
+                        f"max_abs_{net_name}_grad",
+                        Max(),
+                        log_freq,
+                        partial(
+                            log_max_abs_grad,
+                            param_name=sample_projection_weight_path,
+                            model=model,
+                        ),
+                    )
+                )
 
         return grad_metrics
