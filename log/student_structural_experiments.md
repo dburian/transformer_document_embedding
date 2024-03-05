@@ -103,11 +103,12 @@ Results:
 
 > Not really worth to record anything as the decisive metrics were broken.
 
-### 26.1. Losses with short versions on Wikipedia Similarities
+### 26.1. Losses with short versions on validation evaluation
 
 Evaluation of all models from [Loss grid
-search](#231-losses-with-fixed-sbert-cos-and-mse-metrics). Scores are [wikipedia
-similarities results.](./wiki_similarities_results.md#second-evaluation-round).
+search](#231-losses-with-fixed-sbert-cos-and-mse-metrics).
+
+Relevant files: `evaluations/student_eval_correct`
 
 Variants (combinations of):
 - `max_structural_length`:
@@ -120,21 +121,48 @@ Variants (combinations of):
     - `contrastive_cos_dist`
 
 Results:
-- shortened inputs **always** worsen the scores
-- `contrastive_cos_dist` is the best, `cos_dist` is right behind
-- there are notable differences between the datasets:
-    - in wines `mse` was the worst option, while in games it always competed for
-    second best
-    - `contrastive_mse` was close third in wines but in games it was the worst
-      option by far
-    - in games there is much more articles to choose from so there might be more
-      easy negatives
-    - `contrastive_cos_dist` was a bit worse in games than in wines (in wines
-      clearly first, in games not as clearly)
-    - so contrastive losses might be a bit finnicky when it comes to the tested
-      dataset, and `cos_dist` might be the best option overall -- to test this
-      I should do evaluation on *more datasets*
+- how the models stack up?
+    - permutation testing (wins):
+        1. `contrastive_cos_dist`
+        2. `cos_dist`
+        3. short `contrastive_cos_dist`
+        4. sbert
+        5. short `cos_dist`
+        6. ...
+    - permutation testing (won by percentage of the task, metric range):
+        1. `cos_dist`
+        2. `contrastive_cos_dist`
+        3. short `contrastive_cos_dist`
+        4. short `cos_dist`
+        5. `contrastive_mse`
+        6. sbert
+        7. ...
+- to shorten or not to shorten:
+    - when comparing the shorten and not shorten versions it is not clear if it
+      is better to shorten or not
+        - the difference in scores is around +-0.01 for classification, +-0.02
+          for wikipedia similarities except MRR where they are around +0.03 and
+          `contrastive_mse` 0.06
+        - so the differences are very small, even negligible
+        - if anything training with longer instances has better performance on
+          retrieval tasks, but worse on classification tasks (except `mse`)
+    - however from permutation testing we know the better models are those who
+      do not shorten
+- which loss type is the best?
+    - `contrastive_cos_dist`
+    - `cos_dist`
+    - `contrastive_mse`
+    - `mse`
+- what are the differences in classification vs retrieval tasks?
+    - this is important as the retrieval tasks do not have a validation split
+      and we cannot include them in validation
+    - sbert shines in retrieval tasks, and is on-par with `contrastive_cos_dist`
+      and `cos_dist` in won matches and slightly better in 'won-by' (the
+      difference of percentage ranges)
+    - as noted above, short versions are very weak in retrieval tasks
+    - in 'won-by', `cos_dist` is still the best but `contrastive_cos_dist` long
+      is fourth, so if we want to choose `contrastive_cos_dist` it will be hard
+      to defend
 - its important to highlight that `contrastive_cos_dist` did not have cos SBERT
   as good as `cos_dist` yet it is clearly on par or better
-    - this suggests that `cos` with SBERT is not *the* metric to watch, but
-      evaluation on more datasets should confirm this
+    - this suggests that `cos` with SBERT may not be the decisive metric

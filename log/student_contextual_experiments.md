@@ -294,38 +294,95 @@ Results:
   correlation on the side of PV. Even if the architecture is bottlenecked it is
   still better than smaller DBOW dim.
 
+### 26.2. Soft CCA projection gs on DBOW 100d
+
+Not as extreme as the experiment from
+[23.1.](#231-soft-cca-projection-gs-on-dbow-100d).
+
+Relevant files: `hp_searches/soft_cca_projections_dbow_100`
+
+Hyperparameters (combinations of):
+- `transformer_projection`:
+    - 256(relu)x768
+    - 768(relu)x1024(relu)x768
+- `contextual_projection`:
+    - 100(linear)x768
+    - 100(relu)x768
+    - 256(relu)x768
+    - 768
+
+Results (comparing with results from 23.1. 100 DBOW gs):
+- So the best option was small transformer and just 768 on DBOW, followed by
+  large transformer, 768 DBOW.
+    - then we have three very similar versions with small transformer:
+      128(linear), 32(linear), 100(linear)
+    - then the same with large transformer except 32(linear) was noticeably worse
+- The hurdle of the previous experiment was that the weekest net pushed DBOW
+  through bottleneck. Which apparently is not very good. What I cannot explain
+  yet why big projection for larger DBOWs is good, but here it hurts.
+- Big transformer projection hurts 768 PV projection same as
+  100(linear),128(linear), 32(linear). For larger PV projections the effect
+  flips -- small projection hurts.
+- Interestingly 100(linear) vs 100(relu) are very different in CCA. With
+  relu is one of the worst options -- second highest correlation (after
+  32(linear)), bad cross-correlations, one of the best in L2, second worst in
+  SDL2.
+- 100(relu)x... is closer to 256(relu)x... than 100(linear)x...
+- SDL2 $\approx$ corr projection[-1] breadth, doesn't hold for SDL1 and corr
+  projection[-1] transformer
+- Cross-correlation doesn't behave as L2 nor as CCA, also holds for L2 and CCA
+
+
+NEXT:
+    - try dropout
+    - try different transformer projections with fixed PV projection
+
 ## Evaluations
 
 ### 10.1. Some random models chosen
 
 - wrong CCA was measured and the models were picked chaotically
 
-### 26.1. With DBOW 100, 768 on Wikipedia similarities
+### 26.2. With DBOW 100, 768 on validation evaluation
 
-Scores: [wikipedia similarities
-results](./wiki_similarities_results.md#second-evaluation-round).
+Relevant files: `evaluations/student_eval`
+
 
 Evaluated models:
-- with `dbow_30e_100d` and `dbow_30e_768d`
-- the models were picked from projection gs on [100
-  DBOW](#231-soft-cca-projection-gs-on-dbow-100d) and on [768
-  DBOW](#231-soft-cca-projection-gs-on-dbow-768d).
-    - I picked the best, second best and worst CCA for each dimensionality
+- all from grid searches from 23.1. till 26.2.
 
 Results:
-- more often than not CCA ranking equals ranking in wikipedia similarities
-- CCA probably doesn't correlate with wikipedia sim. scores as models with very
-  close CCA behave as differently as the best and worst CCA models
-- sometimes it there is inexplicable success of models with bad CCA
-    - this success was in precision-like metric, but the model did badly in
-      longer recall-like metric (HR@100) which together with high in-embedding
-      correlation may suggest that this caused embeddings to have low variance
-      (many dimensions seem dependent on others) which caused in a dataset, with
-      higher positive/negative answers to a query, to have high precision
-- good news is that we surpassed vanilla longformer on all but one metric (MRR)
-- after doing [experiments with PV](./pv_tuning.md) it turns out that
-  performance of PV is in inverse order than performance of student with given
-  PV: on wines 768 is better in all metrics, on games 100 is better in all
-  metrics. Keep in mind the PV we are comparing were trained on different
-  datasets. PV evaluated on wines/games was trained on them whereas PV for
-  student was trained on Wikipedia corpus.
+- permutation testing (adjusted won-by on all tasks including non-validation task):
+    - 100 DBOW (best to slightly worse):
+        - 768(relu)x1024(relu)x768 Transformer, 768 PV
+        - 256(relu)x768 Transformer,            768 PV
+        - Longformer
+        - 256(relu)x768 Transformer,            100(linear)x768 PV
+        - 256(relu)x768 Transformer,            128(linear)x768 PV
+        - 256(relu)x768 Transformer,            32(linear)x768 PV
+        - dbow_100d
+        - ...
+    - 768 DBOW (best to worst)
+        - Longformer
+        - dbow_768d
+        - 256(relu)x768 Transformer,            - PV
+        - 768(relu)x1024(relu)x768 Transformer, - PV
+        - 768(relu)x1024(relu)x768 Transformer, 128(linear)x768 PV
+        - 256(relu)x768 Transformer,            128(linear)x768 PV
+
+- higher CCA means higher probability of performant model
+    - there are several unexplicable reordering going from CCA to permutation
+      testing results
+    - CCA certainly doesn't correlate with performance, small differences in CCA
+      can easily result in large or differences in performance
+- Classification and regression metrics definitely value different things
+    - for 100d only 768 PV variants are better then pure Longformer in classification
+      tasks
+    - for 768d, large T, - PV is somehow much better in retrieval than small T,
+      - PV, even though their classificaiton performance is on par
+- dbow_768d is slightly worse in permutation testing won-by than dbow_100d even
+  thoug it won more matches
+    - this small difference cannot explain why with 100d dbow contextual teacher
+      the student beat the teacher (and longformer) while 768d dbow couldn't do
+      that
+- 100d dbow is better in retrieval while 768d is better at classification

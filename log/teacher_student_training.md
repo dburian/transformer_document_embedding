@@ -64,22 +64,32 @@ Each aspect of the training has a separate file.
 - [Both structural and contextual experiments](./student_structural_contextual_experiments.md)
 
 
-### Batch sizes, grad. acc. steps, lr, lr scheduler
+### Validation settings
 
-On Metacentrum I run:
+These are now the go-to settings.
+- results in about 3-4h.
+- takes around 11GB of VMem
 
-- 8400 batches of 6 with 12 validation runs over 1280 batches for 10h 40min. So
-  one batch takes ~4 secs.
-- 5600 batches of 6 with 11 validation runs over 1280 batches for 5 - 8h. So one
-  batch takes ~2.6 - 5.2 secs
+```yaml
+grad accumulation steps: 1
+batch size: 6
+epochs: 1
+warmup steps: 250 # 10% of all batches
+learning rate: 1e-4
+learning rate scheduler: cos
+weight decay: 0.01
+max grad norm: 1.0
+fp16: True
+dataloader_sampling: default # No need
+global_attention_type: cls # We'll play with pooling in ablation experiments
 
-Should probably try smaller datasets for grid searches.
-
-- 6 batch size == 11.6GB VMem for only structural or only contextual
+train split size: 15000
+validation split size: 7680
+```
 
 ## Evaluations
 
-### First round of evaluation of Wikipedia similarities
+### First round of evaluation of Wikipedia similarities (noob round)
 
 Results are in [wikipedia results log][wiki_similarities_results].
 
@@ -94,3 +104,22 @@ Observations:
 - Using both DBOW and SBERT improves the performance of the base model, but not
   as much as when using just SBERT. The most performing variant was when
   structural and contextual losses were somehow balanced.
+
+## Plan
+
+The plan is to:
+- GS structural & write it down
+- GS PV & write it down
+- GS structural and contextual & write it down
+- In case it would be interesting we can do ablation study on structural, i.e.
+  having contextual only
+
+The reason behind not doing first contextual on its own and then both of them at
+the same time is that
+- best contextual loss might not be the best when used together with structural
+- we might find out that the whole thing doesn't work i.e. contextual&structural
+  is worse then just structural, in that case it is better to find sooner rather
+  then later
+
+While we wait for PV we should do explaratory GS to find any low-hanging fruits
+we will take advantage of when we have good PV.
