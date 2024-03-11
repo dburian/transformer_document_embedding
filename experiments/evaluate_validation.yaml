@@ -102,3 +102,18 @@ evaluations:
       module: classification:PairClassificationHead
       kwargs: *bin_cls_head_kwargs
     finetune_pipeline_kwargs: *head_finetune_kwargs
+  arxiv:
+    dataset:
+      module: arxiv_papers:ArxivPapers
+      kwargs:
+        data_size_limit: *data_limits
+        splits: *splits
+    finetune_pipeline_kwargs: *head_finetune_kwargs
+    head:
+      module: classification:ClassificationHead
+      kwargs:
+        out_features: 11
+        hidden_features: 50
+        hidden_dropout: 0.5
+        label_smoothing: 0.1
+        hidden_activation: relu
