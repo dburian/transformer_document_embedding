@@ -2,14 +2,8 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional
 
-from torcheval.metrics import (
-    BinaryAUPRC,
-    BinaryAccuracy,
-    BinaryF1Score,
-    BinaryPrecision,
-    BinaryRecall,
-)
 from transformer_document_embedding.datasets import col
+from transformer_document_embedding.pipelines.helpers import classification_metrics
 
 from transformer_document_embedding.pipelines.pipeline import EvalPipeline
 import torch
@@ -77,7 +71,7 @@ def zip_batched(
         yield torch.tensor(true_batch), torch.tensor(pred_batch)
 
 
-class BinaryClassificationEval(EvalPipeline):
+class ClassificationEval(EvalPipeline):
     def get_embeddings_iter(
         self, split: Dataset, model: EmbeddingModel
     ) -> Iterator[torch.Tensor]:
@@ -100,13 +94,8 @@ class BinaryClassificationEval(EvalPipeline):
         device = peeked_batch.device
         batch_size = peeked_batch.shape[0]
 
-        metrics = {
-            "accuracy": BinaryAccuracy(device=device),
-            "recall": BinaryRecall(device=device),
-            "precision": BinaryPrecision(device=device),
-            "f1": BinaryF1Score(device=device),
-            "auprc": BinaryAUPRC(device=device),
-        }
+        num_classes = len(dataset.splits["test"].unique(col.LABEL))
+        metrics = classification_metrics(num_classes, device=device)
         head.to(device)
 
         labels_batches = (
@@ -124,7 +113,7 @@ class BinaryClassificationEval(EvalPipeline):
         return {name: met.compute().item() for name, met in metrics.items()}
 
 
-class BinaryPairClassificationEval(BinaryClassificationEval):
+class PairClassificationEval(ClassificationEval):
     def get_embeddings_iter(
         self, split: Dataset, model: EmbeddingModel
     ) -> Iterator[torch.Tensor]:

@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 
 
 from transformer_document_embedding.pipelines.classification_eval import (
-    BinaryClassificationEval,
-    BinaryPairClassificationEval,
+    ClassificationEval,
+    PairClassificationEval,
 )
 from transformer_document_embedding.datasets.document_dataset import (
     EvaluationKind,
@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 _eval_pipelines = {
-    EvaluationKind.BIN_CLAS: BinaryClassificationEval,
-    EvaluationKind.PAIR_BIN_CLAS: BinaryPairClassificationEval,
+    EvaluationKind.CLAS: ClassificationEval,
+    EvaluationKind.PAIR_CLAS: PairClassificationEval,
     EvaluationKind.RETRIEVAL: RetrievalEval,
     EvaluationKind.SENT_EVAL: SentEvalEval,
 }

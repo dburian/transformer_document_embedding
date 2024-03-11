@@ -17,7 +17,7 @@ class IMDB(DocumentDataset):
 
     @property
     def evaluation_kind(self) -> EvaluationKind:
-        return EvaluationKind.BIN_CLAS
+        return EvaluationKind.CLAS
 
     def _retrieve_dataset(self) -> DatasetDict:
         dataset_dict = load_dataset(self._path)

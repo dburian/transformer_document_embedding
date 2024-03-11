@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from torch.utils.data import DataLoader
 from transformer_document_embedding.datasets import col
 from transformer_document_embedding.pipelines.classification_finetune import (
-    BinaryClassificationFinetune,
+    ClassificationFinetune,
 )
 from transformer_document_embedding.utils.gensim import (
     create_text_pre_processor,
@@ -18,14 +18,13 @@ if TYPE_CHECKING:
     from datasets import Dataset
 
 
-class PVClassificationHeadTrain(BinaryClassificationFinetune):
+class PVClassificationHeadTrain(ClassificationFinetune):
     """Finetuning pipeline adjusted for PV.
 
     The major difference is when training PV's head on the same dataset as we
-    train PV, we can afford to 'predict' embeddings just by indexing into the
-    document embedding matrix. This is not possible during finetuning as we are
-    not sure PV was trained on the same corpus.
-    """
+    train PV, we can 'predict' embeddings just by indexing into the document
+    embedding matrix. This is not possible during finetuning as we are not sure
+    PV was trained on the same corpus."""
 
     def to_dataloader(
         self,
@@ -52,7 +51,7 @@ class PVClassificationHeadTrain(BinaryClassificationFinetune):
         )
 
 
-class PVPairClassificationHeadTrain(BinaryClassificationFinetune):
+class PVPairClassificationHeadTrain(ClassificationFinetune):
     """Finetuning pipeline adjusted for PV"""
 
     def to_dataloader(

@@ -1,11 +1,4 @@
 from __future__ import annotations
-from torcheval.metrics import (
-    Metric,
-    MulticlassAUPRC,
-    MulticlassAccuracy,
-    MulticlassPrecision,
-    MulticlassRecall,
-)
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
@@ -13,6 +6,9 @@ from datasets import Dataset
 from torch.utils.data import DataLoader
 from transformer_document_embedding.datasets import col
 from transformer_document_embedding.datasets.document_dataset import EvaluationKind
+from transformer_document_embedding.pipelines.helpers import (
+    classification_metrics,
+)
 from transformer_document_embedding.torch_trainer import MetricLogger, TorchTrainer
 from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
 import transformer_document_embedding.utils.training as train_utils
@@ -22,6 +18,9 @@ from transformer_document_embedding.utils.metrics import TrainingMetric, VMemMet
 import torch
 
 if TYPE_CHECKING:
+    from torcheval.metrics import (
+        Metric,
+    )
     from transformer_document_embedding.datasets.document_dataset import DocumentDataset
     from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
@@ -64,8 +63,8 @@ def get_head_features(
     eval_kind: EvaluationKind, split: Dataset, model: EmbeddingModel
 ) -> Dataset:
     get_features = {
-        EvaluationKind.BIN_CLAS: get_default_features,
-        EvaluationKind.PAIR_BIN_CLAS: get_pair_bin_cls_features,
+        EvaluationKind.CLAS: get_default_features,
+        EvaluationKind.PAIR_CLAS: get_pair_bin_cls_features,
     }
 
     return get_features[eval_kind](split, model)
@@ -183,7 +182,17 @@ class GenericTorchFinetune(TrainPipeline):
         )
 
 
-class BinaryClassificationFinetune(GenericTorchFinetune):
+class ClassificationFinetune(GenericTorchFinetune):
+    def __call__(
+        self,
+        model: EmbeddingModel,
+        head: torch.nn.Module,
+        dataset: DocumentDataset,
+        log_dir: Optional[str],
+    ) -> None:
+        self.num_classes = len(dataset.splits["test"].unique(col.LABEL))
+        return super().__call__(model, head, dataset, log_dir)
+
     def get_train_metrics(
         self, log_freq: int, model: torch.nn.Module
     ) -> list[TrainingMetric]:
@@ -196,24 +205,15 @@ class BinaryClassificationFinetune(GenericTorchFinetune):
 
         return super().get_train_metrics(log_freq, model) + [
             TrainingMetric(
-                "accuracy", MulticlassAccuracy(), log_freq, update_with_logits
-            ),
-            TrainingMetric("recall", MulticlassRecall(), log_freq, update_with_logits),
-            TrainingMetric(
-                "precision",
-                MulticlassPrecision(),
+                name,
+                metric,
                 log_freq,
                 update_with_logits,
-            ),
-            TrainingMetric(
-                "auprc",
-                MulticlassAUPRC(num_classes=2),
-                log_freq,
-                update_with_logits,
-            ),
+            )
+            for name, metric in classification_metrics(self.num_classes).items()
         ]
 
 
-class PairBinaryClassificationFinetune(BinaryClassificationFinetune):
+class PairClassificationFinetune(ClassificationFinetune):
     def get_features(self, split: Dataset, model: EmbeddingModel) -> Dataset:
         return get_pair_bin_cls_features(split, model)

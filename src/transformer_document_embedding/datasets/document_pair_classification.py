@@ -74,7 +74,7 @@ class DocumentPairClassification(DocumentDataset):
 
     @property
     def evaluation_kind(self) -> EvaluationKind:
-        return EvaluationKind.PAIR_BIN_CLAS
+        return EvaluationKind.PAIR_CLAS
 
     def _retrieve_dataset(self) -> DatasetDict:
         # Record ids of documents across splits

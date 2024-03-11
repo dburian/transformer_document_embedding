@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 class EvaluationKind(Enum):
     RETRIEVAL = "retrieval"
-    BIN_CLAS = "binary_classification"
-    PAIR_BIN_CLAS = "pair_binary_classification"
+    CLAS = "classification"
+    PAIR_CLAS = "pair_classification"
     SENT_EVAL = "sent_eval"
     NONE = "none"
 
