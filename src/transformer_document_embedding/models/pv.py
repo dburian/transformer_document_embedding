@@ -9,9 +9,13 @@ from transformer_document_embedding.utils.gensim import (
     create_text_pre_processor,
 )
 
+import logging
+
 if TYPE_CHECKING:
     from datasets import Dataset
     from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class ParagraphVector(Doc2Vec, EmbeddingModel):
@@ -96,3 +100,59 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
 
         for name, attr in vars(new_self).items():
             setattr(self, name, attr)
+
+
+class ParagraphVectorConcat(EmbeddingModel):
+    """A pseudo-model that allows to combine different learned Paragraph Vectors.
+
+    This model cannot be used in training pipelines, only in finetuning
+    pipelines. Though it could be extended if necessary. But really you should
+    train the PVs separately since it is much cleaner way to do things.
+    """
+
+    def __init__(self, **modules_kwargs: dict[str, Any]) -> None:
+        super().__init__()
+
+        self.modules = {
+            name: ParagraphVector(**kwargs) for name, kwargs in modules_kwargs.items()
+        }
+
+    @property
+    def embedding_dim(self) -> int:
+        return sum(module.embedding_dim for module in self.modules.values())
+
+    @torch.inference_mode()
+    def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
+        for embeds in zip(
+            *(module.predict_embeddings(dataset) for module in self.modules.values()),
+            strict=True,
+        ):
+            yield torch.concat(embeds, dim=1)
+
+    def save_weights(self, path: str) -> None:
+        for name, module in self.modules.items():
+            module.save_weights(f"{name}_{path}")
+
+    def load_weights(self, path: str, *, strict: bool = False) -> None:
+        module_paths = {}
+
+        for mod_name_path in path.split("&"):
+            name_end_ind = mod_name_path.find("=")
+            mod_name = mod_name_path[:name_end_ind]
+            module_paths[mod_name] = mod_name_path[name_end_ind + 1 :]
+
+        existing_mods = set(self.modules.keys())
+        loaded_mods = set(module_paths.keys())
+
+        extra_mods = loaded_mods - existing_mods
+        if len(extra_mods) > 0:
+            logger.warn("Given path for non-existing modules: %s", ",".join(extra_mods))
+
+        not_loaded_mods = existing_mods - loaded_mods
+        if len(not_loaded_mods) > 0:
+            logger.warn(
+                "Not given paths for existing modules: %s", ",".join(not_loaded_mods)
+            )
+
+        for mod in loaded_mods:
+            self.modules[mod].load_weights(module_paths[mod], strict=strict)
