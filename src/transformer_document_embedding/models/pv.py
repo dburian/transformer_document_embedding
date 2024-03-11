@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Iterator
 
+import os
 import numpy as np
 from gensim.models import Doc2Vec
 import torch
@@ -131,28 +132,10 @@ class ParagraphVectorConcat(EmbeddingModel):
 
     def save_weights(self, path: str) -> None:
         for name, module in self.modules.items():
-            module.save_weights(f"{name}_{path}")
+            module.save_weights(os.path.join(path, name))
 
     def load_weights(self, path: str, *, strict: bool = False) -> None:
-        module_paths = {}
+        for mod_name, mod in self.modules.items():
+            mod_path = os.path.join(path, mod_name)
 
-        for mod_name_path in path.split("&"):
-            name_end_ind = mod_name_path.find("=")
-            mod_name = mod_name_path[:name_end_ind]
-            module_paths[mod_name] = mod_name_path[name_end_ind + 1 :]
-
-        existing_mods = set(self.modules.keys())
-        loaded_mods = set(module_paths.keys())
-
-        extra_mods = loaded_mods - existing_mods
-        if len(extra_mods) > 0:
-            logger.warn("Given path for non-existing modules: %s", ",".join(extra_mods))
-
-        not_loaded_mods = existing_mods - loaded_mods
-        if len(not_loaded_mods) > 0:
-            logger.warn(
-                "Not given paths for existing modules: %s", ",".join(not_loaded_mods)
-            )
-
-        for mod in loaded_mods:
-            self.modules[mod].load_weights(module_paths[mod], strict=strict)
+            mod.load_weights(mod_path, strict=strict)
