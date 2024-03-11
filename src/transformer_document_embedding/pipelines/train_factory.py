@@ -10,7 +10,7 @@ from transformer_document_embedding.pipelines.gensim.train_pv import (
     TrainPairPVPipeline,
 )
 from transformer_document_embedding.pipelines.torch.classification import (
-    TorchBinaryClassifiactionPipeline,
+    TorchClassifiactionPipeline,
     TorchTrainPairClassificationPipeline,
 )
 from transformer_document_embedding.pipelines.torch.student import StudentTrainPipeline
@@ -28,7 +28,7 @@ pipelines_registered: dict[str, Type[TrainPipeline]] = {
     "pv_pair": TrainPairPVPipeline,
     "pv_cls_head": PVClassificationHeadTrain,
     "pv_pair_cls_head": PVPairClassificationHeadTrain,
-    "torch_cls": TorchBinaryClassifiactionPipeline,
+    "torch_cls": TorchClassifiactionPipeline,
     "torch_pair_cls": TorchTrainPairClassificationPipeline,
     "student": StudentTrainPipeline,
 }

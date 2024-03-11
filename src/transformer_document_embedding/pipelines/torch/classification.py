@@ -1,16 +1,10 @@
 from __future__ import annotations
 from copy import copy
-from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 import torch
-from torcheval.metrics import (
-    MulticlassAUPRC,
-    MulticlassAccuracy,
-    MulticlassPrecision,
-    MulticlassRecall,
-)
 from transformers import AutoTokenizer
 from transformer_document_embedding.datasets import col
+from transformer_document_embedding.pipelines.helpers import classification_metrics
 from transformer_document_embedding.pipelines.torch.train import TorchTrainPipeline
 
 from transformer_document_embedding.utils.tokenizers import (
@@ -21,6 +15,7 @@ from transformer_document_embedding.utils.metrics import TrainingMetric
 from torch.utils.data import DataLoader
 
 if TYPE_CHECKING:
+    from transformer_document_embedding.datasets.document_dataset import DocumentDataset
     from datasets import Dataset
     from transformer_document_embedding.models.transformer import (
         TransformerEmbedder,
@@ -34,54 +29,82 @@ class _Classifier(torch.nn.Module):
         self.encoder = encoder
         self.head = head
 
+    def forward(self, **kwargs) -> dict[str, torch.Tensor]:
+        outputs = self.encoder(**kwargs)
+        if col.LABEL in kwargs:
+            outputs.update(
+                self.head(
+                    **{
+                        col.EMBEDDING: outputs[col.EMBEDDING],
+                        col.LABEL: kwargs[col.LABEL],
+                    }
+                )
+            )
+
+        return outputs
+
+
+class TorchClassifiactionPipeline(TorchTrainPipeline):
+    def __call__(
+        self,
+        encoder: TransformerEmbedder,
+        head: torch.nn.Module,
+        dataset: DocumentDataset,
+        log_dir: Optional[str],
+    ) -> None:
+        self.num_classes = len(dataset.splits["train"].unique(col.LABEL))
+
+        return super().__call__(encoder, head, dataset, log_dir)
+
     def get_encompassing_model(
         self, model: TransformerEmbedder, head: torch.nn.Module
     ) -> torch.nn.Module:
         return _Classifier(model, head)
 
-    def forward(
-        self, labels: Optional[torch.Tensor], **kwargs
-    ) -> dict[str, torch.Tensor]:
-        outputs = self.encoder(**kwargs)
-        outputs.update(self.head(outputs["embeddings"], labels))
-
-        return outputs
-
-
-class TorchBinaryClassifiactionPipeline(TorchTrainPipeline):
     def get_train_metrics(
         self, log_freq: int, model: _Classifier
     ) -> list[TrainingMetric]:
         def logits_accessor(metric, outputs, batch):
-            metric.update(outputs["logits"], batch["labels"])
+            metric.update(outputs["logits"], batch[col.LABEL])
 
-        supers_metrics = super(
-            TorchBinaryClassifiactionPipeline, self
-        ).get_train_metrics(log_freq, model)
+        supers_metrics = super(TorchClassifiactionPipeline, self).get_train_metrics(
+            log_freq, model
+        )
 
-        # TODO: Isn't this the same as for PV?
-        classification_metrics = [
-            TrainingMetric("accuracy", MulticlassAccuracy(), log_freq, logits_accessor),
-            TrainingMetric("recall", MulticlassRecall(), log_freq, logits_accessor),
-            TrainingMetric(
-                "precision",
-                MulticlassPrecision(),
-                log_freq,
-                logits_accessor,
-            ),
-            TrainingMetric(
-                "auprc",
-                MulticlassAUPRC(num_classes=2),
-                log_freq,
-                logits_accessor,
-            ),
+        cls_metrics = [
+            TrainingMetric(name, metric, log_freq, logits_accessor)
+            for name, metric in classification_metrics(self.num_classes).items()
         ]
 
-        return supers_metrics + classification_metrics
+        return supers_metrics + cls_metrics
 
 
-@dataclass
-class TorchTrainPairClassificationPipeline(TorchTrainPipeline):
+class _PairClassifier(_Classifier):
+    def forward(
+        self,
+        inputs_0: dict[str, Any],
+        inputs_1: dict[str, Any],
+        **kwargs,
+    ) -> dict[str, torch.Tensor]:
+        pair_pooled_outputs = [
+            self.encoder(**inputs)[col.EMBEDDING] for inputs in [inputs_0, inputs_1]
+        ]
+
+        outputs = {col.EMBEDDING: torch.cat(pair_pooled_outputs, dim=1)}
+        if col.LABEL in kwargs:
+            outputs.update(
+                self.head(
+                    **{
+                        col.EMBEDDING: outputs[col.EMBEDDING],
+                        col.LABEL: kwargs[col.LABEL],
+                    }
+                )
+            )
+
+        return outputs
+
+
+class TorchTrainPairClassificationPipeline(TorchClassifiactionPipeline):
     def to_dataloader(
         self, split: Dataset, model: TransformerEmbedder, training: bool = True
     ) -> DataLoader:
@@ -147,22 +170,3 @@ class PairFastDataCollator(FastDataCollator):
             vanilla_feats.append(example)
 
         return super().__call__(vanilla_feats)
-
-
-class _PairClassifier(_Classifier):
-    def forward(
-        self,
-        inputs_0: dict[str, Any],
-        inputs_1: dict[str, Any],
-        labels: Optional[torch.Tensor],
-        **_,
-    ) -> dict[str, torch.Tensor]:
-        pair_pooled_outputs = [
-            self.encoder(**inputs)[col.EMBEDDING] for inputs in [inputs_0, inputs_1]
-        ]
-
-        embeddings = torch.cat(pair_pooled_outputs, dim=1)
-        head_outputs = self.head(embeddings, labels)
-
-        head_outputs[col.EMBEDDING] = embeddings
-        return head_outputs
