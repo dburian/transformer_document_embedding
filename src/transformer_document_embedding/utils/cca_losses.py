@@ -327,14 +327,17 @@ class DeepNet(torch.nn.Module):
             layers = []
             layers.append(torch.nn.Linear(in_features, out_features))
 
-            if block_config.get("normalization", None) is not None:
+            if "normalization" in block_config:
                 layers.append(
                     get_normalization(block_config["normalization"])(out_features)
                 )
 
-            if block_config.get("activation", None) is not None:
+            if "activation" in block_config:
                 # No activation in the last layer
                 layers.append(get_activation(block_config["activation"])())
+
+            if "dropout" in block_config:
+                layers.append(torch.nn.Dropout(block_config["dropout"]))
 
             in_features = out_features
             blocks.append(torch.nn.Sequential(*layers))
