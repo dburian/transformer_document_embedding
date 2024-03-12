@@ -322,10 +322,12 @@ class DeepNet(torch.nn.Module):
         blocks = []
         in_features = input_features
         for block_config in blocks_config:
-            out_features = block_config["features"]
+            out_features = in_features
 
             layers = []
-            layers.append(torch.nn.Linear(in_features, out_features))
+            if "features" in block_config:
+                out_features = block_config["features"]
+                layers.append(torch.nn.Linear(in_features, out_features))
 
             if "normalization" in block_config:
                 layers.append(
