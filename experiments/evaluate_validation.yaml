@@ -106,6 +106,7 @@ evaluations:
     dataset:
       module: arxiv_papers:ArxivPapers
       kwargs:
+        path: ./data/arxiv_papers
         data_size_limit: *data_limits
         splits: *splits
     finetune_pipeline_kwargs: *head_finetune_kwargs
