@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from torcheval.metrics import (
+    BinaryAccuracy,
+    BinaryF1Score,
+    BinaryPrecision,
+    BinaryRecall,
     Metric,
     MulticlassAccuracy,
     MulticlassF1Score,
@@ -10,6 +14,14 @@ from torcheval.metrics import (
 
 
 def classification_metrics(num_classes: int, **metric_kwargs) -> dict[str, Metric]:
+    if num_classes == 2:
+        return {
+            "binary_precision": BinaryPrecision(**metric_kwargs),
+            "binary_accuracy": BinaryAccuracy(**metric_kwargs),
+            "binary_f1": BinaryF1Score(**metric_kwargs),
+            "binary_recall": BinaryRecall(**metric_kwargs),
+        }
+
     micro_accuracy = MulticlassAccuracy(
         num_classes=num_classes, average="micro", **metric_kwargs
     )

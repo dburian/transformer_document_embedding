@@ -7,12 +7,12 @@ model:
     sample: 0
     min_count: 2
     vector_size: 100
+    workers: 6
     dm_concat: 0
 
 head:
-  module: ClassificationHead
+  module: classification:ClassificationHead
   kwargs:
-    in_features: 100
     out_features: 2
     hidden_features: 25
     hidden_activation: relu
@@ -49,3 +49,4 @@ dataset:
   kwargs:
     validation_source: train
     validation_source_fraction: 0.2
+    data_size_limit: 1000

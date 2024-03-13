@@ -108,7 +108,7 @@ class ClassificationEval(EvalPipeline):
             pred_classes = torch.argmax(logits, dim=1)
 
             for metric in metrics.values():
-                metric.update(labels, pred_classes)
+                metric.update(pred_classes, labels)
 
         return {name: met.compute().item() for name, met in metrics.items()}
 

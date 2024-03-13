@@ -65,7 +65,7 @@ class TorchClassifiactionPipeline(TorchTrainPipeline):
         self, log_freq: int, model: _Classifier
     ) -> list[TrainingMetric]:
         def logits_accessor(metric, outputs, batch):
-            metric.update(outputs["logits"], batch[col.LABEL])
+            metric.update(torch.argmax(outputs["logits"], dim=1), batch[col.LABEL])
 
         supers_metrics = super(TorchClassifiactionPipeline, self).get_train_metrics(
             log_freq, model

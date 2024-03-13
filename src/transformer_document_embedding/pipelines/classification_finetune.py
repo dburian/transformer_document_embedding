@@ -6,9 +6,7 @@ from datasets import Dataset
 from torch.utils.data import DataLoader
 from transformer_document_embedding.datasets import col
 from transformer_document_embedding.datasets.document_dataset import EvaluationKind
-from transformer_document_embedding.pipelines.helpers import (
-    classification_metrics,
-)
+from transformer_document_embedding.pipelines.helpers import classification_metrics
 from transformer_document_embedding.torch_trainer import MetricLogger, TorchTrainer
 from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
 import transformer_document_embedding.utils.training as train_utils
@@ -201,7 +199,7 @@ class ClassificationFinetune(GenericTorchFinetune):
             outputs: dict[str, torch.Tensor],
             batch: dict[str, torch.Tensor],
         ) -> None:
-            metric.update(outputs["logits"], batch[col.LABEL])
+            metric.update(torch.argmax(outputs["logits"], dim=1), batch[col.LABEL])
 
         return super().get_train_metrics(log_freq, model) + [
             TrainingMetric(
