@@ -320,6 +320,7 @@ class DeepNet(torch.nn.Module):
         super().__init__(*args, **kwargs)
 
         blocks = []
+        block_features = [input_features]
         in_features = input_features
         for block_config in blocks_config:
             out_features = in_features
@@ -341,10 +342,11 @@ class DeepNet(torch.nn.Module):
             if "dropout" in block_config:
                 layers.append(torch.nn.Dropout(block_config["dropout"]))
 
+            block_features.append(out_features)
             in_features = out_features
             blocks.append(torch.nn.Sequential(*layers))
 
-        self._features = [input_features] + [c["features"] for c in blocks_config]
+        self._features = block_features
 
         # Use ModuleList instead of Sequential to allow empty layers
         self.layers = torch.nn.ModuleList(modules=blocks)
