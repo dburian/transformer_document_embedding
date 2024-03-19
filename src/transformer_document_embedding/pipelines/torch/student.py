@@ -377,6 +377,9 @@ class StudentTrainPipeline(TorchTrainPipeline):
             for net_name in ["net1", "net2"]:
                 net = getattr(model.head.contextual_head, net_name)
                 layer_count = len(net.layers)
+                if layer_count == 0:
+                    continue
+
                 sample_projection_weight_path = (
                     f"head.contextual_head.{net_name}.layers.{layer_count-1}.0.weight"
                 )
