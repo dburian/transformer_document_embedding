@@ -8,7 +8,7 @@ head_finetune_kwargs: &head_finetune_kwargs
   fp16: True
   grad_accumulation_steps: 1
   max_grad_norm: 1.0
-  log_every_step: 4
+  log_every_step: 8
   validate_every_step: null
   patience: 3
   save_best: False
@@ -32,20 +32,20 @@ splits: &splits
   validation: validation
 
 evaluations:
-  sims_wines:
-    dataset:
-      module: wikipedia_similarities:WikipediaSimilarities
-      kwargs:
-        path: ./data/wikipedia_similarities.py
-        dataset: wine
-    head: null
-  sims_games:
-    dataset:
-      module: wikipedia_similarities:WikipediaSimilarities
-      kwargs:
-        path: ./data/wikipedia_similarities.py
-        dataset: game
-    head: null
+  # sims_wines:
+  #   dataset:
+  #     module: wikipedia_similarities:WikipediaSimilarities
+  #     kwargs:
+  #       path: ./data/wikipedia_similarities.py
+  #       dataset: wine
+  #   head: null
+  # sims_games:
+  #   dataset:
+  #     module: wikipedia_similarities:WikipediaSimilarities
+  #     kwargs:
+  #       path: ./data/wikipedia_similarities.py
+  #       dataset: game
+  #   head: null
   imdb:
     dataset:
       module: imdb:IMDB
