@@ -9,7 +9,6 @@ from torcheval.metrics import (
     MulticlassAccuracy,
     MulticlassF1Score,
     MulticlassPrecision,
-    MulticlassRecall,
 )
 
 
@@ -30,9 +29,10 @@ def classification_metrics(num_classes: int, **metric_kwargs) -> dict[str, Metri
         num_classes=num_classes, average="macro", **metric_kwargs
     )
 
-    macro_recall = MulticlassRecall(
-        num_classes=num_classes, average="macro", **metric_kwargs
-    )
+    # Currently not used as there is a bug. Waiting for PR (#166) to be merged.
+    # macro_recall = MulticlassRecall(
+    #     num_classes=num_classes, average="macro", **metric_kwargs
+    # )
 
     macro_precision = MulticlassPrecision(
         num_classes=num_classes, average="macro", **metric_kwargs
@@ -47,5 +47,5 @@ def classification_metrics(num_classes: int, **metric_kwargs) -> dict[str, Metri
         "macro_accuracy": macro_accuracy,
         "macro_precision": macro_precision,
         "macro_f1": macro_f1,
-        "macro_recall": macro_recall,
+        # "macro_recall": macro_recall,
     }
