@@ -97,6 +97,63 @@ Results:
   still better then its contrastive version. This could be because the negatives
   were always almost perpendicular, so it didn't exert useful pressure on loss.
 
+### 5.3. Structural Validation experiments only with wikipedia
+
+Relevant files:
+- `hp_searches/old_structural_basic_loss`
+- `hp_searches/old_structural_max_marginals_loss`
+
+Hyperparameters:
+- basic losses:
+    - mse
+    - contrastive
+    - cos_dist
+- max marginals:
+    - losses:
+        - cos_dist
+        - mse
+    - lambda:
+        - 0.1
+        - 0.5
+        - 1
+        - 1.5
+
+Results:
+- 1.5 lambda is bad in every case
+- constrastive behaves a lot like `max_marginals_cos_dist` with lambda 1, but
+  has slightly better SBERT cos
+- in their respective metrics (e.g. max_marginals_cos_dist corresponding to
+  SBERT COS) lambdas 0.1 and 0.5 behave very similarly
+- for mse the best were:
+    - mse
+    - max_marginals mse, lambdas 0.1, 0.5
+    - a large gap
+    - constrastive
+    - cos_dist
+- for cos the best were:
+    - max marginals cos_dist, lambdas 0.1, 0.5
+    - cos_dist
+    - a gap
+    - contrastive
+    - max marginals cos_dist lambda 1
+
+### 11.3. Structural validation experiments with CLS pooling only with wikipedia
+
+Relevant files:
+- `hp_searches/cls_structural_basic_loss`
+- `hp_searches/cls_structural_max_marginals_loss`
+
+Hyperparameters:
+- the same as for [GS
+  above](#53-structural-validation-experiments-only-with-wikipedia) but with CLS
+  pooling
+
+Results:
+- all observations made to previous GS with mean pooling still hold even with
+  CLS pooling
+- compared to mean pooling CLS pooling performed worse by a noticeable bit
+
+
 ## Evaluations
 
 ### 10.1. Losses (with incorrect cos and mse SBERT metrics) on Wikipedia Similarities
@@ -166,3 +223,29 @@ Results:
 - its important to highlight that `contrastive_cos_dist` did not have cos SBERT
   as good as `cos_dist` yet it is clearly on par or better
     - this suggests that `cos` with SBERT may not be the decisive metric
+
+### 13.3. Comparing cls and mean pooling of structural gs only with wikipedia
+
+
+Relevant files:
+- Evaluations
+    - `evaluations/old_structural_eval` -- [mean GS](#53-structural-validation-experiments-only-with-wikipedia)
+    - `evaluations/cls_structural_eval` -- [cls
+      GS](#113-structural-validation-experiments-with-cls-pooling-only-with-wikipedia)
+
+Results:
+- max-marginals cos_dist with lambda 1 is the best out of max marginals
+- max-marginals mse was significantly worse overall
+- best models (by normalized accuracy)
+    - max marginals cos_dist lambda 1
+    - cos_dist
+    - contrastive
+    - sbert
+    - longformer
+    - looking at just `value`: all first 4  models are within 0.01 of each other
+      (cos_dist equal to sbert pretty much)
+- Cls pooling is overall worse than mean pooling, especially all loss variants
+  that contain mse except for max marginals with lambda 1 (which is for some
+  reason the best model)
+- if we look at the top models from CLS pooling and the best model from mean
+  pooling we see that mean pooling is always better except for IMDB and S2ORC.
