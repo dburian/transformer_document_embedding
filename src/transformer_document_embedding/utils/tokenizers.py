@@ -182,8 +182,19 @@ class ConsistentLenghtDistSampler(Sampler):
         generator: Optional[np.random.Generator] = None,
     ) -> None:
         """Creates a sampler that tries to be consistent in input length.
-        Parameters:
-        -----------
+        Parameters
+        ----------
+        dataset: datasets.Dataset
+            Dataset to sample
+        bucket_limits: list[int]
+            List of length thresholds that define buckets.
+        effective_batch_size: int
+            Number of documents that will be used in effective batch. Typically
+            this would be `batch_size * gradient_accumulation_steps`.
+        mega_batch_size: int
+            Number of documents to cache to
+
+
         """
         super().__init__(None)
         self._dataset = dataset
@@ -439,5 +450,5 @@ def create_tokenized_data_loader(
         batch_sampler = ...
         dataloader_kwargs["batch_sampler"] = batch_sampler
 
-    dataloader = DataLoader(data, **dataloader_kwargs)
+    dataloader = DataLoader(data, **dataloader_kwargs, drop_last=True)
     return dataloader
