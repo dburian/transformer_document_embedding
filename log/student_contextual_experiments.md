@@ -3,6 +3,39 @@
 Experiments focused on contextual part of [teacher-student
 training](./teacher_student_training.md).
 
+## Final GS plan
+
+How are we going to present the results?
+
+### The shortest option
+
+1. say we tried CCA and DCCA but the training just diverged (optionally try
+   again to see what exactly is happening)
+2. say we use normalizations and dropouts by default
+3. grid search projections dimensions with SoftCCA
+4. optionally ablate SDL part of SoftCCA (which results into using just MSE)
+
+Chosen since we also need to grid search weighting of the two losses which might
+be also complicated.
+
+### More types of losses
+
+1. say we tried CCA and DCCA but the training just diverged (optionally try
+   again to see what exactly is happening)
+2. say we use normalizations and dropouts by default
+3. grid search projections dimensions with SoftCCA
+3. grid search projections dimensions with MSE
+3. grid search projections dimensions with COS?
+
+### Projection in detail
+
+1. say we tried CCA and DCCA but the training just diverged (optionally try
+   again to see what exactly is happening)
+2. grid search projections dimensions with SoftCCA
+3. grid search dropouts and normalizations with SoftCCA
+4. optionally ablate SDL part of SoftCCA (which results into using just MSE)
+
+
 ## Hyperparameter tuning
 
 ### Earlier experiments
@@ -332,10 +365,62 @@ Results (comparing with results from 23.1. 100 DBOW gs):
   projection[-1] transformer
 - Cross-correlation doesn't behave as L2 nor as CCA, also holds for L2 and CCA
 
+### 15.3. 768 contextual projection for 768d DBOW
 
-NEXT:
-    - try dropout
-    - try different transformer projections with fixed PV projection
+Relevant files: `hp_searches/soft_cca_projections_dbow_768`
+
+Hyperparameters:
+- Student projection:
+    - 256(relu)x768
+    - 768(relu)x1024(relu)x768
+- PV projection:
+    - 768
+
+Results:
+- Validation CCA jumps a lot, but the CCA is clearly worse than for the previous
+  768d dbow projections
+
+
+### 19.3. Smaller student projections with 768d DBOW
+
+Relevant files: `hp_searches/soft_cca_projections_dbow_768`
+
+Hyperparameters:
+- student projection:
+    - 768
+    - 256(linear)x768
+
+Results:
+- Validation CCA is all over the place, but
+
+
+### 15.- 25.3. Validation unreadable experiments
+
+I had trouble replicating the consistency of validation CCA of experiments from
+[23.1. with 100d dbow](#231-soft-cca-projection-gs-on-dbow-100d). I've done some
+experiments to check what influences the validation CCA.
+
+Relevant files:
+    - `hp_searches/soft_cca_projections_dbow_100_gas` -- playing with grad.
+      accumulation steps
+    - `hp_searches/soft_cca_projections_dbow_100_sampling` -- testing online
+      sampling
+    - `hp_searches/soft_cca_projections_dbow_100_warmup` -- playing with warmup
+      steps
+    - `results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/replicating_previous_run*`
+      -- replicating the very same setup from the grid search mentioned above
+
+Results:
+- no real surprises -- validation CCA still oscillated by quite a bit and nothing
+  seemed to helped it settle by a lot
+- the replicating experiments showed that there the result is highly dependent
+  on the random seed which shuffled (fix coming soon) the validation split, and
+  the windowed CCA ignored the first inputs that didn't fit into the window
+    - now we do sliding window mean so the shuffling shouldn't matter and CCA
+      should be more trustworthy and consistent
+- the replicating experiments had the same training CCA but different validation
+  CCA, which may suggest that we might be better off overlooking generalization
+  and just decide base on train CCA
 
 ## Evaluations
 
@@ -345,11 +430,12 @@ NEXT:
 
 ### 26.2. With DBOW 100, 768 on validation evaluation
 
-Relevant files: `evaluations/student_eval`
+Relevant files: `evaluations/student_eval_correct`
 
 
 Evaluated models:
-- all from grid searches from 23.1. till 26.2.
+- all from grid searches from [23.1.](#231-soft-cca-projection-gs-on-dbow-100d)
+  till [15.3](#153-768-contextual-projection-for-768d-dbow)
 
 Results:
 - permutation testing (adjusted won-by on all tasks including non-validation task):
@@ -368,6 +454,8 @@ Results:
         - 256(relu)x768 Transformer,            - PV
         - 768(relu)x1024(relu)x768 Transformer, - PV
         - 768(relu)x1024(relu)x768 Transformer, 128(linear)x768 PV
+        - 768(relu)x1024(relu)x768 Transformer, 768 PV
+        - 256(relu)x768 Transformer,            768 PV
         - 256(relu)x768 Transformer,            128(linear)x768 PV
 
 - higher CCA means higher probability of performant model
@@ -376,13 +464,34 @@ Results:
     - CCA certainly doesn't correlate with performance, small differences in CCA
       can easily result in large or differences in performance
 - Classification and regression metrics definitely value different things
-    - for 100d only 768 PV variants are better then pure Longformer in classification
-      tasks
+    - for 100d only 768 PV variants are better then pure Longformer in
+      classification tasks
     - for 768d, large T, - PV is somehow much better in retrieval than small T,
       - PV, even though their classificaiton performance is on par
 - dbow_768d is slightly worse in permutation testing won-by than dbow_100d even
-  thoug it won more matches
-    - this small difference cannot explain why with 100d dbow contextual teacher
-      the student beat the teacher (and longformer) while 768d dbow couldn't do
-      that
+  though it won more matches
+    - this small difference cannot explain why with 100d dbow contextual
+      teacher, the student beat the teacher (and longformer) while 768d dbow
+      couldn't do that
+    - Seemingly teaching with more dimensions is harder
 - 100d dbow is better in retrieval while 768d is better at classification
+
+### 20.3. Smaller student projections for 768d DBOW on validation evaluation
+
+Relevant files:
+    - `evaluations/student_eval_correct`
+
+Evaluation of [20.3.
+GS](#203-smaller-student-projections-for-768d-dbow-on-validation-evaluation)
+
+Results:
+- I only evaluated the true validation tasks (only classification).
+- The best models according to normalized accuracy versions were (all versions
+  from `student_eval_correct` considered):
+    - 768 Transformer,           - PV
+    - Longformer
+    - 256(linear)x768,           - PV
+    - dbow_768d,                 - PV
+    - 256(relu)x768,             - PV
+    - 768(relu)x1024x(relu)x768, - PV
+    - clearly making the Transformer projection smaller helped a lot

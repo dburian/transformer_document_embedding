@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from functools import partial
 
 from torcheval.metrics import Max, Mean, Metric, Sum
@@ -83,7 +84,11 @@ class _Student(torch.nn.Module):
         return outputs
 
 
+@dataclass(kw_only=True)
 class StudentTrainPipeline(TorchTrainPipeline):
+    metric_window_size_mult: float
+    metric_window_shift_frac: float
+
     def get_encompassing_model(
         self,
         model: TransformerEmbedder,
@@ -296,6 +301,12 @@ class StudentTrainPipeline(TorchTrainPipeline):
             for back_steps in range(1, max(*layer_counts) + 1):
                 yield (max(0, layer_c - back_steps) for layer_c in layer_counts)
 
+        def to_int(num: float) -> int:
+            return int(num // 1)
+
+        def win_shift(window_size: int) -> int:
+            return to_int(window_size * self.metric_window_shift_frac)
+
         for net1_layer_ind, net2_layer_ind in reverse_projcetion_layers():
             min_dim = min(net1_feats[net1_layer_ind], net2_feats[net2_layer_ind])
 
@@ -308,9 +319,15 @@ class StudentTrainPipeline(TorchTrainPipeline):
             view2_update_fn = partial(update_with_projection2, layer_ind=net2_layer_ind)
 
             layer_specifier = f"[{net1_layer_ind},{net2_layer_ind}]"
-            for multiplier in [5, 10]:
+            for multiplier in [
+                self.metric_window_size_mult,
+                self.metric_window_size_mult * 2,
+            ]:
+                window_size = to_int(min_dim * multiplier)
                 cca_metric = WindowedCCAMetricZoo(
-                    n_components=min_dim, window_size=min_dim * multiplier
+                    n_components=min_dim,
+                    window_size=window_size,
+                    window_shift=win_shift(window_size),
                 )
 
                 metric_name = (
@@ -322,39 +339,51 @@ class StudentTrainPipeline(TorchTrainPipeline):
                     TrainingMetric(
                         metric_name,
                         cca_metric,
-                        log_freq,
+                        cca_metric.window_shift,
                         both_views_update_fn,
                         reset_after_log=False,
                     ),
                 )
 
-            crosscorr_window = min_dim * 5
-            net1_window = net1_feats[net1_layer_ind] * 5
-            net2_window = net2_feats[net2_layer_ind] * 5
-            projection_metrics.extend(
-                [
-                    TrainingMetric(
-                        f"crosscorr_projection{layer_specifier}_x{crosscorr_window}",
-                        WindowedAbsCrossCorrelationMetric(crosscorr_window),
-                        log_freq,
-                        both_views_update_fn,
-                        reset_after_log=False,
+            crosscorr_window = to_int(min_dim * self.metric_window_size_mult)
+            crosscorr_win_shift = win_shift(crosscorr_window)
+            projection_metrics.append(
+                TrainingMetric(
+                    f"crosscorr_projection{layer_specifier}_x{crosscorr_window}",
+                    WindowedAbsCrossCorrelationMetric(
+                        crosscorr_window, crosscorr_win_shift
                     ),
-                    TrainingMetric(
-                        f"corr_student_projection[{net1_layer_ind}]_x{net1_window}",
-                        WindowedAbsCorrelationMetric(net1_window),
-                        log_freq,
-                        view1_update_fn,
-                        reset_after_log=False,
-                    ),
-                    TrainingMetric(
-                        f"corr_contextual_projection[{net2_layer_ind}]_x{net2_window}",
-                        WindowedAbsCorrelationMetric(net2_window),
-                        log_freq,
-                        view2_update_fn,
-                        reset_after_log=False,
-                    ),
-                ]
+                    crosscorr_win_shift,
+                    both_views_update_fn,
+                    reset_after_log=False,
+                )
+            )
+            net1_window = to_int(
+                net1_feats[net1_layer_ind] * self.metric_window_size_mult
+            )
+            net1_win_shift = win_shift(net1_window)
+            projection_metrics.append(
+                TrainingMetric(
+                    f"corr_student_projection[{net1_layer_ind}]_x{net1_window}",
+                    WindowedAbsCorrelationMetric(net1_window, net1_win_shift),
+                    net1_win_shift,
+                    view1_update_fn,
+                    reset_after_log=False,
+                )
+            )
+
+            net2_window = to_int(
+                net2_feats[net2_layer_ind] * self.metric_window_size_mult
+            )
+            net2_win_shift = win_shift(net2_window)
+            projection_metrics.append(
+                TrainingMetric(
+                    f"corr_contextual_projection[{net2_layer_ind}]_x{net2_window}",
+                    WindowedAbsCorrelationMetric(net2_window, net2_win_shift),
+                    net2_win_shift,
+                    view2_update_fn,
+                    reset_after_log=False,
+                )
             )
 
         return projection_metrics

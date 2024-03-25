@@ -6,7 +6,7 @@ import logging
 from time import time
 
 import warnings
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Union
 from sklearn.cross_decomposition import CCA
 from cca_zoo.linear import CCA as ZooCCA
 
@@ -172,7 +172,11 @@ class WindowedMetric(Metric):
     """Base class for all metrics that need fixed window in order to be comparable."""
 
     def __init__(
-        self, window_size: int, num_views: int, device: Optional[torch.device] = None
+        self,
+        window_size: int,
+        num_views: int,
+        window_shift: int,
+        device: Optional[torch.device] = None,
     ) -> None:
         super().__init__(device=device)
 
@@ -181,37 +185,80 @@ class WindowedMetric(Metric):
         )
         self.views: list[torch.Tensor]
 
+        self._window_shift = window_shift
         self._window_size = window_size
+        self._average = Mean(device=device)
 
     @property
     def window_size(self) -> int:
         return self._window_size
 
     @property
-    def has_full_window(self) -> int:
+    def window_shift(self) -> int:
+        return self._window_shift
+
+    @property
+    def has_full_window(self) -> bool:
         samples = self.views[0].size(0)
-        return samples == self.window_size
+        return samples >= self.window_size
 
     @torch.inference_mode()
     def update(self, *new_views: torch.Tensor) -> WindowedMetric:
         for i, new_view in enumerate(new_views):
             self.views[i] = torch.cat((self.views[i], new_view), dim=0)
 
-        self._shorten_views_to_size()
+        if self.has_full_window:
+            logger.info(
+                "Full window: Metric %s, Window %d, Win shift %d, Views len: %d",
+                type(self).__name__,
+                self.window_size,
+                self.window_shift,
+                self.views[0].shape[0],
+            )
+            self._truncate_views()
+            current_result = self._compute_with_full_window()
+
+            if not torch.isnan(current_result):
+                self._average.update(current_result)
+            else:
+                logger.info(
+                    "Computed NAN: Metric %s, Window %d, Win shift %d, Views len: %d",
+                    type(self).__name__,
+                    self.window_size,
+                    self.window_shift,
+                    self.views[0].shape[0],
+                )
+
+            self._shift_window()
         return self
 
+    def to(self, device: Union[str, torch.device], *args: Any, **kwargs: Any):
+        self._average.to(device)
+        return super().to(device, *args, **kwargs)
+
     def compute(self) -> Any:
-        if not self.has_full_window:
+        if not self._average.weighted_sum:
+            logger.info(
+                "Compute empty average: Metric %s, Window %d,"
+                "Win shift %d, Views len: %d",
+                type(self).__name__,
+                self.window_size,
+                self.window_shift,
+                self.views[0].shape[0],
+            )
             return torch.nan
 
-        return self._compute_with_full_window()
+        sliding_window_avg = self._average.compute()
+        self._average.reset()
+        return sliding_window_avg
 
     @abstractmethod
-    def _compute_with_full_window(self) -> Any:
+    def _compute_with_full_window(self) -> torch.Tensor:
         pass
 
     def merge_state(self, metrics: Iterable[WindowedCCAMetric]) -> WindowedMetric:
         views = [[] for _ in range(len(self.views))]
+        self._average.merge_state([m._average for m in metrics])
         for metric in itertools.chain([self], metrics):
             assert len(metric.views) == len(views)
             for i, view in enumerate(metric.views):
@@ -219,12 +266,19 @@ class WindowedMetric(Metric):
 
         self.views = [torch.concat(view) for view in views]
 
-        self._shorten_views_to_size()
+        if self.has_full_window:
+            self._truncate_views()
         return self
 
-    def _shorten_views_to_size(self) -> None:
-        if self.views[0].size(0) > self.window_size:
-            self.views = [view[-self.window_size :] for view in self.views]
+    def _truncate_views(self) -> None:
+        self.views = [view[-self.window_size :] for view in self.views]
+
+    def _shift_window(self) -> None:
+        self.views = [view[self.window_shift :] for view in self.views]
+
+    def reset(self):
+        self._average.reset()
+        return super().reset()
 
 
 class WindowedCCAMetric(WindowedMetric):
@@ -235,34 +289,35 @@ class WindowedCCAMetric(WindowedMetric):
     comparable.
     """
 
-    # How many n_components will fit in window
-    WINDOW_MULT_FACTOR = 5
-
     def __init__(
         self,
         n_components: int,
-        window_size: Optional[int] = None,
+        window_size: int,
+        window_shift: int,
         device: Optional[torch.device] = None,
     ) -> None:
         super().__init__(
-            window_size=window_size
-            if window_size is not None
-            else self.WINDOW_MULT_FACTOR * n_components,
+            window_size=window_size,
+            window_shift=window_shift,
             num_views=2,
             device=device,
         )
 
+        assert (
+            n_components < window_size
+        ), "window size must be at least `n_components` long"
+
         self.n_components = n_components
 
     @torch.inference_mode()
-    def _compute_with_full_window(self) -> float:
+    def _compute_with_full_window(self) -> torch.Tensor:
         samples = self.views[0].size(0)
         view1_dim = self.views[0].size(1)
         view2_dim = self.views[1].size(1)
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
-            return torch.nan
+            return torch.tensor(torch.nan, device=self.views[0].device)
 
         start_time = time()
         cca = CCA(n_components=self.n_components, tol=1e-2, max_iter=100000)
@@ -287,7 +342,7 @@ class WindowedCCAMetric(WindowedMetric):
                 end_time - start_time,
             )
 
-            return correlation
+            return torch.tensor(correlation, device=self.views[0].device)
         except np.linalg.LinAlgError as e:
             logger.warn("Error when computing CCA: %s", e)
             end_time = time()
@@ -297,17 +352,23 @@ class WindowedCCAMetric(WindowedMetric):
                 self.window_size,
                 end_time - start_time,
             )
-            return np.nan
+            return torch.tensor(np.nan, device=self.views[0].device)
 
 
 class WindowedCCAMetricTorch(WindowedCCAMetric):
     def __init__(
         self,
         n_components: int,
-        window_size: Optional[int] = None,
+        window_size: int,
+        window_shift: int,
         device: Optional[torch.device] = None,
     ) -> None:
-        super().__init__(n_components, window_size, device)
+        super().__init__(
+            n_components=n_components,
+            window_size=window_size,
+            window_shift=window_shift,
+            device=device,
+        )
 
         self._cca_loss = CCALoss(
             output_dimension=n_components,
@@ -315,21 +376,21 @@ class WindowedCCAMetricTorch(WindowedCCAMetric):
         )
 
     @torch.inference_mode()
-    def _compute_with_full_window(self) -> float:
+    def _compute_with_full_window(self) -> torch.Tensor:
         samples = self.views[0].size(0)
         view1_dim = self.views[0].size(1)
         view2_dim = self.views[1].size(1)
 
         # There is a upper bound on the number of dimensions found
         if self.n_components > min(view1_dim, view2_dim, samples):
-            return torch.nan
+            return torch.tensor(torch.nan, device=self.views[0].device)
 
         return -self._cca_loss(self.views[0], self.views[1])["loss"]
 
 
 class WindowedCCAMetricZoo(WindowedCCAMetric):
     @torch.inference_mode()
-    def _compute_with_full_window(self) -> float:
+    def _compute_with_full_window(self) -> torch.Tensor:
         samples = self.views[0].size(0)
         view1_dim = self.views[0].size(1)
         view2_dim = self.views[1].size(1)
@@ -348,32 +409,57 @@ class WindowedCCAMetricZoo(WindowedCCAMetric):
                 f"CCA computed with {','.join(problematic_vars)} smaller than "
                 f"n_components ({self.n_components})"
             )
-            return torch.nan
+            print("asfsadfsfsadfsafsf asdfsadfsaf")
+            return torch.tensor(torch.nan, device=self.views[0].device)
 
         views = (self.views[0].numpy(force=True), self.views[1].numpy(force=True))
         cca_model = ZooCCA(latent_dimensions=self.n_components)
-        return cca_model.fit(views).score(views) / self.n_components
+        return torch.tensor(
+            cca_model.fit(views).score(views) / self.n_components,
+            device=self.views[0].device,
+        )
 
 
 class WindowedAbsCrossCorrelationMetric(WindowedMetric):
-    def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
-        super().__init__(window_size=window_size, num_views=2, device=device)
+    def __init__(
+        self, window_size: int, window_shift: int, device: Optional[torch.device] = None
+    ) -> None:
+        super().__init__(
+            window_size=window_size,
+            window_shift=window_shift,
+            num_views=2,
+            device=device,
+        )
 
-    def _compute_with_full_window(self) -> float:
+    def _compute_with_full_window(self) -> torch.Tensor:
         all_vars = torch.concat((self.views[0].T, self.views[1].T), dim=0)
         view1_dim = self.views[0].size(1)
 
         cross_corr_coefs = torch.corrcoef(all_vars)[:view1_dim, view1_dim:]
         mean_abs_cross_corr = cross_corr_coefs.abs().mean()
 
-        return mean_abs_cross_corr.item()
+        print(
+            "Nans in correlation: "
+            f"{torch.isnan(cross_corr_coefs).to(torch.float32).sum()}"
+        )
+        print("Nans in all vars: " f"{torch.isnan(all_vars).to(torch.float32).sum()}")
+        print(
+            f"view 1 dim: {view1_dim}, view 2 dim: {self.views[1].size(1)}, "
+            f"view 1 size: {self.views[0].size(0)}, view2 size: {self.views[1].size(0)}"
+        )
+
+        return mean_abs_cross_corr
 
 
 class WindowedAbsCorrelationMetric(WindowedMetric):
-    def __init__(self, window_size: int, device: Optional[torch.device] = None) -> None:
-        super().__init__(window_size, num_views=1, device=device)
+    def __init__(
+        self, window_size: int, window_shift: int, device: Optional[torch.device] = None
+    ) -> None:
+        super().__init__(
+            window_size, window_shift=window_shift, num_views=1, device=device
+        )
 
-    def _compute_with_full_window(self) -> Any:
+    def _compute_with_full_window(self) -> torch.Tensor:
         abs_corr_mat = torch.corrcoef(self.views[0].T).abs()
         abs_corr_without_diagonal = (
             abs_corr_mat

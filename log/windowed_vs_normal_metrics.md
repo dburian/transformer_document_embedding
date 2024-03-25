@@ -24,32 +24,34 @@ For non-windowed metrics we assume we call `reset()` after every log.
 
 I've decided that:
 
-### CCA metrics will have fixed buffer size depending on the number of components
+### Windowed is clearly better
 
-Ergo: they will produce nans before reaching the required buffer size. The
-advantage of this step is to make the CCA metrics comparable among experiments
-and among different splits. If the CCA will create a value it will have some
-informational value.
+We need windows for CCA, correlations, and cross-correlations.
 
-The buffer size should be included in the metric name to make it evident.
+### Windowed metrics will output nans before filling up the window
 
-### CCA metrics won't ever reset
+Metrics with different windows are not comparable. Ergo its pointless to output
+any values with the window buffer half empty or bigger than it should be.
 
-The only disadvantage is that for validation metrics it might happen that
-new validation round considers some data from an old round. So it might be
-advisable to generate some warning. *And do not validate too far apart with too
-little data.* But this seems unlikely.
+### All metrics with the same name should be comparable
 
-Let us try to determine from where we should warn the user. It should be from a
-piece of code which knows:
-1. what kind of metric it is working with
-2. that the metric will be processing validation data
-3. the size of validation data
+This means that we need to include the number of components (in the case of CCA)
+and the window size in the name of the metric.
 
-So it is not the training algorithm (because of 1.). Not the metric itself
-because (2. and 3.). The only suitable place is when instantiating the metric in
-preparation for training because we know all three things. Yet this place is not
-suitable as the situation is really custom and I am bound to forget when
-creating new model. Nevertheless, I use CCA only in a single model, when I
-implement others I might realize that there is some code duplication, which also
-includes these warnings.
+### CCA needs at least as many inputs as components
+
+CCA windowed metric must have more inputs than components. Assertion is needed.
+
+
+### Sliding windows instead of fixed ones
+
+In order to use all validation data (if the validation split is larger than the
+window) we use sliding windows. The metric computes the value every time the
+buffer fills up and stores it in a `Mean` metric. After it deletes the oldest
+$n$ inputs and waits for the buffer to fill up again. When logging the metric
+logs the average and resets it automatically.
+
+Resetting the metric would reset the average as well as clear the buffer. This
+means that windowed metrics shouldn't reset as they govern the resetting
+themselves. The important exception is between validation runs where we want to
+make sure, we start with an empty buffer.

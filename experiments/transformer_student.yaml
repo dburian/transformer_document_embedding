@@ -1,8 +1,8 @@
 model:
   module: transformer:TransformerEmbedder
   kwargs:
-    # transformer_name: allenai/longformer-base-4096
-    transformer_name: sentence-transformers/all-mpnet-base-v2
+    transformer_name: allenai/longformer-base-4096
+    # transformer_name: sentence-transformers/all-mpnet-base-v2
     pooler_type: mean
 
 head:
@@ -11,8 +11,8 @@ head:
     max_structural_length: null
     lam: 1
     structural_head_kwargs:
-      loss_type: contrastive_mse
-      contrastive_lam: 1
+      loss_type: max_marginals_cos_dist
+      max_marginals_lam: 1
     contextual_head_kwargs:
       contextual_dim: 100
       student_projection:
@@ -22,17 +22,17 @@ head:
       contextual_projection:
         - features: 768
       loss_type: soft_cca
-      soft_cca_lam: 0.15
+      soft_cca_lam: 0.03
       soft_cca_sdl_alpha: 0.95
 
 
 train_pipeline:
   kind: student
   kwargs:
-    batch_size: 4
+    batch_size: 3
     epochs: 1
     warmup_steps: 100
-    grad_accumulation_steps: 2
+    grad_accumulation_steps: 1
     weight_decay: 0.01
     fp16: True
     lr_scheduler_type: cos
@@ -40,12 +40,14 @@ train_pipeline:
     max_grad_norm: 1.0
     log_every_step: 1
     validate_every_step: 100
-    save_best: True
-    patience: 2
+    save_best: False
+    patience: null
     global_attention_type: cls
-    dataloader_sampling: consistent
-    sampler_kwargs:
-      bucket_limits: [512, 1024, 2048, 4096]
+    dataloader_sampling: default
+    metric_window_size_mult: 5
+    metric_window_shift_frac: 0.1
+    sampler_kwargs: null
+      #bucket_limits: [512, 1024, 1536, 2048, 2560, 3072, 3584, 4096]
 
 dataset:
   module: teacher_embedding:TeacherEmbedding
@@ -55,5 +57,5 @@ dataset:
     structural_embedding_col: hf_sbert
     data_size_limit:
       train: 1000
-      validation: 500
+      validation: 7680
       test: 50
