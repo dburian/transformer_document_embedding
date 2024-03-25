@@ -407,14 +407,6 @@ def create_tokenized_data_loader(
 
     if training:
         data = data.shuffle()
-    else:
-        # Remove all supervised columns
-        data = data.remove_columns(
-            list(
-                {col.LABEL, col.STRUCTURAL_EMBED, col.CONTEXTUAL_EMBED}
-                & set(data.column_names)
-            )
-        )
 
     collator = FastDataCollator(
         padding="longest",

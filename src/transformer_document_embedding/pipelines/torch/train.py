@@ -137,7 +137,7 @@ class TorchTrainPipeline(TrainPipeline):
         train_batches = self.to_dataloader(dataset.splits["train"], encoder)
         val_batches = None
         if (val_split := dataset.splits.get("validation", None)) is not None:
-            val_batches = self.to_dataloader(val_split, encoder, training=True)
+            val_batches = self.to_dataloader(val_split, encoder, training=False)
 
         model = self.get_encompassing_model(encoder, head)
         optimizer = torch.optim.AdamW(
