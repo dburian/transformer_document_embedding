@@ -141,6 +141,7 @@ def cross_validate_single_dataset(
         base_dataset.evaluation_kind,
         base_dataset.splits[config.cross_validate.split],
         model,
+        **config.evaluation_kwargs,
     )
 
     fold_results = []
@@ -155,7 +156,14 @@ def cross_validate_single_dataset(
         training_pipeline(model, head, fold, exp_path)
 
         fold_results.append(
-            evaluate(model, head, fold, exp_path, write_results_to_disk=False)
+            evaluate(
+                model,
+                head,
+                fold,
+                exp_path,
+                evaluation_kwargs=config.evaluation_kwargs,
+                write_results_to_disk=False,
+            )
         )
 
     results = {}
@@ -195,7 +203,9 @@ def evaluate_single_dataset(
     if head is not None and args.save_trained_head:
         save_model_weights(head, os.path.join(exp_path, "trained_head"))
 
-    return evaluate(model, head, dataset, exp_path)
+    return evaluate(
+        model, head, dataset, exp_path, evaluation_kwargs=config.evaluation_kwargs
+    )
 
 
 def evaluate_model(

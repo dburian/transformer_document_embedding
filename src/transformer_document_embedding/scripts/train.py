@@ -97,7 +97,9 @@ def train(config: ExperimentSpec, args: argparse.Namespace) -> dict[str, float]:
         exp_path=exp_path,
     )
 
-    return evaluate(model, head, dataset, exp_path)
+    return evaluate(
+        model, head, dataset, exp_path, evaluation_kwargs=config.evaluation_kwargs
+    )
 
 
 def main() -> None:

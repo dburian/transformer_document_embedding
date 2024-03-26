@@ -29,5 +29,5 @@ _eval_pipelines = {
 }
 
 
-def eval_factory(ds_kind: EvaluationKind) -> EvalPipeline:
-    return _eval_pipelines[ds_kind]()
+def eval_factory(ds_kind: EvaluationKind, **kwargs) -> EvalPipeline:
+    return _eval_pipelines[ds_kind](**kwargs)

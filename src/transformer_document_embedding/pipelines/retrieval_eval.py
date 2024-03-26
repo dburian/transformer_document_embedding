@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from functools import reduce
 from typing import Any, Iterable, Optional, TYPE_CHECKING, cast
 from datasets.fingerprint import generate_random_fingerprint
@@ -18,7 +19,10 @@ if TYPE_CHECKING:
     from transformer_document_embedding.datasets.document_dataset import DocumentDataset
 
 
+@dataclass(kw_only=True)
 class RetrievalEval(EvalPipeline):
+    batch_size: int
+
     def _get_nearest_ids_from_faiss(
         self,
         true_dataset: Dataset,
@@ -124,7 +128,10 @@ class RetrievalEval(EvalPipeline):
         test_split = dataset.splits["test"]
         embeddings_iter = (
             embed.numpy(force=True)
-            for embed in smart_unbatch(model.predict_embeddings(test_split), 1)
+            for embed in smart_unbatch(
+                model.predict_embeddings(test_split, batch_size=self.batch_size),
+                1,
+            )
         )
 
         true_pred_ids_iter = self._get_nearest_ids_from_faiss(

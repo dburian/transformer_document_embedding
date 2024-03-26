@@ -134,7 +134,9 @@ def search_single(
         exp_path=exp_path,
     )
 
-    return evaluate(model, head, dataset, exp_path)
+    return evaluate(
+        model, head, dataset, exp_path, evaluation_kwargs=config.evaluation_kwargs
+    )
 
 
 def deep_update_with_flatten(

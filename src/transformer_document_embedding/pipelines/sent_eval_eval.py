@@ -7,9 +7,9 @@ import senteval
 from transformer_document_embedding.datasets import col
 
 from transformer_document_embedding.pipelines.pipeline import EvalPipeline
-import numpy as np
 
 if TYPE_CHECKING:
+    import numpy as np
     from senteval.utils import dotdict
     from transformer_document_embedding.datasets.sent_eval import SentEval
     import torch
@@ -53,10 +53,8 @@ class SentEvalEval(EvalPipeline):
         self, params: dotdict, batch: list[list[str]], model: EmbeddingModel
     ) -> np.ndarray:
         ds = self._words_to_dataset(batch)
-        pred_batches = [
-            batch.numpy(force=True) for batch in model.predict_embeddings(ds)
-        ]
-        return np.vstack(pred_batches)
+        embeds = next(model.predict_embeddings(ds, batch_size=len(ds)))
+        return embeds.numpy(force=True)
 
     def __call__(
         self,

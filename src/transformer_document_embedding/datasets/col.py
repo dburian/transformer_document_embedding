@@ -36,3 +36,15 @@ EMBEDDING = "embedding"
 
 """Length of document in mpnet tokens."""
 LENGTH = "length"
+
+IDS = {
+    ID_0,
+    ID_1,
+    ID,
+}
+
+SUPERVISED = IDS | {
+    LABEL,
+    CONTEXTUAL_EMBED,
+    STRUCTURAL_EMBED,
+}

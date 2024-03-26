@@ -23,12 +23,12 @@ if TYPE_CHECKING:
     from transformer_document_embedding.models.embedding_model import EmbeddingModel
 
 
-def get_default_features(split: Dataset, model: EmbeddingModel) -> Dataset:
+def get_default_features(split: Dataset, model: EmbeddingModel, **kwargs) -> Dataset:
     def gen_embeds():
-        split_columns = split.remove_columns(list({col.ID} & set(split.column_names)))
+        split_columns = split.remove_columns(list(col.IDS & set(split.column_names)))
         for batch, embedding in zip(
             split_columns,
-            smart_unbatch(model.predict_embeddings(split), 1),
+            smart_unbatch(model.predict_embeddings(split, **kwargs), 1),
             strict=True,
         ):
             batch[col.EMBEDDING] = embedding
@@ -37,18 +37,18 @@ def get_default_features(split: Dataset, model: EmbeddingModel) -> Dataset:
     return Dataset.from_generator(gen_embeds)
 
 
-def get_pair_bin_cls_features(split: Dataset, model: EmbeddingModel) -> Dataset:
+def get_pair_bin_cls_features(
+    split: Dataset, model: EmbeddingModel, **kwargs
+) -> Dataset:
     def gen_embeds():
-        split_columns = split.remove_columns(
-            list({col.ID_0, col.ID_1, col.ID} & set(split.column_names))
-        )
+        split_columns = split.remove_columns(list(col.IDS & set(split.column_names)))
 
         embeds_0 = split_columns.rename_column(col.TEXT_0, col.TEXT)
         embeds_1 = split_columns.rename_column(col.TEXT_1, col.TEXT)
         for doc, embed_0, embed_1 in zip(
             split_columns,
-            smart_unbatch(model.predict_embeddings(embeds_0), 1),
-            smart_unbatch(model.predict_embeddings(embeds_1), 1),
+            smart_unbatch(model.predict_embeddings(embeds_0, **kwargs), 1),
+            smart_unbatch(model.predict_embeddings(embeds_1, **kwargs), 1),
             strict=True,
         ):
             doc[col.EMBEDDING] = torch.concat((embed_0, embed_1), 0)
@@ -58,14 +58,17 @@ def get_pair_bin_cls_features(split: Dataset, model: EmbeddingModel) -> Dataset:
 
 
 def get_head_features(
-    eval_kind: EvaluationKind, split: Dataset, model: EmbeddingModel
+    eval_kind: EvaluationKind,
+    split: Dataset,
+    model: EmbeddingModel,
+    **kwargs,
 ) -> Dataset:
     get_features = {
         EvaluationKind.CLAS: get_default_features,
         EvaluationKind.PAIR_CLAS: get_pair_bin_cls_features,
     }
 
-    return get_features[eval_kind](split, model)
+    return get_features[eval_kind](split, model, **kwargs)
 
 
 @dataclass(kw_only=True)
@@ -90,8 +93,10 @@ class GenericTorchFinetune(TrainPipeline):
     save_best: bool
     save_after_steps: Optional[int] = None
 
+    embed_pred_batch_size: int
+
     def get_features(self, split: Dataset, model: EmbeddingModel) -> Dataset:
-        return get_default_features(split, model)
+        return get_default_features(split, model, batch_size=self.embed_pred_batch_size)
 
     def to_dataloader(
         self, split: Dataset, model: EmbeddingModel, training: bool = True
@@ -214,4 +219,6 @@ class ClassificationFinetune(GenericTorchFinetune):
 
 class PairClassificationFinetune(ClassificationFinetune):
     def get_features(self, split: Dataset, model: EmbeddingModel) -> Dataset:
-        return get_pair_bin_cls_features(split, model)
+        return get_pair_bin_cls_features(
+            split, model, batch_size=self.embed_pred_batch_size
+        )

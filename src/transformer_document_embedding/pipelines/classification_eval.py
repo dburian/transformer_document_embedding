@@ -1,6 +1,7 @@
 from __future__ import annotations
+from dataclasses import dataclass
 import itertools
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional
+from typing import TYPE_CHECKING, Iterable, Iterator
 
 from transformer_document_embedding.datasets import col
 from transformer_document_embedding.pipelines.helpers import classification_metrics
@@ -25,57 +26,14 @@ def smart_unbatch(
             yield batch
 
 
-def smart_batch(
-    iterable: Iterable[torch.Tensor],
-    single_dim: int,
-    batch_size: int,
-) -> Iterator[torch.Tensor]:
-    output_batch = []
-    for elem in iterable:
-        output_batch.append(elem)
-
-        if len(output_batch) == batch_size:
-            yield torch.tensor(output_batch)
-            output_batch = []
-
-    if len(output_batch) == batch_size:
-        yield torch.tensor(output_batch)
-
-
-def zip_batched(
-    true_iter: Iterable[Any],
-    pred_batches: Iterator[torch.Tensor],
-    single_dim: int = 1,
-    batch_size: int = 64,
-    transform_true: Optional[Callable[[Any], torch.Tensor]] = None,
-) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
-    def identity(x):
-        return x
-
-    if transform_true is None:
-        transform_true = identity
-
-    true_batch = []
-    pred_batch = []
-    for true, pred in zip(
-        true_iter, smart_unbatch(pred_batches, single_dim), strict=True
-    ):
-        true_batch.append(transform_true(true))
-        pred_batch.append(pred)
-
-        if len(true_batch) == batch_size:
-            yield torch.tensor(true_batch), torch.tensor(pred_batch)
-            true_batch, pred_batch = [], []
-
-    if len(true_batch) > 0:
-        yield torch.tensor(true_batch), torch.tensor(pred_batch)
-
-
+@dataclass(kw_only=True)
 class ClassificationEval(EvalPipeline):
+    batch_size: int
+
     def get_embeddings_iter(
         self, split: Dataset, model: EmbeddingModel
     ) -> Iterator[torch.Tensor]:
-        return model.predict_embeddings(split)
+        return model.predict_embeddings(split, batch_size=self.batch_size)
 
     @torch.inference_mode()
     def __call__(
@@ -118,10 +76,12 @@ class PairClassificationEval(ClassificationEval):
         self, split: Dataset, model: EmbeddingModel
     ) -> Iterator[torch.Tensor]:
         embeddings_0 = model.predict_embeddings(
-            split.rename_columns({col.TEXT_0: col.TEXT, col.ID_0: col.ID})
+            split.rename_columns({col.TEXT_0: col.TEXT, col.ID_0: col.ID}),
+            batch_size=self.batch_size,
         )
         embeddings_1 = model.predict_embeddings(
-            split.rename_columns({col.TEXT_1: col.TEXT, col.ID_1: col.ID})
+            split.rename_columns({col.TEXT_1: col.TEXT, col.ID_1: col.ID}),
+            batch_size=self.batch_size,
         )
 
         for embed_0, embed_1 in zip(embeddings_0, embeddings_1, strict=True):

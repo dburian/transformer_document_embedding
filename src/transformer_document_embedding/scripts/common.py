@@ -65,13 +65,14 @@ def evaluate(
     head: Optional[torch.nn.Module],
     dataset: DocumentDataset,
     exp_path: str,
+    evaluation_kwargs: dict[str, Any],
     *,
     write_results_to_disk: bool = True,
 ) -> dict[str, Any]:
     if dataset.evaluation_kind == EvaluationKind.NONE:
         return {}
 
-    eval_pipeline = eval_factory(dataset.evaluation_kind)
+    eval_pipeline = eval_factory(dataset.evaluation_kind, **evaluation_kwargs)
     results = eval_pipeline(model, head, dataset)
     if write_results_to_disk:
         save_results(results, exp_path)

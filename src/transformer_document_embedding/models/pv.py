@@ -70,7 +70,9 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
         return self.vector_size
 
     @torch.inference_mode()
-    def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
+    def predict_embeddings(
+        self, dataset: Dataset, batch_size: int
+    ) -> Iterator[torch.Tensor]:
         pre_processor = create_text_pre_processor(self.text_pre_process)
 
         def add_words(doc: dict[str, Any]) -> dict[str, Any]:
@@ -81,7 +83,6 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
         def to_torch(batch: list[np.ndarray]) -> torch.Tensor:
             return torch.from_numpy(np.array(batch))
 
-        batch_size = 32
         batch = []
         for doc in corpus:
             batch.append(self.infer_vector(doc["words"]))
@@ -123,9 +124,14 @@ class ParagraphVectorConcat(EmbeddingModel):
         return sum(module.embedding_dim for module in self.modules.values())
 
     @torch.inference_mode()
-    def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
+    def predict_embeddings(
+        self, dataset: Dataset, batch_size: int
+    ) -> Iterator[torch.Tensor]:
         for embeds in zip(
-            *(module.predict_embeddings(dataset) for module in self.modules.values()),
+            *(
+                module.predict_embeddings(dataset, batch_size=batch_size)
+                for module in self.modules.values()
+            ),
             strict=True,
         ):
             yield torch.concat(embeds, dim=1)

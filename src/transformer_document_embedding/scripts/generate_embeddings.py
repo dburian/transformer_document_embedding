@@ -79,6 +79,13 @@ def parse_args() -> argparse.Namespace:
         "the dataset.",
     )
 
+    parser.add_argument(
+        "--embedding_prediction_batch_size",
+        type=int,
+        default=8,
+        help="Batch size when predicting embeddings.",
+    )
+
     return parser.parse_args()
 
 
@@ -114,7 +121,13 @@ def generate_embeddings(
     # - `add_column` can accept generator, but it is not documented and thus it
     #   feels like a hacky solution
     def embed_generator(split: Dataset):
-        for embed in smart_unbatch(model.predict_embeddings(split), 1):
+        for embed in smart_unbatch(
+            model.predict_embeddings(
+                split,
+                batch_size=args.embedding_prediction_batch_size,
+            ),
+            1,
+        ):
             yield {args.embedding_col_name: embed}
 
     embeddings = DatasetDict()

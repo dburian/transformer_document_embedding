@@ -16,7 +16,7 @@ class EmbeddingModel:
         raise NotImplementedError()
 
     @abstractmethod
-    def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
+    def predict_embeddings(self, dataset: Dataset, **_) -> Iterator[torch.Tensor]:
         """Returns batched embeddings of a dataset.
 
         Parameters

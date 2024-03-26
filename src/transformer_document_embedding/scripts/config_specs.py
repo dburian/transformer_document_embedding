@@ -74,6 +74,7 @@ class ExperimentSpec(BaseValuesSpec):
     head: Optional[HeadSpec] = None
     dataset: DatasetSpec
     train_pipeline: Optional[PipelineSpec] = None
+    evaluation_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(kw_only=True)
@@ -88,6 +89,7 @@ class EvaluationSpec(BaseValuesSpec):
     head: Optional[HeadSpec] = None
     finetune_pipeline_kwargs: dict[str, Any] = field(default_factory=dict)
     cross_validate: Optional[CrossValidateSpec] = None
+    evaluation_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(kw_only=True)

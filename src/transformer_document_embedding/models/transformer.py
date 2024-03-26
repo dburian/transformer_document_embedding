@@ -151,16 +151,12 @@ class TransformerEmbedder(torch.nn.Module, EmbeddingModel):
         return {**outputs, col.EMBEDDING: pooled_outputs}
 
     @torch.inference_mode()
-    def predict_embeddings(self, dataset: Dataset) -> Iterator[torch.Tensor]:
-        # TODO: To function kwargs
-        batch_size = 4
-
+    def predict_embeddings(
+        self, dataset: Dataset, batch_size: int
+    ) -> Iterator[torch.Tensor]:
         # Remove all supervised columns
         dataset = dataset.remove_columns(
-            list(
-                {col.LABEL, col.STRUCTURAL_EMBED, col.CONTEXTUAL_EMBED}
-                & set(dataset.column_names)
-            )
+            list(col.SUPERVISED & set(dataset.column_names))
         )
 
         batches = create_tokenized_data_loader(

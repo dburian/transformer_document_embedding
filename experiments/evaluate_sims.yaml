@@ -1,0 +1,19 @@
+evaluations:
+  sims_wines:
+    dataset:
+      module: wikipedia_similarities:WikipediaSimilarities
+      kwargs:
+        path: ./data/wikipedia_similarities.py
+        dataset: wine
+    head: null
+    evaluation_kwargs:
+      batch_size: 4
+  sims_games:
+    dataset:
+      module: wikipedia_similarities:WikipediaSimilarities
+      kwargs:
+        path: ./data/wikipedia_similarities.py
+        dataset: game
+    head: null
+    evaluation_kwargs:
+      batch_size: 4
