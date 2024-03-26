@@ -42,7 +42,6 @@ and the window size in the name of the metric.
 
 CCA windowed metric must have more inputs than components. Assertion is needed.
 
-
 ### Sliding windows instead of fixed ones
 
 In order to use all validation data (if the validation split is larger than the
@@ -55,3 +54,7 @@ Resetting the metric would reset the average as well as clear the buffer. This
 means that windowed metrics shouldn't reset as they govern the resetting
 themselves. The important exception is between validation runs where we want to
 make sure, we start with an empty buffer.
+
+I chose to use sliding window instead of using larger window (perhaps as big as
+validation split) because CCA can sometimes be NaN. In such cases we wouldn't
+have any feedback even though we did an intensive calculation.

@@ -71,21 +71,43 @@ These are now the go-to settings.
 - takes around 11GB of VMem
 
 ```yaml
-grad accumulation steps: 1
-batch size: 6
-epochs: 1
-warmup steps: 250 # 10% of all batches
-learning rate: 1e-4
-learning rate scheduler: cos
-weight decay: 0.01
-max grad norm: 1.0
-fp16: True
-dataloader_sampling: default # No need
-global_attention_type: cls # We'll play with pooling in ablation experiments
+model:
+    kwargs:
+        pooler_type: mean # Structural experiments showed `cls` had worse scores
+
+train_pipeline:
+    kwargs:
+        grad accumulation steps: 1
+        batch size: 6
+        epochs: 1
+        warmup steps: 250 # 10% of all batches
+        learning rate: 1e-4
+        learning rate scheduler: cos
+        weight decay: 0.01
+        max grad norm: 1.0
+        fp16: True
+        # We'll play with pooling/glb. attention in 'ablation' experiments
+        global_attention_type: cls
+        # Turns out consistent is quicker (6h40m vs 8h per training)
+        dataloader_sampling: consistent
+        metric_window_size_mult: 5
+        # Increase for less frequent metrics and faster training
+        metric_window_shift_frac: 0.1
+        sampler_kwargs:
+            bucket_limits:
+                - 512
+                - 1024
+                - 1536
+                - 2048
+                - 2560
+                - 3072
+                - 3584
+                - 4096
 
 train split size: 15000
 validation split size: 7680
 ```
+
 
 ## Evaluations
 

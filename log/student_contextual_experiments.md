@@ -409,18 +409,27 @@ Relevant files:
       steps
     - `results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/replicating_previous_run*`
       -- replicating the very same setup from the grid search mentioned above
+    - `results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/replicating_previous_run_3`
+      -- replicating the very same setup from the gs mentioned above but with
+      sliding window average
+
 
 Results:
 - no real surprises -- validation CCA still oscillated by quite a bit and nothing
   seemed to helped it settle by a lot
 - the replicating experiments showed that there the result is highly dependent
-  on the random seed which shuffled (fix coming soon) the validation split, and
+  on the random seed which shuffled (fixed) the validation split, and
   the windowed CCA ignored the first inputs that didn't fit into the window
     - now we do sliding window mean so the shuffling shouldn't matter and CCA
       should be more trustworthy and consistent
 - the replicating experiments had the same training CCA but different validation
   CCA, which may suggest that we might be better off overlooking generalization
   and just decide base on train CCA
+- the final replicating experiment showed much more stable validation CCA,
+  though it was much lower than that for the original experiment (and so I
+  conclude that sliding window mean works)
+    - a surprise effect of the sliding window was that we compute CCA less often
+      which speeds up the training from 2h just to 40mins
 
 ## Evaluations
 
