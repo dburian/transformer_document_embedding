@@ -5,6 +5,7 @@ from typing import Any, Iterable, Optional, TYPE_CHECKING, cast
 from datasets.fingerprint import generate_random_fingerprint
 import faiss
 import numpy as np
+from sklearn.metrics import average_precision_score, ndcg_score
 from tqdm.auto import tqdm
 
 from transformer_document_embedding.datasets import col
@@ -73,6 +74,9 @@ class RetrievalEval(EvalPipeline):
         reciprocal_rank = 0
         percentile_ranks = []
 
+        average_precisions = []
+        ndcgs = []
+
         total_queries = 0
 
         for true_ids, pred_ids in tqdm(
@@ -81,11 +85,27 @@ class RetrievalEval(EvalPipeline):
             disable=not verbose,
             total=iterable_length,
         ):
+            # We assume we go over queries with some true positives
+            assert len(true_ids) > 0
+
             max_rank = len(pred_ids)
             first_hit_ind = max_rank
             query_hits = np.zeros(len(hits_thresholds))
+
+            bin_true = np.isin(pred_ids, true_ids)
+            # generate artificial scores, since only the order matters
+            pred_score = np.linspace(1, 0, len(pred_ids))
+            average_precisions.append(average_precision_score(bin_true, pred_score))
+            ndcgs.append(
+                ndcg_score(
+                    bin_true.reshape((1, -1)),
+                    pred_score.reshape((1, -1)),
+                    ignore_ties=True,
+                )
+            )
+
             # For all predictions
-            for i, pred_id in enumerate(pred_ids):
+            for i, pred_id in enumerate(pred_ids, start=1):
                 # Skip those which are incorrect
                 if pred_id not in true_ids:
                     continue
@@ -94,12 +114,12 @@ class RetrievalEval(EvalPipeline):
                 if first_hit_ind > i:
                     first_hit_ind = i
 
-                percentile_ranks.append(i / max_rank)
+                # So that MPR is between 0 and 1
+                percentile_ranks.append((i - 1) / (max_rank - 1))
                 # For every correct prediction under a threshold we add 1
-                query_hits += (i < hits_thresholds).astype("int32")
+                query_hits += (i <= hits_thresholds).astype("int32")
 
-            # first_hit_ind could be zero if len(true_ids) == 0
-            reciprocal_rank += 1 / (first_hit_ind if first_hit_ind > 0 else 1)
+            reciprocal_rank += 1 / first_hit_ind
             total_queries += 1
 
             for perctanges, num_of_hits in zip(
@@ -110,6 +130,8 @@ class RetrievalEval(EvalPipeline):
         results = {
             "mean_reciprocal_rank": reciprocal_rank / total_queries,
             "mean_percentile_rank": np.mean(percentile_ranks).item(),
+            "map": np.mean(average_precisions).item(),
+            "ndcg": np.mean(ndcgs).item(),
         }
 
         for percentages, threshold in zip(
