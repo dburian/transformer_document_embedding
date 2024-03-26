@@ -450,5 +450,5 @@ def create_tokenized_data_loader(
         batch_sampler = ...
         dataloader_kwargs["batch_sampler"] = batch_sampler
 
-    dataloader = DataLoader(data, **dataloader_kwargs, drop_last=True)
+    dataloader = DataLoader(data, **dataloader_kwargs, drop_last=training)
     return dataloader
