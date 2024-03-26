@@ -208,26 +208,11 @@ class WindowedMetric(Metric):
             self.views[i] = torch.cat((self.views[i], new_view), dim=0)
 
         if self.has_full_window:
-            logger.info(
-                "Full window: Metric %s, Window %d, Win shift %d, Views len: %d",
-                type(self).__name__,
-                self.window_size,
-                self.window_shift,
-                self.views[0].shape[0],
-            )
             self._truncate_views()
             current_result = self._compute_with_full_window()
 
             if not torch.isnan(current_result):
                 self._average.update(current_result)
-            else:
-                logger.info(
-                    "Computed NAN: Metric %s, Window %d, Win shift %d, Views len: %d",
-                    type(self).__name__,
-                    self.window_size,
-                    self.window_shift,
-                    self.views[0].shape[0],
-                )
 
             self._shift_window()
         return self
@@ -238,14 +223,8 @@ class WindowedMetric(Metric):
 
     def compute(self) -> Any:
         if not self._average.weighted_sum:
-            logger.info(
-                "Compute empty average: Metric %s, Window %d,"
-                "Win shift %d, Views len: %d",
-                type(self).__name__,
-                self.window_size,
-                self.window_shift,
-                self.views[0].shape[0],
-            )
+            # No value has yet been computed, probably due to the window not
+            # being full yet
             return torch.nan
 
         sliding_window_avg = self._average.compute()
