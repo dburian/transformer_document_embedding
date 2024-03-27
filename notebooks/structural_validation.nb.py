@@ -1,7 +1,9 @@
+# %% [markdown]
+# # Validation evaluation of structural student
+
 # %%
-import os
 import pandas as pd
-from transformer_document_embedding.scripts.utils import load_yaml
+from transformer_document_embedding import notebook_utils as ntb_utils
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +13,7 @@ plt.rc("figure", figsize=(15, 8))
 sns.set_context("paper")
 sns.set_style("whitegrid")
 # deep, muted, bright, pastel, dark, colorblind
-sns.color_palette("bright")
+sns.color_palette("muted")
 sns.set_palette(sns.color_palette("colorblind"))
 
 
@@ -60,102 +62,31 @@ def struct_features(model_str: str) -> dict[str, Any]:
 
 
 # %%
-metric_renames = {
-    "micro_accuracy": "accuracy",
-    "binary_accuracy": "accuracy",
-    "macro_f1": "f1",
-    "macro_precision": "precision",
-    "macro_recall": "recall",
-    "binary_recall": "recall",
-    "binary_precision": "precision",
-    "binary_f1": "f1",
-}
-
-
-def load_eval_dir(path):
-    model_evals = []
-    for model_dir in os.scandir(path):
-        model_eval_results = load_yaml(os.path.join(model_dir.path, "results.yaml"))
-        model_results = {
-            (task, metric_renames.get(metric, metric)): score
-            for task, metrics in model_eval_results.items()
-            for metric, score in metrics.items()
-        }
-        model_results["model"] = model_dir.name
-        model_evals.append(model_results)
-    evals = pd.DataFrame(model_evals)
-
-    # Handling CV results
-    tmp_evals = evals.copy()
-    imdb_cols = [col for col in tmp_evals.columns if col[0] == "imdb"]
-    imdb_mean_cols = [col for col in imdb_cols if col[1].endswith("mean")]
-    for _, mean_col in imdb_mean_cols:
-        metric = mean_col[mean_col.find("_") + 1 : -len("_mean")]
-        tmp_evals[("imdb", metric)] = list(
-            zip(
-                tmp_evals[("imdb", mean_col)],
-                tmp_evals[("imdb", f"binary_{metric}_std")],
-                strict=True,
-            )
-        )
-    tmp_evals.drop(columns=imdb_cols, inplace=True)
-
-    evals_long = tmp_evals.melt(id_vars=["model"])
-    evals_long["task"] = evals_long["variable"].map(lambda tup: tup[0])
-    evals_long["metric"] = evals_long["variable"].map(lambda tup: tup[1])
-    evals_long["std"] = evals_long["value"].map(
-        lambda val: 0 if not isinstance(val, tuple) else val[1]
-    )
-    evals_long["value"] = evals_long["value"].map(
-        lambda val: val if not isinstance(val, tuple) else val[0]
-    )
-    evals_long.drop(columns=["variable"], inplace=True)
-
-    # Normalized value
-    metric_limits = evals_long.groupby(["task", "metric"])["value"].agg(["min", "max"])
-    by_metric = evals_long.set_index(["task", "metric", "model"])
-    by_metric["normalized_value"] = (by_metric["value"] - metric_limits["min"]) / (
-        metric_limits["max"] - metric_limits["min"]
-    )
-    evals_long = by_metric.reset_index()
-
-    # Task type
-    evals_long["task_type"] = "classification"
-    evals_long.loc[
-        evals_long["task"].isin(["sims_games", "sims_wines"]), "task_type"
-    ] = "retrieval"
-
-    return evals_long
-
-
-# %%
-def add_model_features(df, features_func):
-    features = pd.DataFrame(map(features_func, df["model"]))
-    return pd.concat((features, df), axis=1)
-
-
-# %%
-evals = load_eval_dir("../evaluations/old_structural_eval/")
-evals = add_model_features(evals, struct_features)
-
-# %%
-cls_evals = load_eval_dir("../evaluations/cls_structural_eval/")
-cls_evals = add_model_features(cls_evals, struct_features)
-
-# %%
-evals.shape
-
-# %%
-evals[evals["value"].isna()]
+new_evals = ntb_utils.load_validation_results(
+    "../evaluations/structural_eval", struct_features
+)
+new_glb_evals = ntb_utils.load_validation_results(
+    "../evaluations/glb_structural_eval",
+    struct_features,
+)
+old_evals = ntb_utils.load_validation_results(
+    "../evaluations/old_structural_eval",
+    struct_features,
+)
+old_cls_evals = ntb_utils.load_validation_results(
+    "../evaluations/old_cls_structural_eval",
+    struct_features,
+)
 
 # %% [markdown]
 # # Exploration
+#
+# > **Outdated**
 
 # %% [markdown]
 # ## Retrieval tasks
-
 # %%
-ret_evals = evals[evals["task_type"] == "retrieval"]
+ret_evals = old_evals[old_evals["task_type"] == "retrieval"]
 
 
 # %%
@@ -220,160 +151,162 @@ sns.barplot(res, y="model", x="won", order=res.sort_values("won")["model"])
 # # Presentable
 
 # %%
-pres_evals = evals[evals["metric"] == "accuracy"]
+pres_all = {
+    "new": new_evals.copy(),
+    "new_glb": new_glb_evals.copy(),
+    "old": old_evals.copy(),
+    "old_cls": old_cls_evals.copy(),
+}
+for name, ev in pres_all.items():
+    ev["run"] = name
+pres_all = pd.concat(pres_all.values())
+pres_all = pres_all[pres_all["metric"] == "accuracy"]
 
-# %%
-cls_pres_evals = cls_evals[cls_evals["metric"] == "accuracy"]
 
+pres_all = ntb_utils.add_normalized_score(pres_all, ["run"])
 # %%
-sns.barplot(
-    pres_evals,
+sns.boxplot(
+    pres_all,
     y="model",
-    x="value",
-    order=pres_evals.groupby("model")["value"].mean().sort_values().index,
-)
-
-# %%
-sns.barplot(
-    cls_pres_evals,
-    y="model",
-    x="value",
-    order=cls_pres_evals.groupby("model")["value"].mean().sort_values().index,
-)
-
-# %%
-sns.barplot(
-    cls_pres_evals,
-    y="model",
-    x="normalized_value",
-    order=cls_pres_evals.groupby("model")["normalized_value"]
+    x="normalized_score",
+    hue="run",
+    order=pres_all[pres_all["run"] == "new_glb"]
+    .groupby("model")["normalized_score"]
     .mean()
     .sort_values()
     .index,
+    # errorbar=("pi", 50),
 )
 
 # %%
-tmp = pd.concat(
-    [
-        pres_evals[
-            pres_evals["model"]
-            == "h.k.s_h_k.l_t=max_marginals_cos_dist-h.k.s_h_k.m_m_l=1"
-        ],
-        cls_pres_evals[
-            cls_pres_evals["model"].isin(
-                [
-                    "h.k.s_h_k.l_t=max_marginals_mse-h.k.s_h_k.m_m_l=1",
-                    "h.k.s_h_k.l_t=cos_dist",
-                    "h.k.s_h_k.l_t=max_marginals_cos_dist-h.k.s_h_k.m_m_l=0.1",
-                ]
-            )
-        ],
-    ]
+sns.barplot(
+    pres_all,
+    y="model",
+    x="score",
+    hue="run",
+    order=pres_all[pres_all["run"] == "new_glb"]
+    .groupby("model")["score"]
+    .mean()
+    .sort_values()
+    .index,
+    errorbar=("pi", 50),
 )
 
-sns.barplot(tmp, x="task", y="value", hue="model")
+# %%
+sns.boxplot(
+    pres_all,
+    y="model",
+    x="normalized_score",
+    hue="run",
+    order=pres_all[pres_all["run"] == "new_glb"]
+    .groupby("model")["normalized_score"]
+    .mean()
+    .sort_values()
+    .index,
+    # errorbar=("pi", 50),
+)
+
+# %%
+pres_all.groupby(["model", "run"])["normalized_score"].agg(["mean", "std"]).sort_values(
+    "mean"
+)
+
+# %%
+runs = pres_all["run"].unique()
+fig, axes = plt.subplots(len(runs), figsize=(8, 24), gridspec_kw={"hspace": 0.15})
+fig.tight_layout()
+
+for ax, run in zip(axes, runs, strict=True):
+    data = pres_all[pres_all["run"] == run]
+    sns.barplot(
+        data,
+        x="score",
+        y="model",
+        hue="task",
+        ax=ax,
+        order=data.groupby("model")["score"].mean().sort_values().index,
+    )
+    ax.set_title(run)
+
+# %% [markdown]
+# ### Just new
+
+# %%
+new_evals = new_evals[new_evals["metric"] == "accuracy"]
+new_evals = ntb_utils.add_normalized_score(new_evals)
+
+# %%
+sns.barplot(
+    new_evals,
+    x="normalized_score",
+    y="model",
+    order=new_evals.groupby("model")["normalized_score"].mean().sort_values().index,
+)
+
+# %%
+sns.barplot(
+    new_evals,
+    x="score",
+    y="model",
+    hue="task",
+    order=new_evals.groupby("model")["score"].mean().sort_values().index,
+)
+
+# %% [markdown]
+# ### Just new without glb attention
+
+# %%
+new_glb_evals = new_glb_evals[new_glb_evals["metric"] == "accuracy"]
+new_glb_evals = ntb_utils.add_normalized_score(new_glb_evals)
+
+# %%
+sns.barplot(
+    new_glb_evals,
+    x="normalized_score",
+    y="model",
+    order=new_glb_evals.groupby("model")["normalized_score"].mean().sort_values().index,
+)
+
+# %%
+sns.barplot(
+    new_glb_evals,
+    x="score",
+    y="model",
+    hue="task",
+    order=new_glb_evals.groupby("model")["score"].mean().sort_values().index,
+)
 
 # %% [markdown]
 # ## Best max-marginals
 
 # %%
-mmarginals_evals = pres_evals[pres_evals["loss_type"] == "max_marginals"]
+mm_evals = new_glb_evals[new_glb_evals["loss_type"] == "max_marginals"]
+mm_evals = mm_evals[mm_evals["metric"] == "accuracy"]
 
-# %%
-mmarginals_evals[
-    (mmarginals_evals["mm_loss_type"] == "mse") & (mmarginals_evals["mm_lam"] == 1.5)
-]
+mm_evals = ntb_utils.add_normalized_score(mm_evals)
 
 # %%
 sns.barplot(
-    mmarginals_evals,
+    mm_evals,
     y="mm_loss_type",
     hue="mm_lam",
-    x="normalized_value",
+    x="normalized_score",
     errorbar=("pi", 50),
 )
 
-# %%
-sns.barplot(
-    mmarginals_evals[mmarginals_evals["mm_lam"] == 1.0],
-    y="mm_loss_type",
-    hue="task",
-    x="normalized_value",
-    errorbar=("pi", 50),
-)
 
 # %%
-sns.barplot(
-    mmarginals_evals,
-    y="mm_loss_type",
-    hue="task",
-    x="normalized_value",
-    errorbar=("pi", 50),
-)
-
-# %% [markdown]
-# ## Basic + best max-marginals
-
-# %%
-basics = pres_evals[pres_evals["mm_lam"].isna()]
-best_mm = mmarginals_evals[
-    (mmarginals_evals["mm_loss_type"] == "cos_dist")
-    & (mmarginals_evals["mm_lam"] == 1.0)
-].copy()
-
-# %%
-best_mm["loss_type"] += (
-    "_" + best_mm["mm_loss_type"] + "_" + best_mm["mm_lam"].astype(str) + "lam"
-)
-
-# %%
-best_evals = pd.concat([basics, best_mm])
-best_evals = best_evals.drop(columns=["mm_loss_type", "mm_lam"])
-
-# %%
-best_evals["model"].unique()
-
-# %%
-sns.barplot(
-    best_evals,
-    y="loss_type",
-    x="normalized_value",
-    order=best_evals.groupby("loss_type")["normalized_value"]
+bests_models = [
+    mm_evals[mm_evals["mm_loss_type"] == loss_type]
+    .groupby("model")["normalized_score"]
     .mean()
     .sort_values()
-    .index,
-    errorbar=("pi", 50),
-)
-
-# %%
+    .index[-1]
+    for loss_type in ["cos_dist", "mse"]
+]
 sns.barplot(
-    best_evals,
-    y="loss_type",
-    x="value",
-    order=best_evals.groupby("loss_type")["value"].mean().sort_values().index,
-    errorbar=("pi", 50),
-)
-
-# %%
-best_evals.groupby("loss_type")["value"].agg(["mean", "std"]).sort_values("mean")
-
-# %%
-sns.barplot(
-    best_evals,
-    y="loss_type",
-    x="normalized_value",
+    mm_evals[mm_evals["model"].isin(bests_models)],
+    x="score",
+    y="model",
     hue="task",
-    order=best_evals.groupby("loss_type")["normalized_value"]
-    .mean()
-    .sort_values()
-    .index,
-)
-
-# %%
-sns.barplot(
-    best_evals,
-    y="loss_type",
-    x="value",
-    hue="task",
-    order=best_evals.groupby("loss_type")["value"].mean().sort_values().index,
 )

@@ -153,6 +153,56 @@ Results:
   CLS pooling
 - compared to mean pooling CLS pooling performed worse by a noticeable bit
 
+### 18.3. Mean pooling, global attention, RealNews & Wiki
+
+Relevant files:
+- `hp_searches/structural_basic_loss`
+- `hp_searches/structural_max_marginals_loss`
+
+Hyperparameters:
+- the same as for [GS
+  above](#53-structural-validation-experiments-only-with-wikipedia) but with
+  proper training dataset
+
+Results:
+- all observations from the mentioned GS hold except
+- for mse the best were:
+    - mse
+    - max_marginals mse, lambdas 0.1, 0.5
+    - a large gap
+    - max_marginals cos_dist, lambdas 0.5, 0.1
+    - max_marginals cos_dist, lambda 1
+    - cos_dist
+    - constrastive
+- Both SBERT COS and MSE are noticeably lower than for the mentioned GS with
+  just wikipedia
+
+### 20.3. MEAN pooling, no global attention, RealNews & Wiki
+
+Relevant files:
+- `hp_searches/cls_structural_basic_loss`
+- `hp_searches/cls_structural_max_marginals_loss`
+
+Hyperparameters:
+- the same as for [GS
+  above](#53-structural-validation-experiments-only-with-wikipedia) but withith
+  global attention set to `none`
+
+Results:
+- all observations from the mentioned GS hold except
+- for mse the best were:
+    - mse
+    - max_marginals mse, lambdas 0.1, 0.5
+    - a large gap
+    - max_marginals cos_dist, lambdas 0.5, 0.1
+    - cos_dist
+    - constrastive
+- without the global attention both SBERT MSE and COS were slightly worse, but
+  still noticeably better than the mentioned grid search (which trained only on
+  wikipedia)
+- the avoidance of global attention did not reduce memory ;(, but speeded up the
+  training by 7 mins from 50 to 43 mins
+
 
 ## Evaluations
 
@@ -228,10 +278,10 @@ Results:
 
 
 Relevant files:
-- Evaluations
-    - `evaluations/old_structural_eval` -- [mean GS](#53-structural-validation-experiments-only-with-wikipedia)
-    - `evaluations/cls_structural_eval` -- [cls
-      GS](#113-structural-validation-experiments-with-cls-pooling-only-with-wikipedia)
+- `evaluations/old_structural_eval` -- [mean
+  GS](#53-structural-validation-experiments-only-with-wikipedia)
+- `evaluations/cls_structural_eval` -- [cls
+  GS](#113-structural-validation-experiments-with-cls-pooling-only-with-wikipedia)
 
 Results:
 - max-marginals cos_dist with lambda 1 is the best out of max marginals
@@ -249,3 +299,80 @@ Results:
   reason the best model)
 - if we look at the top models from CLS pooling and the best model from mean
   pooling we see that mean pooling is always better except for IMDB and S2ORC.
+
+### 20.3. Mean pooling, glb attention, RealNews & Wiki
+
+Relevant files:
+- `evaluations/structural_eval` -- from [GS from
+  18.3.](#183-mean-pooling-global-attention-realnews-wiki)
+
+Results:
+- for whatever reason the results dramatically changed from [previous
+  evaluation](#133-comparing-cls-and-mean-pooling-of-structural-gs-only-with-wikipedia)
+- best max-marginals:
+    - mse with lambda 1
+    - cos_dist with lambda 1.5
+    - cos_dist with lambda 0.1
+- best models overall:
+    - max marginals mse with lambda 1
+    - max marginals cos_dist with lambda 1.5
+    - sbert
+    - contrastive
+    - max marginals cos_dist with lambda 0.1
+    - cos_dist
+    - max marginals cost_dist with lambda 1
+- so for whatever reason max marginals mse with lambda 1 is suddenly good, even
+  though other mse variants are the worst 3 models
+- also cosine is suddenly worse than sbert (mm lambda 1, cos_dist, and
+  contrastive)
+- this raises a question whether to use mm mse lambda 1, even though the loss
+  actually does something different than what our goal was
+  - the decision is to continue with both variants (best basic loss = cos_dist
+    and mm mse lam 1) and see how the situation will look once we add contextual
+    teacher
+
+
+### 25.3. Comparing cls glb attn. and no glb attn., MEAN pooling, RealNews & Wiki
+
+Relevant files:
+- `evaluations/structural_eval`
+- `evaluations/glb_structural_eval` -- [GS from
+  ](#203-mean-pooling-no-global-attention-realnews-wiki)
+
+Results:
+- just without glb attn:
+    - best mm loss:
+        - mse, lambda 1
+        - cos_dist, lam 0.5
+        - cos_dist, lam 1
+    - best overall:
+        - mm mse, lam 1
+        - mm, cos_dist, lam 0.5
+        - cos_dist
+        - mm cos_dist, lam 1
+        - contrastive,
+        - mm cos_dist, lam 0.1
+        - mm cos_dist, lam 1.5
+        - sbert
+        - longformer
+    - again mm mse lambda 1 was clearly the best
+    - cos_dist very close third
+    - mm mse, lam 1 had very good score for pan, which launched it to the first
+      place (the same didn't happen for glb attn.)
+
+- comparing w/ and w/o glb attn.:
+    - total order:
+        - no glb., mm mse, lam 1
+        - no glb., mm cos_dist, lam 0.5
+        - no glb., cos_dist (very close)
+        - no glb., mm cos_dist, lam 1
+        - no glb., contrastive
+        - no glb., mm cos_dist, lam 0.1
+        - glb., mm mse, lam 1
+        - no glb., mm cos_dist, lam 1.5
+        - sbert
+    - clearly no glb. is better significantly better
+    - ergo we can avoid using global attention, and do the following experiments
+      with:
+        - no glb., mm mse, lam 1 -- best overall
+        - no glb., cos_dist -- best basic loss

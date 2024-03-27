@@ -73,7 +73,8 @@ These are now the go-to settings.
 ```yaml
 model:
     kwargs:
-        pooler_type: mean # Structural experiments showed `cls` had worse scores
+        # Structural experiments showed `cls` had worse scores
+        pooler_type: mean
 
 train_pipeline:
     kwargs:
@@ -86,8 +87,9 @@ train_pipeline:
         weight decay: 0.01
         max grad norm: 1.0
         fp16: True
-        # We'll play with pooling/glb. attention in 'ablation' experiments
-        global_attention_type: cls
+        # We'll play with pooling/glb. attention in 'ablation' experiments, but
+        # structural experiments shown that not using glb. atten. is better
+        global_attention_type: none
         # Turns out consistent is quicker (6h40m vs 8h per training)
         dataloader_sampling: consistent
         metric_window_size_mult: 5
