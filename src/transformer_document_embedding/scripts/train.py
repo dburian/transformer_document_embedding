@@ -5,6 +5,7 @@ import logging
 import pprint
 
 import coolname
+from datasets import disable_caching
 from transformer_document_embedding.scripts.common import evaluate, load_train_save
 
 from transformer_document_embedding.scripts.utils import (
@@ -73,6 +74,14 @@ def parse_args() -> argparse.Namespace:
         help="Path from where to load head's weights.",
     )
 
+    parser.add_argument(
+        "--disable_hf_caching",
+        type=bool,
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Whether to disable HuggingFace datasets caching.",
+    )
+
     return parser.parse_args()
 
 
@@ -108,6 +117,8 @@ def main() -> None:
     logging.basicConfig(
         format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
     )
+    if args.disable_hf_caching:
+        disable_caching()
 
     config = ExperimentSpec.from_dict(load_yaml(args.config))
     train(config, args)
