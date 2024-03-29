@@ -3,14 +3,13 @@ from functools import partial
 from typing import Any, Optional, TYPE_CHECKING
 from datasets import Dataset
 
-import senteval
 from transformer_document_embedding.datasets import col
 
 from transformer_document_embedding.pipelines.pipeline import EvalPipeline
 
+
 if TYPE_CHECKING:
     import numpy as np
-    from senteval.utils import dotdict
     from transformer_document_embedding.datasets.sent_eval import SentEval
     import torch
     from transformer_document_embedding.models.embedding_model import EmbeddingModel
@@ -49,9 +48,7 @@ class SentEvalEval(EvalPipeline):
         sentences = [" ".join(words) if len(words) > 0 else "." for words in word_batch]
         return Dataset.from_dict({col.TEXT: sentences})
 
-    def _batcher(
-        self, params: dotdict, batch: list[list[str]], model: EmbeddingModel
-    ) -> np.ndarray:
+    def _batcher(self, _, batch: list[list[str]], model: EmbeddingModel) -> np.ndarray:
         ds = self._words_to_dataset(batch)
         embeds = next(model.predict_embeddings(ds, batch_size=len(ds)))
         return embeds.numpy(force=True)
@@ -62,6 +59,8 @@ class SentEvalEval(EvalPipeline):
         _: Optional[torch.nn.Module],
         dataset: SentEval,
     ) -> dict[str, float]:
+        import senteval
+
         batcher = partial(self._batcher, model=model)
         se = senteval.SE(dataset.params, batcher)
         results = se.eval(dataset.tasks)
