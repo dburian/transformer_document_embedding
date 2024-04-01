@@ -5,7 +5,7 @@ In this chapter we describe our method of finetuning document embeddings. Our
 method is based on teacher-student training approach, where we distil the
 knowledge of two teacher embedding models into a single student model. In
 Section~\ref{section:training_method} we explain our training method in detail
-and roughly define the used loss function. Then in
+and define the general form of used loss function. Then in
 Section~\ref{section:teacher_models} we describe the two teacher models we use
 in the rest of the thesis. Finally, in Section~\ref{section:student_model} we
 describe the architecture and pre-training of the student model.
@@ -52,7 +52,7 @@ teacher}, $\Teacher_C$ \emph{contextual teacher}, and {\Student}
 \emph{student}.
 
 
-\subsection{Abstract loss formulation}
+\subsection{Abstract loss formulation}\label{section:abstract_loss}
 
 % \begin{itemize}
 %     \item there are two losses corresponding to the two reference models
@@ -86,6 +86,23 @@ $\Loss_C$ and $\lambda(x)$ in Chapter~\ref{chapter:experiments}.
     \lambda(x) \Loss_S(y_\Student, y_{\Teacher_S}) +
             \Loss_C(y_\Student, y_{\Teacher_S})
 \end{equation}
+
+% TODO: write here structural is very important and we want to squeeze
+% everything there is, on the other hand contextual is here to fill-in the
+% context and therefore we need only rough aligning
+
+The two losses could go, in theory, against each other and slow down or halt
+the training. To avoid this we choose one of the losses to be more strict,
+while the other to be more forgiving. As we mentioned in
+Section~\ref{section:combine_structural_and_contextual} we view structural
+quality as the more important one. Structural quality is necessary to
+truthfully understand the input text, whereas contextual quality is there just
+to fill-in the overall theme of the document. Therefore, we choose the
+structural loss $\Loss_S$ to be the stricter and exact loss forcing the student
+to adapt to the structural teacher as much as possible. On the other hand, the
+contextual loss $\Loss_C$ should give the student model more freedom in the
+form of the produced embedding, but still force it to incorporate the
+information from the contextual embedding.
 
 \section{Teacher models}\label{section:teacher_models}
 
@@ -122,9 +139,9 @@ named \\ \texttt{sentence-transformers/all-mpnet-base-v2}.
 We generate the embeddings of any training dataset directly without any
 additional finetuning.
 
-\subsection{Paragraph Vector}
+\subsection{Paragraph Vector}\label{section:paragraph_vector}
 
-Paragraph Vector~\cite{le2014distributed} (also known as Doc2Vec) is a simple
+Paragraph Vector~\citep{le2014distributed} (also known as Doc2Vec) is a simple
 text-embedding model that views the input as a Bag of Words (or BoW). Paragraph
 Vector is composed of two sub-models called Distributed Memory (DM) and
 Distributed Bag of Words (DBOW). In practice one or both models can be used,
@@ -223,7 +240,8 @@ the following datasets.
 
   \item English Wikipedia
 
-  \item One third of Realnews dataset~\citep{zellers2019defending}
+  \item One third of articles from Realnews dataset~\citep{zellers2019defending}
+      with more than 1200 tokens
 
   \item One third of the Stories corpus~\citep{trinh2018simple}
 

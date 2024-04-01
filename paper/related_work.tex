@@ -222,14 +222,14 @@ the model's embeddings on downstream tasks. There are many types of downstream
 tasks such as classification, retrieval, clustering or visualizations and an
 embedding model is generally expected to perform well an all of them. Therefore
 there is no clear optimization objective, neither there is an objective which
-is universally agreed to outperform others. This makes the field of training
+is universally agreed to outperform others. This makes the task of training
 document embedding models particularly interesting and diverse. All training
 techniques however, have to adapt to currently available training document
-corpora. The selection of supervised corpora of documents is significantly
+corpora. The set of available supervised corpora of documents is significantly
 smaller compared to corpora of shorter sequences such as sentences. This is due
-to higher annotation costs and complexity. Nevertheless we may find corpora
-of documents linked via citations or links that offer some additional data for
-the researches to take advantage of.
+to higher annotation costs and complexity. Nevertheless there are corpora of
+documents linked via citations or links that offer some additional data for the
+researches to take advantage of.
 
  % Compared to shorter text sequences, documents
 % contain more inter-connected information making training of their embeddings
@@ -245,7 +245,7 @@ word or token prediction. Paragraph Vector~\citep{le2014distributed} is trained
 on prediction of masked-out word given the embeddings of the surrounding words
 and of the whole document. However not all models can learn document embedding
 through word prediction such as Paragraph Vector. An example of such model is
-Transformer~\cite{vaswani2017attention}. Embedding models based on
+Transformer~\citep{vaswani2017attention}. Embedding models based on
 Transformer's architecture use a combination of pre-training on large
 unlabelled corpora, where the model gains most of its knowledge, and a
 finetuning method that increases the quality of the model's embeddings.
@@ -253,9 +253,9 @@ finetuning method that increases the quality of the model's embeddings.
 literature from SciBERT~\citep{beltagy2019scibert}, which was trained using
 Masked Language Modelling (or \emph{MLM}) on scientific text.
 \cite{neelakantan2022text} use large generative model as an initial checkpoint
-for their text embedding model. \cite{izacard2021unsupervised} warm-start their
+for their text embedding model. \cite{izacard2021unsupervised} warm start their
 embedding model from BERT~\citep{devlin2019bert}, which is another model
-trained using MLM. These models however differ in how they then finetune their
+trained using MLM. These models however differ in how they then finetune the
 document embeddings. \cite{cohan2020specter} use a triplet loss that takes
 three documents: a query, positive and a negative document. Triplet loss then
 minimizes the distance between the query and the positive document while
@@ -263,8 +263,8 @@ maximizing the distance between the query and the negative document. To obtain
 a positive and a negative document for given query document the authors
 leverage the structure of Semantic Scholar
 corpus~\citep{ammar2018construction}. \cite{ostendorff2022neighborhood} repeats
-the experiment, but shows that with more elaborate method of sampling of
-negative papers it is possible to improve the model.
+the experiment, but shows that with a more elaborate method of sampling of
+negative papers, it is possible to improve the model.
 
 Another popular technique is to train the model by contrasting several inputs'
 embedding against each other. Again for each input there is at least one
@@ -298,10 +298,10 @@ improvement over state-of-the-art models that generate only single embedding.
 
 \subsection{Comparison to the proposed training method}
 
-As other transformer-based embedding models, ours is also warm-started from a
-pre-trained model. However, the following finetuning of the produced embeddings
+As other transformer-based embedding models, ours is also warm started from a
+pre-trained model. However, the following finetuning of our embeddings
 avoids some of the downsides of the previously mentioned methods. First it does
-not require any structure in the training data. This is important as there are
+not require any structure in the training data. This is important as there is
 only limited amount of structured corpora of documents. Typically these would
 be scientific papers related via citations or Wikipedia articles connected via
 links. Our training method allows to use any document corpora such as a set of
