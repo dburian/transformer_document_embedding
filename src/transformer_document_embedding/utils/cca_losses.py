@@ -114,7 +114,7 @@ class CCALoss(torch.nn.Module):
 
 
 class RunningCCALoss(CCALoss):
-    """CCA loss with running means for covariances and means"""
+    """CCA loss with running means for covariances and means."""
 
     def __init__(
         self,
@@ -249,7 +249,7 @@ class SoftCCALoss(torch.nn.Module):
         sdl2 = self.sdl2(view2) * self.lam
 
         # MSE is squared l2 norm
-        l2 = torch.nn.functional.mse_loss(view1, view2)
+        l2 = torch.nn.functional.mse_loss(view1, view2, reduction="none").mean(1)
 
         return {
             "sdl1": sdl1,
@@ -304,7 +304,8 @@ class StochasticDecorrelationLoss(torch.nn.Module):
         # My addition: mean instead of sum, to help with fine-tuning SDL vs L2 norm
         loss /= (n * n) - n
 
-        return loss
+        # All inputs get equal SDL loss
+        return loss.expand(inputs.size(0))
 
 
 class DeepNet(torch.nn.Module):

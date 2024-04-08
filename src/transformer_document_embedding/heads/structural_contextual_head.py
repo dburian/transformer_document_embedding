@@ -109,8 +109,14 @@ class StructuralContextualHead(torch.nn.Module):
         contextual_targets = kwargs.pop(col.CONTEXTUAL_EMBED, None)
 
         outputs = {
-            "loss": torch.tensor(0, device=embeddings.device, dtype=embeddings.dtype)
+            "loss": torch.zeros(
+                embeddings.shape[0],
+                device=embeddings.device,
+                dtype=embeddings.dtype,
+            )
         }
+
+        lams = torch.zeros_like(lengths, dtype=torch.float32).fill_(self._lam)
 
         if self.structural_head is not None:
             assert (
@@ -121,12 +127,14 @@ class StructuralContextualHead(torch.nn.Module):
                 lengths <= self.max_structural_length
                 if self.max_structural_length is not None
                 else torch.ones_like(lengths)
-            ).unsqueeze(-1)
+            )
+            lams *= mask
 
             structural_outputs = self.structural_head(
                 embeddings, structural_targets, mask=mask
             )
-            structural_outputs["loss"] *= self._lam
+
+            structural_outputs["loss"] *= lams
 
             outputs["loss"] += structural_outputs["loss"]
 
@@ -144,6 +152,7 @@ class StructuralContextualHead(torch.nn.Module):
             ), "No targets for contextual loss were given."
 
             contextual_outputs = self.contextual_head(embeddings, contextual_targets)
+            contextual_outputs["loss"] *= 1 - lams
 
             outputs.update(
                 {
@@ -152,5 +161,7 @@ class StructuralContextualHead(torch.nn.Module):
                 }
             )
             outputs["loss"] += contextual_outputs["loss"]
+
+        outputs["loss"] = outputs["loss"].mean()
 
         return outputs

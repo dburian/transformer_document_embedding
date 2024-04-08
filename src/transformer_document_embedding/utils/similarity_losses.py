@@ -15,6 +15,26 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
+def index_nonzero(
+    mask: torch.Tensor, outputs: torch.Tensor, targets: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    # Assume shape (batch_size, 1) or same mask for all dimensions of
+    # given input
+    batch_idxs = mask.nonzero().squeeze()
+    outputs = outputs.index_select(dim=0, index=batch_idxs)
+    targets = targets.index_select(dim=0, index=batch_idxs)
+
+    return outputs, targets
+
+
+def add_zeros(mask: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    res = torch.zeros_like(mask, dtype=x.dtype)
+    # Looks weird but the gradient propagates just fine (tested it)
+    res[mask.nonzero().squeeze()] = x
+
+    return res
+
+
 class MaxMarginalsLoss(torch.nn.Module):
     def __init__(
         self, dissimilarity_fn: torch.nn.Module, lam: float, *args, **kwargs
@@ -34,31 +54,39 @@ class MaxMarginalsLoss(torch.nn.Module):
         targets: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
+        batch_size = outputs.size(0)
         if mask is not None:
-            # Assume shape (batch_size, 1) or same mask for all dimensions of
-            # given input
-            batch_mask = mask[:, 0]
-            batch_idxs = batch_mask.nonzero().squeeze()
-            outputs = outputs.index_select(dim=0, index=batch_idxs)
-            targets = targets.index_select(dim=0, index=batch_idxs)
+            outputs, targets = index_nonzero(mask, outputs, targets)
+
+        masked_batch_size = outputs.size(0)
+
+        if masked_batch_size == 0:
+            return {
+                key: torch.zeros(
+                    batch_size,
+                    dtype=torch.float32,
+                    device=outputs.device,
+                )
+                for key in ["loss", "marginals_positive", "marginals_negative"]
+            }
 
         positive = self.dissimilarity_fn(outputs, targets)
 
-        negative = torch.tensor(0, device=outputs.device, dtype=outputs.dtype)
-        batch_size = outputs.size(0)
-        for shifts in range(1, batch_size):
-            negative -= self.dissimilarity_fn(outputs, targets.roll(shifts, dims=0))
-            # negative -= torch.clip(
-            #     self.dissimilarity_fn(outputs, targets.roll(shifts, dims=0)),
-            #     max=1e-1,
-            # )
+        negative = torch.zeros_like(positive)
+        if masked_batch_size > 1:
+            for shifts in range(1, masked_batch_size):
+                negative -= self.dissimilarity_fn(outputs, targets.roll(shifts, dims=0))
 
-        # compute mean, to be independent of batch size
-        negative /= batch_size - 1
-        negative *= self.lam
+            # compute mean, to be independent of batch size
+            negative /= masked_batch_size - 1
+            negative *= self.lam
+
+        loss = positive + negative
+        if mask is not None:
+            loss = add_zeros(mask, loss)
 
         return {
-            "loss": positive + negative,
+            "loss": loss,
             "marginals_positive": positive,
             "marginals_negative": negative,
         }
@@ -75,12 +103,7 @@ class ContrastiveLoss(torch.nn.Module):
         mask: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
         if mask is not None:
-            # Assume shape (batch_size, 1) or same mask for all dimensions of
-            # given input
-            batch_mask = mask[:, 0]
-            batch_idxs = batch_mask.nonzero().squeeze()
-            outputs = outputs.index_select(dim=0, index=batch_idxs)
-            targets = targets.index_select(dim=0, index=batch_idxs)
+            outputs, targets = index_nonzero(mask, outputs, targets)
 
         logits = outputs @ targets.T
 
@@ -89,6 +112,9 @@ class ContrastiveLoss(torch.nn.Module):
 
         labels = torch.arange(outputs.size(0), device=logits.device)
         xentropy = torch.nn.functional.cross_entropy(logits, labels)
+
+        if mask is not None:
+            xentropy = add_zeros(mask, xentropy)
 
         return {"loss": xentropy}
 
@@ -99,11 +125,7 @@ class MaskedCosineDistance(torch.nn.CosineSimilarity):
     ) -> dict[str, torch.Tensor]:
         cos_dist = 1 - super().forward(x1, x2)
 
-        return {
-            "loss": cos_dist.mean()
-            if mask is None
-            else masked_mean(cos_dist, mask.squeeze())
-        }
+        return {"loss": cos_dist if mask is None else cos_dist * mask}
 
 
 class MaskedMSE(torch.nn.MSELoss):
@@ -113,9 +135,9 @@ class MaskedMSE(torch.nn.MSELoss):
     def forward(
         self, x1: torch.Tensor, x2: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> dict[str, torch.Tensor]:
-        mse = super().forward(x1, x2)
+        mse = super().forward(x1, x2).mean(1)
 
-        return {"loss": mse.mean() if mask is None else masked_mean(mse, mask)}
+        return {"loss": mse if mask is None else mse * mask}
 
 
 class MaskedHuber(torch.nn.HuberLoss):
@@ -128,9 +150,9 @@ class MaskedHuber(torch.nn.HuberLoss):
         x2: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
-        huber = super().forward(x1, x2)
+        huber = super().forward(x1, x2).mean(1)
 
-        return {"loss": huber.mean() if mask is None else masked_mean(huber, mask)}
+        return {"loss": huber if mask is None else huber * mask}
 
 
 class MaskedL1(torch.nn.L1Loss):
@@ -143,17 +165,9 @@ class MaskedL1(torch.nn.L1Loss):
         x2: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> dict[str, torch.Tensor]:
-        l1 = super().forward(x1, x2)
+        l1 = super().forward(x1, x2).mean(1)
 
-        return {"loss": l1.mean() if mask is None else masked_mean(l1, mask)}
-
-
-def masked_mean(input: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    """Computes mean of input * mask."""
-    input *= mask
-
-    total_weight = mask.sum()
-    return (input.sum() / total_weight) if total_weight > 0 else torch.zeros_like(input)
+        return {"loss": l1 if mask is None else l1 * mask}
 
 
 _simple_losses = {
