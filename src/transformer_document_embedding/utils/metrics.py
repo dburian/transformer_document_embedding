@@ -417,16 +417,6 @@ class WindowedAbsCrossCorrelationMetric(WindowedMetric):
         cross_corr_coefs = torch.corrcoef(all_vars)[:view1_dim, view1_dim:]
         mean_abs_cross_corr = cross_corr_coefs.abs().mean()
 
-        print(
-            "Nans in correlation: "
-            f"{torch.isnan(cross_corr_coefs).to(torch.float32).sum()}"
-        )
-        print("Nans in all vars: " f"{torch.isnan(all_vars).to(torch.float32).sum()}")
-        print(
-            f"view 1 dim: {view1_dim}, view 2 dim: {self.views[1].size(1)}, "
-            f"view 1 size: {self.views[0].size(0)}, view2 size: {self.views[1].size(0)}"
-        )
-
         return mean_abs_cross_corr
 
 
