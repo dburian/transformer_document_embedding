@@ -9,6 +9,7 @@ from transformer_document_embedding.models.embedding_model import EmbeddingModel
 from transformer_document_embedding.utils.gensim import (
     create_text_pre_processor,
 )
+from tqdm.auto import tqdm
 
 import logging
 
@@ -88,7 +89,7 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
             return torch.from_numpy(np.array(batch))
 
         batch = []
-        for doc in corpus:
+        for doc in tqdm(corpus, desc="Predicting docs"):
             batch.append(self.infer_vector(doc["words"]))
 
             if len(batch) == batch_size:
