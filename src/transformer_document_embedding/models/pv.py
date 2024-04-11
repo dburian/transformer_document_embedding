@@ -89,12 +89,14 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
             return torch.from_numpy(np.array(batch))
 
         batch = []
-        for doc in tqdm(corpus, desc="Predicting docs"):
-            batch.append(self.infer_vector(doc["words"]))
+        with tqdm(total=len(corpus) // batch_size, desc="Predicting docs") as pb:
+            for doc in tqdm(corpus, desc="Predicting docs"):
+                batch.append(self.infer_vector(doc["words"]))
 
-            if len(batch) == batch_size:
-                yield to_torch(batch)
-                batch = []
+                if len(batch) == batch_size:
+                    yield to_torch(batch)
+                    batch = []
+                    pb.update(1)
 
         if len(batch) > 0:
             yield to_torch(batch)
