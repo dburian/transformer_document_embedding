@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 class ParagraphVector(Doc2Vec, EmbeddingModel):
     def __init__(
         self,
+        text_pre_process: Optional[str],
+        load_dv: bool,
         documents=None,
         corpus_file=None,
         vector_size=100,
@@ -38,7 +40,6 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
         window=5,
         epochs=10,
         shrink_windows=True,
-        text_pre_process: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(
@@ -64,6 +65,9 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
         # We save the preferred text pre-processing with model, but pipelines
         # have the need to apply it
         self.text_pre_process = text_pre_process
+
+        # Whether to load learned paragraph vectors when loading weights
+        self.load_dv = load_dv
 
     @property
     def embedding_dim(self) -> int:
@@ -101,6 +105,8 @@ class ParagraphVector(Doc2Vec, EmbeddingModel):
         new_self = Doc2Vec.load(path)
 
         for name, attr in vars(new_self).items():
+            if name == "dv" and not self.load_dv:
+                continue
             setattr(self, name, attr)
 
 
