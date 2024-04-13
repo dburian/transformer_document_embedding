@@ -50,7 +50,7 @@ class TorchTrainPipeline(TrainPipeline):
 
     patience: Optional[int]
     save_best: bool
-    save_after_steps: Optional[int] = None
+    save_after_steps: Optional[list[int]] = None
 
     # TODO: This custom interface isn't good. Solutions:
     # - fully accept that models will be dumb and pipelines will be sort of an
@@ -179,4 +179,5 @@ class TorchTrainPipeline(TrainPipeline):
             epochs=self.epochs,
             train_data=train_batches,
             val_data=val_batches,
+            save_after_steps=self.save_after_steps,
         )
