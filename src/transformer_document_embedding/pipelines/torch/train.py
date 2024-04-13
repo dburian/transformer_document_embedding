@@ -131,7 +131,10 @@ class TorchTrainPipeline(TrainPipeline):
         log_dir: Optional[str],
     ) -> None:
         save_model_callback = self.get_save_model_callback(
-            self.save_best, encoder, head, log_dir
+            self.save_best or (self.save_after_steps is not None),
+            encoder,
+            head,
+            log_dir,
         )
 
         train_batches = self.to_dataloader(dataset.splits["train"], encoder)
