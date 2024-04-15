@@ -109,6 +109,11 @@ class TransformerEmbedder(torch.nn.Module, EmbeddingModel):
             num_random_blocks = self.transformer.config.num_random_blocks
             self.min_sequence_length = (6 + 2 * num_random_blocks) * block_size
 
+        self.pad_to_multiple_of = None
+        if hasattr(self.transformer.config, "attention_window"):
+            # For longformer
+            self.pad_to_multiple_of = self.transformer.config.attention_window
+
     @property
     def embedding_dim(self) -> int:
         return self.transformer.config.hidden_size

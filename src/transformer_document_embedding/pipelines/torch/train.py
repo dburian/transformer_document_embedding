@@ -64,6 +64,7 @@ class TorchTrainPipeline(TrainPipeline):
             batch_size=self.batch_size,
             training=training,
             min_length=model.min_sequence_length,
+            pad_to_multiple_of=model.pad_to_multiple_of,
             tokenizer=AutoTokenizer.from_pretrained(model.transformer_name),
             sampling=self.dataloader_sampling,
             global_attention_type=self.global_attention_type,
