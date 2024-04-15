@@ -112,7 +112,10 @@ class TransformerEmbedder(torch.nn.Module, EmbeddingModel):
         self.pad_to_multiple_of = None
         if hasattr(self.transformer.config, "attention_window"):
             # For longformer
-            self.pad_to_multiple_of = self.transformer.config.attention_window
+            attn_window = self.transformer.config.attention_window
+            self.pad_to_multiple_of = (
+                attn_window if isinstance(attn_window, int) else max(attn_window)
+            )
 
     @property
     def embedding_dim(self) -> int:
