@@ -28,10 +28,10 @@ head:
 train_pipeline:
   kind: student
   kwargs:
-    batch_size: 6
+    batch_size: 8
     epochs: 1
-    warmup_steps: 5000
-    grad_accumulation_steps: 10
+    warmup_steps: 4000
+    grad_accumulation_steps: 8
     weight_decay: 0.01
     fp16: True
     lr_scheduler_type: cos
@@ -46,9 +46,9 @@ train_pipeline:
     metric_window_size_mult: 5
     metric_window_shift_frac: 1.0
     save_after_steps:
-      - 41666
-      - 83333
-      - 125000
+      - 31250
+      - 62500
+      - 93750
     sampler_kwargs:
       bucket_limits: [512, 1024, 1536, 2048, 2560, 3072, 3584, 4096]
 
