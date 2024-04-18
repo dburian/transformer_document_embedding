@@ -8,7 +8,7 @@ head:
   module: structural_contextual_head:StructuralContextualHead
   kwargs:
     max_structural_length: null
-    lam: 0.5
+    lam: 1.0
     structural_head_kwargs:
       loss_type: max_marginals_mse
       max_marginals_lam: 1
