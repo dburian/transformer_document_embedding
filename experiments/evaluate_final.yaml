@@ -21,38 +21,22 @@ bin_cls_head_kwargs: &bin_cls_head_kwargs
   label_smoothing: 0.1
   hidden_activation: relu
 
-data_limits: &data_limits
-  train: 10000
-  validation: 10000
-  test: 10000
-
-splits: &splits
-  train: train
-  test: validation
-  validation: validation
 
 evaluations:
   imdb:
     dataset:
       module: imdb:IMDB
-      kwargs:
-        data_size_limit: *data_limits
     head:
       module: classification:ClassificationHead
       kwargs: *bin_cls_head_kwargs
     finetune_pipeline_kwargs: *default_finetune_kwargs
     evaluation_kwargs:
       batch_size: *embed_pred_batch_size
-    cross_validate:
-      split: train
-      num_folds: 5
   pan:
     dataset:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
         path: ./data/MDA/PAN
-        data_size_limit: *data_limits
-        splits: *splits
     evaluation_kwargs:
       batch_size: 4
     head:
@@ -78,8 +62,6 @@ evaluations:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
         path: ./data/MDA/OC
-        data_size_limit: *data_limits
-        splits: *splits
     evaluation_kwargs:
       batch_size: *embed_pred_batch_size
     head:
@@ -91,8 +73,6 @@ evaluations:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
         path: ./data/MDA/S2ORC
-        data_size_limit: *data_limits
-        splits: *splits
     evaluation_kwargs:
       batch_size: *embed_pred_batch_size
     head:
@@ -104,8 +84,6 @@ evaluations:
       module: document_pair_classification:DocumentPairClassification
       kwargs:
         path: ./data/MDA/AAN
-        data_size_limit: *data_limits
-        splits: *splits
     evaluation_kwargs:
       batch_size: *embed_pred_batch_size
     head:
@@ -117,8 +95,6 @@ evaluations:
       module: arxiv_papers:ArxivPapers
       kwargs:
         path: ./data/arxiv_papers
-        data_size_limit: *data_limits
-        splits: *splits
     evaluation_kwargs:
       batch_size: 2
     finetune_pipeline_kwargs:
@@ -144,3 +120,21 @@ evaluations:
         hidden_dropout: 0.5
         label_smoothing: 0.1
         hidden_activation: relu
+  sims_wines:
+    dataset:
+      module: wikipedia_similarities:WikipediaSimilarities
+      kwargs:
+        path: ./data/wikipedia_similarities.py
+        dataset: wine
+    head: null
+    evaluation_kwargs:
+      batch_size: 4
+  sims_games:
+    dataset:
+      module: wikipedia_similarities:WikipediaSimilarities
+      kwargs:
+        path: ./data/wikipedia_similarities.py
+        dataset: game
+    head: null
+    evaluation_kwargs:
+      batch_size: 4
