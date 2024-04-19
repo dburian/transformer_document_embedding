@@ -15,6 +15,25 @@ highlight the usability of our model in different use cases.
 TODO: think of a name, so we are not constantly labelling it "our"
 % - set of major hyperparameters (all hyperparameters in an appendix)
 
+% Incorporate section from experiments about training the final PV
+% \subsubsection{Training the contextual teacher}
+
+% We take the best performing hyperparameter values from the previous section and
+% train the model on a large corpora. As we later train our student model with the
+% contextual teacher's outputs, each piece of data we train our contextual model
+% with, is effectively also part of the student's training data. Therefore we
+% construct the PV training dataset similarly as \Dataset{val\_500k}: we evenly
+% sample English Wikipedia articles and RealNews \citep{zellers2019defending}
+% articles with more than 1200 Longformer tokens. We do so for the same reasons
+% that were mentioned in Section~\ref{section:val_training_data}.
+
+% Since PV is a small model and is able to process data very quickly during
+% training, we can afford to use all of the RealNews articles that are long enough
+% and an equal amount of Wikipedia articles. This results in a corpus that has
+% 8.3M documents. We train the model for 10 epochs, but restrict the maximum
+%   vocabulary size to $1.2{\times}10^7$ words to limit the memory footprint to
+%   roughly 140~GB.
+
 \subsection{Training data}
 
 % - training data

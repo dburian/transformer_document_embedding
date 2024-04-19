@@ -54,7 +54,36 @@
 \usepackage[inline]{enumitem} % inline enumeration
 \usepackage{multirow}
 \usepackage{adjustbox}      % adjust table's width to pagewidth
-\usepackage{subcaption}     % Tabulars above each other
+\usepackage{subcaption}     % Tabulars above each other, subfigures
+\usepackage{caption}        % subfigures
+\usepackage{listings}       % for code snippets
+
+%%% Package setup
+
+\definecolor{constants}{rgb}{0.8705882352941177, 0.5607843137254902, 0.0196078431372549}
+\definecolor{functions}{rgb}{0.00392156862745098, 0.45098039215686275, 0.6980392156862745}
+\definecolor{symbols}{rgb}{0.8352941176470589, 0.3686274509803922, 0.0}
+\definecolor{background}{rgb}{0.9434690698074405, 0.9435003180635085, 0.9433778365501777}
+\definecolor{keywords}{rgb}{0.8, 0.47058823529411764, 0.7372549019607844}
+\definecolor{types}{rgb}{0.33725490196078434, 0.7058823529411765, 0.9137254901960784}
+\definecolor{comments}{rgb}{0.00784313725490196, 0.6196078431372549, 0.45098039215686275}
+
+\lstset{
+  language=Python,
+  basicstyle={\footnotesize\ttfamily},
+%  backgroundcolor=\color{background},
+  escapechar=@,
+  commentstyle=\color{comments},
+  keywordstyle=\color{keywords},
+  numbers=none,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=2,
+  captionpos=b,
+}
+
+
+
 
 %%% Basic information on the thesis
 

@@ -1,16 +1,11 @@
 \chapter{Related Work}
 
-% Describe
-% - what other work was done in the area of document embedding using transformers
-% - focus on the plethora of options, instead of focusing on one single paper
-% - what work you continue from, what you follow up on
-
-In this chapter we go over the research that we consider relevant to the
-embedding of long pieces of text using the transformer architecture. First we
-summarize efforts that have gone into making transformer more efficient so that
-it can process long inputs. These advancements are crucial to embedding
-documents which are oftentimes much longer than 512 tokens. The next section is
-dedicated to typical approaches to training embedding models.
+This chapter reviews the research that we consider relevant to embedding
+long texts using transformers \citep{vaswani2017attention}. First, we summarize
+efforts that have gone into making transformers more efficient to so that they
+can process long inputs. These advancements are crucial to embedding documents,
+often much longer than the standard 512 tokens. In the following section, we
+describe approaches to training embedding models.
 
 \section{Efficient transformers}\label{section:efficient_transformers}
 
@@ -19,303 +14,281 @@ dedicated to typical approaches to training embedding models.
 % - What can be done for transformer to handle long texts? -- attention
 %    mechanism, attention implementation, different architecture altogether
 
-Though Transformer~\citep{vaswani2017attention} has proven to be performant
-architecture (TODO: citations) in the world of NLP it has one inherent
-disadvantage when it comes to longer sequences of text. The self-attention,
-which is the principal part of the transformer architecture, consumes quadratic
-amount of memory in the length of input. This significantly limits Transformer's
-applicability to variety of tasks that require longer contexts such as document
-retrieval or summarization.
+Though the transformer has proven to be a performant architecture in the world
+of NLP \citep{devlin2019bert, liu2019roberta, reimers2019sentence}, it has one
+inherent disadvantage regarding longer texts. The self-attention layer, the
+principal part of the transformer, consumes a quadratic amount of memory in the
+length of the input. This significantly limits the transformer's applicability
+in tasks that require longer contexts such as document retrieval or
+summarization.
 
-Thanks to the popularity of the transformer architecture, there is a large
-amount of research that is focused on making transformers more
-efficient~\citep{tay2022efficient}. Most of these efforts fall into one of the
+Thanks to the popularity of the transformer architecture, a large
+amount of research is focused on making transformers more
+efficient \citep{tay2022efficient}. Most of these efforts fall into one of the
 following categories:
 
 \begin{enumerate}
 
-    \item Designing a new memory-efficient attention mechanism,
+    \item Designing a new memory-efficient attention mechanism
 
-    \item Using a custom attention implementation, or
+    \item Using a custom attention implementation
 
-    \item Designing new transformer architecture altogether.
+    \item Combining the transformer with another architecture
 
 \end{enumerate}
 
-We go over each category separately, though these approaches are often
-combined. In the section dedicated to custom implementation of self-attention
-we also mention commonly used implementation strategies that make transformers
-more efficient in practice.
+We review each category separately, though these approaches can be
+combined \citep{child2019generating,beltagy2020longformer}. In the section
+dedicated to custom implementation of self-attention, we also mention commonly
+used implementation strategies that make transformers more efficient in
+practice.
 
-\subsection{Efficient self-attention mechanisms}
+\subsection{Efficient self-attention mechanisms}\label{section:efficient_self_attn}
 
 
-As self-attention is the most resource-hungry component of the transformer
-architecture, it makes sense to focus on it in order to make the transformer
-more efficient. The core of the problem is the multiplication of $N\times d$
-query matrix and $N\times d$ key matrix, where $N$ is input length and $d$ is a
-dimensionality of the self-attention. Efficient attention mechanisms approximate
-this multiplication and thereby avoid computing and storing the $N\times N$
-resulting matrix.
+The classical scaled dot-product self-attention \citep{vaswani2017attention} is
+the most resource-intensive component of the transformer. The core of the
+problem is the multiplication of $N\times d$ query matrix and $N\times d$ key
+matrix, where $N$ is the input length, and $d$ is the dimensionality of the
+self-attention layer. Efficient attention mechanisms approximate this
+multiplication, avoiding computing and storing the $N\times N$ resulting
+matrix.
 
 \subsubsection{Sparse attention}
 
-Sparse attention approximates the full attention by ignoring dot products between
-some query and key vectors. Though it may seem like a crude approximation, there
-is research that shows that the full attention focuses mainly on few query-key
-vector combinations. For instance \cite{kovaleva2019revealing} shown that full
-attentions exhibit only few repeated patterns and that by disabling some
-attention heads we can increase the model's performance. Both of these findings
-suggest that full attention is over-parametrized and its pruning may be
-beneficial. \cite{child2019generating} shown that repeating attention patterns
-can be found also when processing images and that by approximating full
-attention using such sparse patterns we can increase the efficiency of the model
-without sacrificing performance.
+Sparse attention approximates full attention by ignoring dot products between
+some query and key vectors. Though it may seem like a crude approximation,
+research shows that the full attention focuses mainly on a few query-key vector
+combinations. For instance, \cite{kovaleva2019revealing} showed that full
+attentions exhibit only a few repeated patterns, and by disabling some attention
+heads, we can increase the model's performance. These findings suggest that full
+attention is over-parametrized, and its pruning may be beneficial. Moreover,
+\cite{child2019generating} showed that when processing images, the attention is
+composed of repeated sparse patterns and that by approximating full attention
+using such sparse patterns, we can increase the model's efficiency without
+sacrificing performance.
 
 Sparse attentions typically compose several attention patterns. One of these
-patterns is often full attention that is limited only to a certain neighbourhood
-of a given token. This corresponds to findings of \cite{clark2019does}, who
-found that full attention gives a lot of focus on previous and next tokens.
-Another sparse attention pattern is usually dedicated to enable broader exchange
-of information between tokens. In Sparse Transformer~\citep{child2019generating}
-distant tokens are connected by sever pre-selected tokens uniformly distributed
-throughout the input. In Longformer~\citep{beltagy2020longformer} every token
-can attend to every $k$-th distant token to increase its field of vision.
-BigBird~\citep{zaheer2020big} computes dot products between randomly chosen
-combinations of query and key vectors. These serve as a connecting nodes for
-other tokens when they exchange information. The last typical sparse attention
-pattern is a global attention that is computed only on a few tokens. Though such
-attention pattern is costly it is essential for tasks which require a
-representation of the whole input~\citep{beltagy2020longformer}. In Longformer
-some significant input tokens such as the \texttt{[CLS]} token, attend to all
-other tokens and vice-versa. BigBird additionally computes global attention on
-few extra tokens that are added to the input.
+patterns is often full attention limited only to a neighborhood of considered
+token. This pattern corresponds to the findings of \cite{clark2019does}, who
+found that full attention focuses a lot of on previous and next tokens. Another
+sparse attention pattern is usually dedicated to enabling a broader exchange of
+information between tokens. In Sparse Transformer \citep{child2019generating},
+distant tokens are connected by several pre-selected tokens uniformly
+distributed throughout the input. In Longformer \citep{beltagy2020longformer},
+every token can attend to every $k$th distant token to increase its field of
+vision. BigBird \citep{zaheer2020big} computes dot products between randomly
+chosen pairs of key-query vectors. These serve as connecting nodes for other
+tokens exchanging information. The last typical sparse attention pattern is a
+global attention that is computed only on a few tokens. Though such attention
+pattern is costly it is essential for tasks which require a representation of
+the whole input \citep{beltagy2020longformer}. In Longformer, some significant
+input tokens, such as the \texttt{[CLS]} token, attend to all other tokens and
+vice-versa. BigBird computes global attention also on a few extra tokens added
+to the input.
 
-Sparse attention pattern doesn't have to be fixed, but can also change
+Sparse attention patterns do not have to be fixed but can also change
 throughout the training. \cite{sukhbaatar2019adaptive} train a transformer that
-learns optimal attention span. In their experiments most heads learn to attend
-only to few neighbouring tokens and thus make the model more efficient.
-Reformer~\citep{kitaev2020reformer} computes the full self-attention only between
-close key, query tokens, while letting the model decide which two tokens are
-``close'' and which are not. To a certain degree this enables the model to learn
-optimal attention patterns between tokens.
+learns optimal attention span. In their experiments, most heads learn to attend
+only to a few neighboring tokens, which makes the model more efficient.
+Reformer \citep{kitaev2020reformer} computes the full self-attention only
+between close key and query tokens while letting the model decide which two
+tokens are ``close'' and which are not. That enables the model to learn optimal
+attention patterns between tokens to a certain degree.
 
-\subsubsection{Low-rank approximations and kernel tricks}
+\subsubsection{Low-rank approximations and kernel methods}
 
-Besides sparsifying the attention pattern, there are other techniques to make
-the self-attention more efficient in both memory and time.
-\cite{wang2020linformer} show that the attention matrix $A :=
-\softmax(\frac{QK^T}{d})$ is of low-rank and show that it can be approximated
-in less dimensions. By projecting the $(N \times d)$-dimensional key and value
-matrices into $(k \times d)$ matrices, where $k << N$ they avoid the expensive
-$N\times N$ matrix multiplication. The authors show that empirical performance
-of their model is on par with standard transformer models such as
-RoBERTa~\citep{liu2019roberta} or BERT~\citep{devlin2019bert}.
+Besides using sparse attention, other techniques make self-attention more
+efficient in memory and time. \cite{wang2020linformer} show that the
+attention matrix $A := \softmax(\frac{QK^T}{d})$ is of low rank and that
+it can be approximated in fewer dimensions. By projecting the $N \times
+d$-dimensional key and value matrices into $k \times d$ matrices, where $k\ll
+N$, they avoid the expensive $N\times N$ matrix multiplication. The authors show
+that the empirical performance of their model is on par with the standard
+transformer models such as RoBERTa \citep{liu2019roberta} or
+BERT \citep{devlin2019bert}.
 
 In another effort, \cite{choromanski2020rethinking} look at the standard
-softmax self-attention through the lens of kernels. Using clever feature
-engineering, the authors are able to approximate the elements of the above
-mentioned attention matrix $A$ as dot products of query and key feature
-vectors. Self-attention can be then approximated as multiplication of four
-matrices the projected query and key matrices, the normalization matrix
-substituting the division by $d$ and the value matrix. This allows to reorder
-the matrix multiplications, first multiplying the projected key and the value
-matrix and only after multiplying by the projected query matrix. Such
-reordering saves on time and space by a factor of $O(N)$ making the
-self-attention linear in input length.
+softmax self-attention through the lens of kernels. The authors use feature
+engineering and kernels to approximate the elements of the previously mentioned attention
+matrix $A$ as dot products of query and key feature vectors. Self-attention can
+then be approximated as a multiplication of four matrices: the projected query
+and key matrices, the normalization matrix substituting the division by $d$, and
+the value matrix. That allows the matrix multiplications to be reordered, first
+multiplying the projected key and the value matrix and then multiplying
+by the projected query matrix. Such reordering saves time and space by a
+factor of $O(N)$ making the self-attention linear in input length.
 
 \subsection{Implementation enhancements}
 
-Transformer models can be made more efficient by using various implementation
-tricks. As modern hardware gets faster and has more memory, implementation
-enhancements can render theoretical advancements such as sparse attentions
-unnecessary. For example, \cite{xiong2023effective} train a 70B model on
-sequences up to 32K tokens with full self-attention. Nevertheless, the
-necessary hardware to train such models is still unavailable to many and
-therefore there is still need to use theoretical advancements together with
-optimized implementation. For instance \cite{jiang2023mistral} trained an
-efficient transformer that uses both sparse attention and its optimized
+Transformer models can be made more efficient through a purposeful
+implementation. As modern hardware gets faster and has more memory,
+implementation enhancements can render theoretical advancements such as sparse
+attention unnecessary. For example, \cite{xiong2023effective} train a 70B model
+on sequences up to 32K tokens with full self-attention. Nevertheless, the
+necessary hardware to train such models is still unavailable to many;
+therefore, there is still the need to use theoretical advancements together
+with an optimized implementation. For instance \cite{jiang2023mistral} trained
+an efficient transformer that uses sparse attention and its optimized
 implementation. The resulting model beats competitive models with twice as many
 parameters in several benchmarks.
 
 \subsubsection{Optimized self-attention implementation}
 
 Efficient self-attention implementations view the operation as a whole rather
-than a series of matrix multiplications. This enables optimizations that would
-not be otherwise possible. The result is a single GPU kernel, that accepts the
-query, key and value vectors and outputs the result of a standard
+than a series of matrix multiplications. That enables optimizations that would
+not be otherwise possible. The result is a single GPU kernel that accepts the
+query, key, and value vectors and outputs the result of a standard
 full-attention. \cite{rabe2021self} proposed an implementation of full
-self-attention in the Jax
-library\footnote{\url{https://github.com/google/jax}} for TPUs that uses
-logarithmic amount of memory in the length of the input.
-\cite{dao2022flashattention} introduced \emph{Flash Attention} that focuses on
+self-attention in the Jax library\footnote{\url{https://github.com/google/jax}}
+for TPUs that uses logarithmic amount of memory in the length of the input.
+\cite{dao2022flashattention} introduced Flash Attention, which focuses on
 optimizing IO reads and writes and achieves non-trivial speedups. Flash
 Attention offers custom CUDA kernels for both block-sparse and full
 self-attentions. Later, \cite{dao2023flashattention} improved Flash Attention's
-parallelization and increased its the efficiency even more. Though using
-optimized kernel is more involved than spelling the operations out, libraries
-like xFormers\footnote{\url{https://github.com/facebookresearch/xformers}} and
+parallelization and increased its efficiency even more. Though using optimized
+kernel is more involved than spelling the operations out, libraries like
+xFormers\footnote{\url{https://github.com/facebookresearch/xformers}} and
 recent versions of
 PyTorch\footnote{\url{https://pytorch.org/docs/2.2/generated/torch.nn.functional.scaled_dot_product_attention.html}}
-make it much more straightforward.
+make it much more straightforward. Unfortunately, as of this writing, only
+xFormers support custom masking in self-attention.
 
 \subsubsection{Mixed precision, gradient checkpointing and accumulation}
 
-Besides the above recent implementation enhancements, there are tricks that
-have been used for quite some time and not just in conjunction with
-transformers. We mention them here, mainly for completeness, since they
-dramatically lower the required memory of a transformer model and thus allow
-training with longer sequences.
+Besides the above-mentioned recent implementation enhancements, some techniques
+have been used not just in conjunction with transformers. We mention them here,
+mainly for completeness, since they dramatically lower the required memory of a
+transformer model and thus allow training with longer sequences.
 
-\cite{micikevicius2017mixed} introduced mixed precision training which almost
+\cite{micikevicius2017mixed} introduced mixed precision training, which almost
 halves the memory requirements of the model as almost all of the activations
-and the gradients are computed in half precision. As the authors show, using
+and the gradients are computed in half precision. As the authors show, with
 additional techniques such as loss scaling, mixed precision does not worsen the
 results compared to traditional single precision training. In another effort to
-lower the amount of memory required to train a model, \cite{chen2016training}
-introduced gradient checkpointing that can trade speed for memory. With
-gradient checkpointing activations of some layers are dropped or overwritten in
-order to save memory, but then need to be recomputed again during backward
-pass. Another popular technique is gradient accumulation, which may effectively
-increase batch size while maintaining the same memory footprint. With gradient
-accumulation, gradients of batches are not applied immediately. Instead they
-are accumulated for $k$ batches and only then applied to weights. This has a
-similar effect as multiplying the batch size by $k$, but not equivalent as
-operations like Batch Normalization~\citep{ioffe2015batch} or methods like
-in-batch negatives behave differently. Nevertheless gradient accumulation is a
-good alternative, especially if the desired batch size cannot fit into the GPU
-memory.
+lower the memory required to train a model, \cite{chen2016training} introduced
+gradient checkpointing to trade speed for memory. With gradient checkpointing
+activations, some layers are dropped or overwritten to save memory but then
+need to be recomputed again during backward pass. Another popular technique is
+gradient accumulation, which may effectively increase batch size while
+maintaining the same memory footprint. With gradient accumulation, gradients
+are not applied immediately but are accumulated for $k$ batches and only then
+applied to the weights. That has a similar effect as multiplying the batch size
+by $k$ but is not equivalent since operations like Batch
+Normalization \citep{ioffe2015batch} or methods such as in-batch negatives
+behave differently. Nevertheless, gradient accumulation is a good alternative,
+especially if the desired batch size cannot fit into the GPU memory.
 
 \subsection{Combination of model architectures}
 
-To circumvent the problem of memory-hungry self-attention layer, some research
-efforts explored combining the transformer architecture with another
-architectural concept, namely recursive and hierarchical networks. The common
-approach of these models is to not modify the self-attention, nor the maximum
-length of input the transformer is able to process, but to instead use
-transformers to process smaller pieces of text separately and contextualize
-them separately. \cite{dai2019transformer} proposes using recursive
-architecture of transformer nodes, where each transformer receives the hidden
-states of the previous one. Since gradients do not travel between the nodes,
-processing longer sequences requires only constant memory. The resulting model
-achieves state of the art performance on language modelling tasks with parameter count
-comparable with the competition. Simpler approach was used by
-\cite{yang2020beyond}, who proposed a hierarchical model composed of
-transformers. First, transformers individually process segments of text
-producing segment-level representations, which are together with their position
-embeddings fed to another document-level transformer. The authors pretrain with
-both word-masking and segment masking losses and together with finetuning on
-the target tasks the model beats scores previously set by recurrent networks.
-
+In order to circumvent the problem of the memory-intensive self-attention
+layer, some research efforts explored combining the transformer architecture
+with another architectural concept, namely recursive and hierarchical networks.
+The typical approach of these models is not to modify the self-attention or the
+maximum length of input the transformer can process but instead to use
+transformers to process smaller text segments separately and contextualize them
+later. \cite{dai2019transformer} proposes using a recursive architecture of
+transformer nodes, where each transformer receives the hidden states of the
+previous one. Since gradients do not travel between the nodes, processing
+longer sequences requires only constant memory. The resulting model achieves
+state-of-the-art performance on language modeling tasks with a parameter count
+comparable with the competition. \cite{yang2020beyond} use a simpler
+architecture of a hierarchical transformer model. First, transformers
+individually process text segments, producing segment-level representations,
+which are fed to another document-level transformer, together with their
+position embeddings. The authors pre-train with both word-masking and
+segment-masking losses. After finetuning it on the target tasks, the model
+beats scores previously set by recurrent networks.
 
 \section{Training document embedding models}
 
-% as we are designing new finetuning/training method to improve embeddings we
-% should dedicate a section to how others do it, what other options are there
-
-% highlight how other approaches differ and why they are worse than our method
-
-
-
-When we train a document embedding model we aim to improve the performance of
+When we train a document embedding model, we aim to improve the performance of
 the model's embeddings on downstream tasks. There are many types of downstream
-tasks such as classification, retrieval, clustering or visualizations and an
-embedding model is generally expected to perform well an all of them. Therefore
-there is no clear optimization objective, neither there is an objective which
-is universally agreed to outperform others. This makes the task of training
-document embedding models particularly interesting and diverse. All training
-techniques however, have to adapt to currently available training document
-corpora. The set of available supervised corpora of documents is significantly
-smaller compared to corpora of shorter sequences such as sentences. This is due
-to higher annotation costs and complexity. Nevertheless there are corpora of
-documents linked via citations or links that offer some additional data for the
-researches to take advantage of.
+tasks, such as classification, retrieval, clustering, or visualizations, and an
+embedding model is generally expected to perform well in all of them.
+Therefore, there is no clear optimization objective, nor is there an objective
+universally agreed upon to outperform others. That makes the task of training
+document embedding models diverse. All training techniques, however, have to
+adapt to the currently available training document corpora. Due to higher
+annotation costs and complexity, there are fewer supervised corpora of
+documents than supervised corpora of shorter sequences such as sentences.
+Nevertheless, some datasets offer rich metadata useful for constructing
+supervised datasets. A typical example is the Semantic Scholar
+corpus \citep{ammar2018construction} that links academic papers via citations.
 
- % Compared to shorter text sequences, documents
-% contain more inter-connected information making training of their embeddings
-% much harder. Also, there are less supervised corpora of documents, as annotation
-% of documents is costly and in some cases just too hard for an annotator to do.
-% Consider for example specifying how similar are two randomly chosen Wikipedia
-% articles on a scale from 0 to 1. In face of these challenges, document embedding
-% models are oftentimes trained on unsupervised data, or use its structure as a
-% proxy for the documents' properties.
+In the simplest case, embedding models are trained only through word or token
+prediction. Paragraph Vector \citep{le2014distributed} is trained on the
+prediction of the masked-out words given the embeddings of the surrounding
+words and the embedding of the given document. However, transformers cannot
+learn document embedding through token prediction. So, a transformer-based
+embedding model is typically trained using pre-training on large unlabeled
+corpora and then finetuned. In pre-training, the model gains most of its
+knowledge, and then, in the finetuning phase, the model improves the quality
+of its embeddings. For instance, \cite{cohan2020specter,
+izacard2021unsupervised} warm start their embedding models from
+SciBERT \citep{beltagy2019scibert} and BERT \citep{devlin2019bert}, both
+trained using Masked Language Modelling (\emph{MLM}) on an unsupervised text
+corpus. However, these models differ in how they are finetuned.
 
-In the simplest case, embedding models are trained only through some kind of
-word or token prediction. Paragraph Vector~\citep{le2014distributed} is trained
-on prediction of masked-out word given the embeddings of the surrounding words
-and of the whole document. However not all models can learn document embedding
-through word prediction such as Paragraph Vector. An example of such model is
-Transformer~\citep{vaswani2017attention}. Embedding models based on
-Transformer's architecture use a combination of pre-training on large
-unlabelled corpora, where the model gains most of its knowledge, and a
-finetuning method that increases the quality of the model's embeddings.
-\cite{cohan2020specter} warm start their embedding model focused on scientific
-literature from SciBERT~\citep{beltagy2019scibert}, which was trained using
-Masked Language Modelling (or \emph{MLM}) on scientific text.
-\cite{neelakantan2022text} use large generative model as an initial checkpoint
-for their text embedding model. \cite{izacard2021unsupervised} warm start their
-embedding model from BERT~\citep{devlin2019bert}, which is another model
-trained using MLM. These models however differ in how they then finetune the
-document embeddings. \cite{cohan2020specter} use a triplet loss that takes
-three documents: a query, positive and a negative document. Triplet loss then
-minimizes the distance between the query and the positive document while
-maximizing the distance between the query and the negative document. To obtain
-a positive and a negative document for given query document the authors
-leverage the structure of Semantic Scholar
-corpus~\citep{ammar2018construction}. \cite{ostendorff2022neighborhood} repeats
-the experiment, but shows that with a more elaborate method of sampling of
-negative papers, it is possible to improve the model.
+\cite{cohan2020specter} use a triplet loss that takes three documents: a query,
+a positive, and a negative document. Triplet loss then minimizes the distance
+between the query and the positive document while maximizing the distance
+between the query and the negative document. To obtain a positive and a
+negative document for a given query document, the authors leverage the
+structure of Semantic Scholar corpus \citep{ammar2018construction}.
+\cite{ostendorff2022neighborhood} repeats the experiment but shows a more
+elaborate method of sampling negative papers improves the final model.
 
 Another popular technique is to train the model by contrasting several inputs'
-embedding against each other. Again for each input there is at least one
-similar to it (positive), while the others are usually deemed as dissimilar
-(negative). The loss would then minimize cross-entropy between the true
-similarities and the similarities computed from the input's embeddings. As is
-the case with the triplet loss, the main difference between models is how they
-obtain the positive and negative documents. \cite{neelakantan2022text} use the
-input itself as a positive, while all other inputs in given batch are
-considered as negatives. Using in-batch negatives is very efficient since the
-model can utilize each input once as a positive and several times as a
-negative. As the authors point out, the key of this technique is to have large
-batch sizes -- the authors suggest batch sizes of several thousand documents.
-\cite{izacard2021unsupervised} obtain positives by augmenting the original
-document. The authors also use negatives computed in previous batches. While
-using these out-of-batch negatives avoids the need for a large batch size, they
-introduce a new set of problems such as making sure that the trained model does
-not change too quickly, which would make the stored negatives irrelevant and
-possibly harmful to the training. The authors solve this issue by using a
-secondary network, that is updated using the parameters of the primary
-embedding model.
+embeddings against each other. For each input, there is at least one similar to
+it (positive), while the others are usually deemed as dissimilar (negative).
+The loss would then minimize cross-entropy between the true similarities and
+those computed from the input's embeddings. As with the triplet loss, the main
+difference between models is how they obtain the positive and negative
+documents. \cite{neelakantan2022text} use the given input as a positive, while
+all other inputs in the batch are considered negatives. Using in-batch
+negatives is very efficient since the model can utilize each input once as a
+positive and several times as a negative. As the authors point out, the key to
+this technique is to have large batch sizes -- the authors suggest batch sizes
+of several thousand documents. \cite{izacard2021unsupervised} obtain positives
+by augmenting the original document. In contrast to the previously mentioned
+model, the authors use negatives computed in previous batches. While using
+out-of-batch negatives avoids the need for a large batch size, a set of new
+problems surfaces, such as making sure that the trained model does not change
+too quickly, which would make the stored negatives irrelevant and possibly
+harmful to the training. The authors solve this issue by a secondary network,
+whose parameters are updated according to the primary embedding model.
 
-Though an embedding is usually expected to perform well on any type of task,
-\cite{singh2022scirepeval} train an embedding model whose embeddings are
-finetuned for a given type of downstream task. The model's task-specific
-modules are trained in an end-to-end manner on supervised data collected by the
-authors. Thanks to the use of control codes and a layer connecting all
-task-specific modules, the proposed model is able to share knowledge across all
-types of tasks. While the idea seems reasonable, the authors achieve only small
-improvement over state-of-the-art models that generate only single embedding.
+An embedding model usually only outputs one embedding for a single input, yet
+some models can generate more embeddings for a given input depending on
+external factors. \cite{singh2022scirepeval} train an embedding model whose
+embeddings are finetuned for a given type of downstream task. The model's
+task-specific modules are trained end-to-end on supervised data collected by
+the authors. The proposed model can share knowledge across all types of tasks
+thanks to the use of control codes and a layer connecting all task-specific
+modules. While the idea seems reasonable, the authors achieve only a fractional
+improvement over state-of-the-art models that generate a single embedding for a
+single input.
 
 \subsection{Comparison to the proposed training method}
 
-As other transformer-based embedding models, ours is also warm started from a
-pre-trained model. However, the following finetuning of our embeddings
-avoids some of the downsides of the previously mentioned methods. First it does
-not require any structure in the training data. This is important as there is
-only limited amount of structured corpora of documents. Typically these would
-be scientific papers related via citations or Wikipedia articles connected via
-links. Our training method allows to use any document corpora such as a set of
-books or news articles. Secondly, it does not require large batch sizes.
-Despite the advancements mentioned in
-Section~\ref{section:efficient_transformers}, using consumer-grade GPU card for
-embedding long inputs with transformers can still pose a practical challenge.
-In this context, using a batch size of several thousand is unimaginable. Third,
-our method does not require to maintain any secondary network while training
-the main model. Though, our method uses embeddings of other models, these can
-be generated beforehand and thus not take up resources needed to train the main
-embedding model. Fourth, our goal is to obtain a model that is applicable to
-any type of continuous text. We do not limit our embedding model only to
-specific field such as scientific literature. Finally, our model generates a
-single embedding which we evaluate on a diverse set of tasks that includes
-classification of individual documents, classification of document pairs and
-document retrieval.
+Like other transformer-based embedding models, ours is warm-started from a
+pre-trained model. However, the following finetuning of our embeddings avoids
+some of the downsides of the previously mentioned methods. First, it does not
+require any structure in the training data, which is essential as there is only
+a limited amount of structured corpora of documents. Typically, these would be
+scientific papers or Wikipedia articles connected via citations or links. Our
+training method allows using any document corpora, such as a set of books or
+news articles. Secondly, it does not require large batch sizes. Despite the
+advancements mentioned in Section~\ref{section:efficient_transformers}, using a
+consumer-grade GPU card to train a transformer-based embedding model with long
+inputs can still pose a practical challenge. Using a batch size of several
+thousand documents is unimaginable in this context. Third, our method does not
+require maintaining any secondary network while training the model. Though our
+method uses embeddings of other models, these can be generated beforehand and
+thus do not take up the resources needed to train the embedding model. Fourth,
+we aim to obtain a model usable with any continuous text. We do not limit our
+embedding model only to a specific field, such as scientific literature.
+Finally, our model generates a single embedding, which we evaluate on a diverse
+set of tasks, including classification of individual documents, classification
+of document pairs, and document retrieval.

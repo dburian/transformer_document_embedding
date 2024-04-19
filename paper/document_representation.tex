@@ -1,25 +1,18 @@
 \chapter{Document representation}\label{chapter:document_representation}
 
-Representing a piece of text by a dense vector, also known as a text embedding,
-is an ubiquitous concept in Natural Language Processing (\emph{NLP}). Embedding
-long continuous pieces of text such as documents is, however, substantially
-more difficult than embedding words or sentences, as the longer and more
-complex input still needs to be compressed into similarly sized vector. In this
-chapter we first explore the use of document embeddings in various scenarios.
-In this context, we then describe the qualities of document embeddings that we
-deem as beneficial and which create the motivation behind our training method
-proposed in Chapter~\ref{chapter:training_method}.
+Representing a piece of text by a dense vector, also known as text embedding,
+is ubiquitous in Natural Language Processing (\emph{NLP}). However, embedding
+long, continuous pieces of text such as documents is substantially more complex
+than embedding words or sentences, as the longer and more involved input still
+needs to be compressed into a similarly sized vector. In this chapter, we first
+briefly explore the use cases of document embeddings. Afterward, we describe
+the qualities of document embeddings that we deem beneficial and build up the
+motivation behind our training method, which we describe in
+Chapter~\ref{chapter:training_method}.
 
-\section{On the usefulness of document embeddings}
+\section{Use cases of document embeddings}
 
-% Elaborate on how they are used, then in next section reference it to derive
-% the useful properties of embedding models
-
-% what embedding models do
-% why in general it is advantageous to use them
-% examples how they are used
-
-Embeddings that capture the semantics of the document in a low-dimensional
+Embeddings that capture the document's semantics in a low-dimensional
 vector reduce the noise in the raw input while making the subsequent operations
 more efficient.
 % Maybe we can insert some theory about embedding models such as "Embedding
@@ -29,137 +22,131 @@ more efficient.
 % input."
 These are the main reasons why document embeddings are
 widely used across different tasks such as
-classification~\citep{cohan2020specter, neelakantan2022text,
+classification \citep{cohan2020specter, neelakantan2022text,
 izacard2021unsupervised, ostendorff2022neighborhood}, ad-hoc
-search~\citep{singh2022scirepeval, zamani2018neural}, query
-answering~\citep{neelakantan2022text}, visualization~\citep{cohan2020specter,
-dai2015document} and regression~\citep{singh2022scirepeval}.
+search \citep{singh2022scirepeval, zamani2018neural}, query
+answering \citep{neelakantan2022text}, visualization \citep{cohan2020specter,
+dai2015document} and regression \citep{singh2022scirepeval}.
 
-While some models~\citep{singh2022scirepeval} can generate different embeddings
+While some models \citep{singh2022scirepeval} can generate different embeddings
 for a single input depending on the task, most embedding models output a single
-vector that is effective across many types of tasks~\citep{neelakantan2022text,
+vector that is effective across many types of tasks \citep{neelakantan2022text,
 cohan2020specter, ostendorff2022neighborhood}. This shows that embedding models
-can substitute several dedicated models, severely saving on time and resources.
+can substitute several dedicated models, severely saving time and resources.
 
 \section{Desirable qualities of embeddings}
 
-% Reference back to the previous section and describe which properties of
-% embeddings we see as beneficial
-
-% 1. captures semantics
-% 2. is a single vector
-% 3. the vector is of low dimension
-
-% Divide semantics into two qualities of embedding models: structural and
-% contextual capacity
-
-% Describe each in detail:
-%   - what exactly do we mean
-%   - give examples
-%   - what the model needs to consider
-
-As is clear from the previous section, the usefulness of document embeddings
-comes from 3 properties. An ideal document embedding
+The usefulness of document embeddings stems from 3 properties. An ideal
+document embedding
 \begin{enumerate*}[label=(\arabic*)]
   \item represents the document's text faithfully
   \item with a single vector
   \item of low dimension.
 \end{enumerate*}
 
-In this section we focus on faithful document representation, which we view as a
-composition of two abstract qualities: \emph{structural} and \emph{contextual}.
-Document embedding with structural quality (or structural document embedding)
-faithfully models the relationships between word or word sequences. On the other
-hand, contextual document embedding accurately composes the meaning of all
-processed words, capturing their overall theme or topic. We view these qualities
-as scales, and so a document embedding may have high structural quality, but low
-contextual quality. Such embedding would capture the relationships between words
-very well, but would fail to assign correct meaning to these relationships due
-to their ambiguous meanings caused by lacking context.
+In this section, we focus on faithful document representation, which we view as
+a composition of two abstract qualities: \emph{structural} and
+\emph{contextual}. Document embedding with structural quality (or structural
+document embedding) faithfully models the relationships between words or word
+sequences. Based on these relationships, the embedding can capture meaning even
+for documents with complex structures. On the other hand, contextual document
+embedding composes the meaning of all processed words, capturing the overall
+theme or topic of the document. We view these qualities as scales, so a
+document embedding may have high structural but low contextual quality.
+Such embedding captures the relationships between words very well and thus
+faithfully represents the meaning of sections with unambiguous context.
+However, the embedding can easily misinterpret sections where context is
+needed to disambiguate between several meanings.
 
 Since each document embedding is produced by a model, we may attribute similar
-qualities to the models themselves. In this sense we speak of \emph{structural
-or contextual capacity} of the model.
+qualities to the models themselves. In this sense, we speak of the model's
+\emph{structural} or \emph{contextual capacity}.
 
-In the following subsections we focus on each quality separately, describing
-each in more detail. Then at the end of this section we compare the two
-qualities and setup the basic intuition behind our proposed finetuning method
-described in Chapter~\ref{chapter:training_method}.
+In the following subsections, we focus on each quality separately, describing
+each in more detail. At the end of this section, we compare the two
+qualities and outline our proposed training method described in
+Chapter~\ref{chapter:training_method}.
 
 \subsection{Structural quality of document embeddings}
 
 Structural quality defines how well the embedding captures relationships within
-the input text. The more complex the relationship is the higher is the
-structural quality of the embedding that captures it. For instance, for an
-input ``Fabian likes playing the guitar, but Rebecca does not.'', an embedding
-with high structural quality would understand that
+the input text. The more complex the relationship is, the higher structural
+quality is needed to interpret the text correctly. For instance, we list
+exemplary observations based on word relationships in a sentence: ``Fabian
+likes playing the guitar, but Rebecca does not.'':
 
-\begin{enumerate}
+\begin{enumerate}[label={Observation \arabic*.},ref=\arabic*,wide=0pt]
 
-  \item ``Fabian'' likes something based on words ``Fabian likes''
-    \label{enumitem:fabian_likes},
+  \item ``Fabian'' likes something based on the words ``Fabian likes''
+    \label{obs:fabian_likes}
 
-  \item a guitar can be played based on words ``playing the guitar''
-    \label{enumitem:guitar_played},
+  \item A guitar can be played based on the words ``playing the guitar''
+    \label{obs:guitar_played}
 
-  \item the two sequences of words separated by comma are in a opposition based
-    on words ``, but'', and
+  \item The two sequences of words separated by a comma are in opposition based
+    on the words ``, but'' \label{obs:opposed_sequences}
 
-  \item ``Fabian'' likes to play the guitar based on observations
-    \ref{enumitem:fabian_likes},~and~\ref{enumitem:guitar_played}
-    \label{enumitem:structural_complex}.
+  \item ``Fabian'' likes to play the guitar based on
+    Observations~\ref{obs:fabian_likes}~and~\ref{obs:guitar_played}.
+    \label{obs:structural_complex}
 
 \end{enumerate}
 
-Embedding models that compare input words and sequences of input words can
-produce document embedding with high structural quality. We say that such models
-have high structural capacity. A good example of model with high structural
-capacity is Transformer~\citep{vaswani2017attention}. Transformer's
-self-attention layer allows each word to exchange information with other words.
-Self-attention thus allows not only comparisons of words, but also aggregation
-of several words into one. Thanks to Transformer's layered architecture, such
-aggregations can be compared in the same manner on higher levels. An example of
-a model with low structural capacity is Paragraph
-Vector~\citep{le2014distributed}. Paragraph Vector compares words only in a
-single fully connected layer. Such architecture prevents understanding of more
-complex relationships that build on another relationships such as observation
-\ref{enumitem:structural_complex} in the example above. Additionally, Paragraph
-Vector ignores position information, so it cannot know how were the words
-originally arranged.
+The relationships get more and more complex as the number of participating
+words increases
+(Observations~\ref{obs:fabian_likes}-\ref{obs:opposed_sequences}) or as we
+layer the relationships (Observation~\ref{obs:structural_complex}).
+Therefore, an embedding would need an increasing level of structural quality to
+capture Observations~\ref{obs:fabian_likes}-\ref{obs:structural_complex}
+correctly.
+
+Embedding can reflect world relationships only if the model that produced it
+compares the participating words to each other. Based on the number and
+complexity of comparisons the model makes, we can derive its level of
+structural capacity. A good example of a model with high structural capacity is
+Transformer \citep{vaswani2017attention}. Transformer's self-attention layer
+allows each word to exchange information with other words. Additionally,
+self-attention allows the aggregation of several words into one. Thanks to
+Transformer's layered architecture, such aggregations can be compared similarly
+on higher levels. An example of a model with low structural capacity is
+Paragraph Vector \citep{le2014distributed}. Paragraph Vector compares words
+only in a single fully connected layer. Such architecture prevents the
+understanding of more complex relationships that build on other relationships,
+such as Observation~\ref{obs:structural_complex}.
 
 \subsection{Contextual quality of document embeddings}
 
 
-Contextual quality of a document embedding defines how well the embedding
-captures the overall meaning of larger sequences of text. The higher the
-contextual quality of an embedding is, the longer is the sequence whose meaning
-the embedding correctly captures as a whole. For instance, let us consider two
+The contextual quality of a document embedding defines how well the embedding
+captures the overall meaning of longer texts. The longer the sequence, the
+higher the contextual quality of an embedding correctly
+capturing its overall topic. For instance, let us consider two
 documents: \begin{enumerate*}
-  \item a description of typical commercial turbo-jet airplane
+  \item a description of a typical commercial turbo-jet airplane
     and\label{enumitem:plane}
   \item a recipe for spicy fried chicken wings\label{enumitem:chicken}
 \end{enumerate*}.
 A document embedding with high enough contextual quality would reflect that the
-meaning of a sentence ``Left wing is too hot.'' dramatically differs between
+following sentence's meaning: ``Left wing is too hot.'' dramatically differs between
 the two documents and would accordingly adjust the sentence's contribution to
 the resulting document embedding.
 
 Provided the document's text is cohesive and continuous, capturing its overall
-meaning gets easier as the text's length increases. This is intuitive since,
-if we consider smaller pieces of text, meaning of some parts may be ambiguous
-or misinterpreted. However, as the length of the considered sequence grows, the
-probability of misinterpreting its meaning shrinks as we have more words, whose
-common theme we are looking for. Consequently, models that are able to process longer
-pieces of text have higher contextual capacity. Typical example of a model with
-good contextual capacity is Paragraph Vector~\citep{le2014distributed}, which
-can process, in theory, indefinitely long sequences\footnote{Provided the
+meaning gets easier as the text's length increases. Intuitively, the more words
+we see, the more information we know about their common theme. As the theme
+becomes increasingly more refined, fewer meanings that correspond to it.
+Consequently, we judge a model's contextual capacity based on the maximum
+length of an input that the model can to process. This number is also commonly
+known as the maximum context length of a model. An example of a model with good
+contextual capacity is Paragraph Vector \citep{le2014distributed}, which can
+process, in theory, indefinitely long sequences\footnote{Provided the
 vocabulary size stays constant.}. Additionally, Paragraph Vector stores a
-single vector per document which is iteratively compared to all words within
-that document, which gives the model the opportunity to adjust the contribution
-of individual words to the overall meaning of the document. On the other hand,
-Transformer~\citep{vaswani2017attention} has much smaller contextual capacity
-as its memory requirements grow quadratically with the length of the input. In
-practice this prohibits Transformer from processing longer sequences of text.
+single vector per document, which is iteratively compared to all words within
+it. This allows the model to adjust individual words' contribution to the
+document's meaning. On the other hand, Transformer \citep{vaswani2017attention}
+has much smaller contextual capacity as its memory requirements grow
+quadratically with the length of the input, which in practice significantly
+shortens Transformer's maximum context length.
 
 \subsection{Combining structural and contextual
 qualities}\label{section:combine_structural_and_contextual}
@@ -169,30 +156,28 @@ qualities}\label{section:combine_structural_and_contextual}
 
 % Compare the two qualities
 
-Each quality describes different aspect of faithful representations. Structural
-quality is focused more on local relationships of words, while contextual
-quality considers mainly the global picture of the document. From another point
-of view, structural quality is oriented more towards precision, while
-contextual quality is oriented more towards recall. In a way the two qualities
+Each quality describes a different aspect of faithful representation.
+Structural quality is focused more on local relationships of words, while
+contextual quality considers mainly the global picture. From a performance
+standpoint, structural quality is oriented more toward precision, while
+contextual quality is oriented more toward recall. In a way, the two qualities
 complement each other. Contextual quality brings in the overall document theme,
-while the structural quality brings in the detailed meaning of a shorter
-sequence. These two pieces of information can be then aligned to produce
-precise and unambiguous document embedding. And so we hypothesize that the
-combination of these qualities is more beneficial for document embeddings than
-the same amount of either quality alone.
+while structural quality brings in the detailed meaning of a shorter sequence.
+We hypothesize that these two pieces of information can be aligned to produce
+precise, unambiguous document embedding that outperforms embeddings
+with just a single quality.
 
-While we predict that mix of these qualities is important, we are unsure which
-ratio of the qualities would be the most performant. Arguably, structural
-quality is more important than contextual, since in extreme cases it can model
-relationships so complex they span the entire document and thereby substituting
-the role of contextual quality. On the other hand, the number of total
-relationships found in a document grows exponentially with the length of the
-document, while the number of topics covered can grow only linearly.
-Consequently, we can expect that for a given maximum input length an embedding
-model with contextual capacity to be much smaller than an embedding model with
-structural capacity.
+While we predict that a mix of both qualities is beneficial, we are unsure
+which ratio would be the most performant. Arguably, structural quality is more
+important than contextual since, in extreme cases, it can model relationships
+so complex, that they span the entire document, substituting contextual
+quality’s role. On the other hand, we can expect that, for a given input
+length, an embedding model with high structural capacity will be larger than an
+embedding model with high contextual capacity. The reason is that the number of
+total relationships found in a document grows exponentially with the length of
+the document, whereas the number of topics covered can grow only linearly.
 
-To find the optimal mix between structural and contextual quality, in
-Chapter~\ref{chapter:training_method} we propose to combine models of the two
-extremes. Models such as Transformer with high structural capacity and models
-such as Paragraph Vector with high contextual capacity.
+Our training method stems from these observations and hypotheses. We align the
+two qualities with each other and find the ideal ratio of the two qualities
+that produce the best-performing embeddings. We describe our training method
+in detail in Chapter~\ref{chapter:training_method}.

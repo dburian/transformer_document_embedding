@@ -72,6 +72,10 @@
 \newcommand{\Loss}{\ensuremath{\mathcal{L}}}
 \newcommand{\Task}[1]{\textsc{#1}}
 \newcommand{\Dataset}[1]{\texttt{#1}}
+\newcommand{\Proj}[1]{{\footnotesize \texttt{#1}}}
+\newcommand{\Model}[1]{{\footnotesize \texttt{#1}}}
+% For highlighting inside verbatim
+\newcommand{\High}[1]{\color{#1}\ttfamily}
 
 %%% Useful operators for statistics and probability
 \DeclareMathOperator{\pr}{\textsf{P}}
@@ -91,7 +95,12 @@
 \newcommand{\isqr}[1]{\frac{1}{\sqrt{#1}}}
 \DeclareMathOperator*{\argmin}{\arg\!\min\medspace}
 \DeclareMathOperator*{\argmax}{\arg\!\max\medspace}
-\DeclareMathOperator*{\softmax}{\textrm{softmax}}
+\DeclareMathOperator*{\softmax}{softmax}
+\DeclareMathOperator*{\corr}{corr}
+\DeclareMathOperator*{\CCA}{CCA}
+\DeclareMathOperator*{\MSE}{MSE}
+\DeclareMathOperator*{\trace}{trace}
+
 
 %%% Various table goodies
 \newcommand{\pulrad}[1]{\raisebox{1.5ex}[0pt]{#1}}
