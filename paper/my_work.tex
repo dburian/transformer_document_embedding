@@ -198,25 +198,25 @@ the two teachers' architectures. In other words, not to be as complex as the
 architecture of SBERT, so it can process longer inputs while still having a
 manageable memory footprint, but not as simple as the architecture of PV, so
 that the student can model complex world relationships. We chose a Transformer
-with a sparse attention mechanism since the Transformer is a well-tested
-architecture. Additionally, with sparse attention, Transformers consume a
-relatively small amount of memory even for longer inputs, as we explain in
-Section~\ref{section:efficient_self_attn}. Another consideration is that we
-need a pre-trained model, as our method is not suited to train a model from
-scratch but to finetune a model's document embeddings.
+with a sparse attention mechanism. Transformer is a well-tested architecture
+that is used throughout NLP. Additionally, with sparse attention, Transformers
+consume a relatively small amount of memory even for longer inputs, as we
+explain in Section~\ref{section:efficient_self_attn}. Another consideration is
+that we need a pre-trained model, as our method is not suited to train a model
+from scratch but to finetune a model's document embeddings.
 
 Contrary to the selection of architecture, selecting a concrete model is not
-crucial to our method. Our choice of a pre-trained Transformer model with a
-sparse attention mechanism is governed more by practical considerations rather
-than the conditions of our method. Since we have limited computational
-resources, we prefer a smaller model that we can fit on a consumer-grade GPU
-card. We also value the model's performance, ease of use, and simplicity. We
-choose Longformer \citep{beltagy2020longformer} as it is reasonably small,
-memory efficient, performs above average compared to other similar models
-\citep{tay2020long}, and its self-attention mechanism is straightforward. Other
-alternatives are BigBird \citep{zaheer2020big}, or if we would not mind a more
-complex model, we could use Reformer \citep{kitaev2020reformer}, Linformer
-\citep{wang2020linformer} or Performer \citep{choromanski2020rethinking}.
+crucial to our method. Our choice of the concrete model is governed more by
+practical considerations rather than the conditions of our method. Since we
+have limited computational resources, we prefer a smaller model that we can fit
+on a consumer-grade GPU card. We also value the model's performance, ease of
+use, and simplicity. We choose Longformer \citep{beltagy2020longformer} as it
+is reasonably small, memory efficient, performs above average compared to other
+similar models \citep{tay2020long}, and its self-attention mechanism is
+straightforward. Other alternatives are BigBird \citep{zaheer2020big}, or if we
+would not mind a more complex model, we could use Reformer
+\citep{kitaev2020reformer}, Linformer \citep{wang2020linformer} or Performer
+\citep{choromanski2020rethinking}.
 
 \subsection{Longformer}
 
