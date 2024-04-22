@@ -1,0 +1,149 @@
+default_finetune_kwargs: &default_finetune_kwargs
+  epochs: &epochs 10
+  batch_size: &batch_size 32
+  weight_decay: &weight_decay 0.1
+  lr: &lr 0.0001
+  lr_scheduler_type: &lr_scheduler_type cos
+  warmup_steps: &warmup_steps 0
+  fp16: &fp16 True
+  grad_accumulation_steps: &grad_accumulation_steps 1
+  max_grad_norm: &max_grad_norm 1.0
+  log_every_step: &log_every_step 8
+  validate_every_step: &validate_every_step null
+  patience: &patience null
+  save_best: &save_best False
+  embed_pred_batch_size: &embed_pred_batch_size 8
+
+bin_cls_head_kwargs: &bin_cls_head_kwargs
+  out_features: 2
+  hidden_features: 50
+  hidden_dropout: 0.5
+  label_smoothing: 0.1
+  hidden_activation: relu
+
+data_limits: &data_limits
+  train: 10000
+
+evaluations:
+  imdb:
+    dataset:
+      module: imdb:IMDB
+      kwargs:
+        data_size_limit: *data_limits
+    head:
+      module: classification:ClassificationHead
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *default_finetune_kwargs
+    evaluation_kwargs:
+      batch_size: *embed_pred_batch_size
+  pan:
+    dataset:
+      module: document_pair_classification:DocumentPairClassification
+      kwargs:
+        path: ./data/MDA/PAN
+        data_size_limit: *data_limits
+    evaluation_kwargs:
+      batch_size: 4
+    head:
+      module: classification:PairClassificationHead
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs:
+      epochs: *epochs
+      batch_size: *batch_size
+      weight_decay: *weight_decay
+      lr: *lr
+      lr_scheduler_type: *lr_scheduler_type
+      warmup_steps: *warmup_steps
+      fp16: *fp16
+      grad_accumulation_steps: *grad_accumulation_steps
+      max_grad_norm: *max_grad_norm
+      log_every_step: *log_every_step
+      validate_every_step: *validate_every_step
+      patience: *patience
+      save_best: *save_best
+      embed_pred_batch_size: 4
+  oc:
+    dataset:
+      module: document_pair_classification:DocumentPairClassification
+      kwargs:
+        path: ./data/MDA/OC
+        data_size_limit: *data_limits
+    evaluation_kwargs:
+      batch_size: *embed_pred_batch_size
+    head:
+      module: classification:PairClassificationHead
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *default_finetune_kwargs
+  s2orc:
+    dataset:
+      module: document_pair_classification:DocumentPairClassification
+      kwargs:
+        path: ./data/MDA/S2ORC
+        data_size_limit: *data_limits
+    evaluation_kwargs:
+      batch_size: *embed_pred_batch_size
+    head:
+      module: classification:PairClassificationHead
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *default_finetune_kwargs
+  aan:
+    dataset:
+      module: document_pair_classification:DocumentPairClassification
+      kwargs:
+        path: ./data/MDA/AAN
+        data_size_limit: *data_limits
+    evaluation_kwargs:
+      batch_size: *embed_pred_batch_size
+    head:
+      module: classification:PairClassificationHead
+      kwargs: *bin_cls_head_kwargs
+    finetune_pipeline_kwargs: *default_finetune_kwargs
+  arxiv:
+    dataset:
+      module: arxiv_papers:ArxivPapers
+      kwargs:
+        path: ./data/arxiv_papers
+        data_size_limit: *data_limits
+    evaluation_kwargs:
+      batch_size: 2
+    finetune_pipeline_kwargs:
+      epochs: *epochs
+      batch_size: *batch_size
+      weight_decay: *weight_decay
+      lr: *lr
+      lr_scheduler_type: *lr_scheduler_type
+      warmup_steps: *warmup_steps
+      fp16: *fp16
+      grad_accumulation_steps: *grad_accumulation_steps
+      max_grad_norm: *max_grad_norm
+      log_every_step: *log_every_step
+      validate_every_step: *validate_every_step
+      patience: *patience
+      save_best: *save_best
+      embed_pred_batch_size: 2
+    head:
+      module: classification:ClassificationHead
+      kwargs:
+        out_features: 11
+        hidden_features: 50
+        hidden_dropout: 0.5
+        label_smoothing: 0.1
+        hidden_activation: relu
+  sims_wines:
+    dataset:
+      module: wikipedia_similarities:WikipediaSimilarities
+      kwargs:
+        path: ./data/wikipedia_similarities.py
+        dataset: wine
+    head: null
+    evaluation_kwargs:
+      batch_size: 4
+  sims_games:
+    dataset:
+      module: wikipedia_similarities:WikipediaSimilarities
+      kwargs:
+        path: ./data/wikipedia_similarities.py
+        dataset: game
+    head: null
+    evaluation_kwargs:
+      batch_size: 4
