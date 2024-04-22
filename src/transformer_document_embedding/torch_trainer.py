@@ -243,7 +243,7 @@ class TorchTrainer:
                 outputs,
                 batch,
                 # Log loss unscaled, not influenced by grad accumulation steps
-                loss=loss * self._grad_accumulation_steps,
+                loss=outputs["loss"],
                 lr=torch.tensor(current_lr, device=self._device),
                 total_step=total_step,
                 auto_log=True,
