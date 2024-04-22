@@ -77,7 +77,7 @@ the source's distributions are well-spaced.
 
 \section{Validation tasks}\label{section:validation_tasks}
 
-We compare the embedding models based on their performance on 
+We compare the embedding models based on their performance on
 downstream tasks. We use a subset of our evaluation tasks, described in
 detail in Chapter~\ref{chapter:evaluation}. We include tasks with either
 a large enough training split suitable for cross-validation or a validation
@@ -93,7 +93,7 @@ to compare performance across several tasks. However, not all tasks are equally
 difficult, so averaging accuracies would lead us to favor models that
 performed well on easy tasks and undervalue models that performed well on
 more difficult tasks. Therefore, we normalize the accuracy by the highest
-score reached for the given task within the considered models, 
+score reached for the given task within the considered models,
 making the tasks equally difficult. We call this metric \emph{normalized
 accuracy}. When more tasks are taken into account, we asses models based on the
 mean normalized accuracy. In visualizations, we mark mean normalized accuracy
@@ -182,7 +182,7 @@ attention, with the window sizes $\omega$ set to the default 512 tokens. In our
 preliminary experiments, we also tested using global attention to the
 \texttt{CLS} token and taking its hidden state from the last layer as the
 input's embedding. However, the mean-pooling approach proved to be superior.
-Additionally, with mean-pooling, we found global attention 
+Additionally, with mean-pooling, we found global attention
 is not beneficial, so we avoided it.
 
 We aim for fast convergence with a small
@@ -793,7 +793,7 @@ depend on the same embedding's features and, therefore, would correlate with eac
 other. Such correlations would create unnecessary conflict with the SDL loss. This phenomenon would also
 occur for projections with an hourglass shape, where there is one
 bottle-neck layer with significantly fewer dimensions than the layers after or
-before it. And indeed, during preliminary testing, we saw these projections 
+before it. And indeed, during preliminary testing, we saw these projections
 always perform poorly.
 
 We build the projections as a sequence of blocks, where each block is composed
@@ -993,7 +993,7 @@ their performance to all relevant teachers, Longformer, and
 Figure~\ref{fig:mm_mse_contextual_projections}. As with the cosine
 structural loss, max-marginals MSE loss boosts the students' performances.
 Consequently, the student's performances are not as dependent on
-the projections as those of students trained without 
+the projections as those of students trained without
 structural loss. Contrary to what we witness in previous experiments, stronger
 contextual projections perform very well overall. This shows that max-marginals MSE loss exerts so much pressure on the student's embedding the projections
 need to be even stronger than in the case of cosine structural loss. Again, the max-marginals MSE structural loss does not quite correspond with our
@@ -1232,15 +1232,15 @@ First, in Section~\ref{section:structural_loss}, we experiment with simple and
 composite structural losses. While simple losses focus only on the similarity
 between the student's and the corresponding teacher's embedding, composite
 losses also take advantage of the in-batch teacher's embedding of different
-inputs. Cosine is the best performing simple structural loss, surpassing even SBERT. These results show that the combination of
-Longformer's architecture and distillation
-of SBERT's embeddings can boost the student's performance even above the level
-of the structural teacher. However, cosine performs worse than the best
-composite loss, which is max-marginals with MSE. As we show in
+inputs. Cosine is the best performing simple structural loss, surpassing even
+SBERT. These results show that the combination of Longformer's architecture and
+distillation of SBERT's embeddings can boost the student's performance even
+above the level of the structural teacher. However, cosine performs worse than
+the best composite loss, which is max-marginals with MSE. As we show in
 Section~\ref{section:composite_analysis}, max-marginals MSE losses use SBERT's
 embeddings to increase the distance between student's embeddings of distinct
-inputs. Thus, we conclude that distillation of a certain quality from a student model
-may be less effective than increasing the difference between distinct
+inputs. Thus, we conclude that distillation of a certain quality from a student
+model may be less effective than increasing the difference between distinct
 input embeddings.
 
 In Section~\ref{section:structural_and_contextual}, we try to leverage the
@@ -1248,26 +1248,41 @@ contextual loss to improve the models trained with just the cosine or
 max-marginals MSE structural loss. After finding promising training
 hyperparameters for Paragraph Vector, we show that the contextual loss alone
 can improve Longformer's results. Yet, it cannot surpass SBERT or the student
-models trained with just the structural loss. This demonstrates that the contextual teacher is more important to the student's performance
-in our setting than the contextual teacher. We also find the optimal contextual loss for
-cosine and max-marginals MSE loss. In the case of cosine structural loss, the student can benefit from both the contextual and the structural loss
-if the contextual loss is less exact, which gives the student enough freedom. With
-the max-marginals MSE structural loss, the contextual loss needs to be far less
+models trained with just the structural loss. This demonstrates that the
+contextual teacher is more important to the student's performance in our
+setting than the contextual teacher. We also find the optimal contextual loss
+for cosine and max-marginals MSE loss. In the case of cosine structural loss,
+the student can benefit from both the contextual and the structural loss if the
+contextual loss is less exact, which gives the student enough freedom. With the
+max-marginals MSE structural loss, the contextual loss needs to be far less
 strict, and even then, it fails to improve the student model trained with just
-the structural loss. We also try more involved ways to weigh the contextual
-and the structural loss. In the case of max-marginals MSE structural loss, we
-find that even with a significant emphasis on the structural loss, the student model
-suffers from both the contextual loss and the max-marginals MSE loss used simultaneously. So, we conclude that max-marginals MSE is incompatible with
-our training method. On the other hand, with cosine structural loss, the student
-model behaves intuitively. It prefers an equal balance of the
-structural and the contextual loss, where the structural loss is used only for
-inputs the structural teacher can encode whole.
+the structural loss. We also try more involved ways to weigh the contextual and
+the structural loss. In the case of max-marginals MSE structural loss, we find
+that even with a significant emphasis on the structural loss, the student model
+suffers from both the contextual loss and the max-marginals MSE loss used
+simultaneously. So, we conclude that max-marginals MSE is incompatible with our
+training method. On the other hand, with cosine structural loss, the student
+model behaves intuitively. It prefers an equal balance of the structural and
+the contextual loss, where the structural loss is used only for inputs the
+structural teacher can encode whole.
 
-To summarize, we have two configurations  of our training method, which result in promising models. We label these models according to their structural loss as \Model{cosine} and \Model{mm-MSE}. \Model{cosine} uses structural and contextual loss to distill the qualities of the two teachers' embeddings, as described in Chapter~\ref{chapter:training_method}. Even though \Model{mm-MSE} originates from our method, its training fulfills a different objective. It only uses a composite structural loss to move the embeddings of distinct inputs further apart instead of moving them closer to their corresponding SBERT embeddings. As we present in Figure~\ref{fig:experiments_final_comparison}, \Model{mm-MSE} beats \Model{cosine} in 
+To summarize, we have two configurations  of our training method, which result
+in promising models. We label these models according to their structural loss
+as \Model{cosine} and \Model{mm-MSE}. \Model{cosine} uses structural and
+contextual loss to distill the qualities of the two teachers' embeddings, as
+described in Chapter~\ref{chapter:training_method}. Even though \Model{mm-MSE}
+originates from our method, its training fulfills a different objective. It
+only uses a composite structural loss to move the embeddings of distinct inputs
+further apart instead of moving them closer to their corresponding SBERT
+embeddings. As we present in Figure~\ref{fig:experiments_final_comparison},
+\Model{mm-MSE} beats \Model{cosine} in four out of six tasks.
 
 \begin{figure}
     \centering
-    \includegraphics{img/experiments_final_models.pdf}
+    \includegraphics[width=\textwidth]{img/experiments_final_models.pdf}
+
     \caption{Performance of two final model variants on validation tasks.}
+
     \label{fig:experiments_final_comparison}
+
 \end{figure}
