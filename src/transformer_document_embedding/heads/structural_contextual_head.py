@@ -116,7 +116,9 @@ class StructuralContextualHead(torch.nn.Module):
             )
         }
 
-        lams = torch.zeros_like(lengths, dtype=torch.float32).fill_(self._lam)
+        weighting = self._lam != 0.5
+        if weighting:
+            lams = torch.zeros_like(lengths, dtype=torch.float32).fill_(self._lam)
 
         if self.structural_head is not None:
             assert (
@@ -128,13 +130,15 @@ class StructuralContextualHead(torch.nn.Module):
                 if self.max_structural_length is not None
                 else torch.ones_like(lengths)
             )
-            lams *= mask
+            if weighting:
+                lams *= mask
 
             structural_outputs = self.structural_head(
                 embeddings, structural_targets, mask=mask
             )
 
-            structural_outputs["loss"] *= lams
+            if weighting:
+                structural_outputs["loss"] *= lams
 
             outputs["loss"] += structural_outputs["loss"]
 
@@ -152,7 +156,8 @@ class StructuralContextualHead(torch.nn.Module):
             ), "No targets for contextual loss were given."
 
             contextual_outputs = self.contextual_head(embeddings, contextual_targets)
-            contextual_outputs["loss"] *= 1 - lams
+            if weighting:
+                contextual_outputs["loss"] *= 1 - lams
 
             outputs.update(
                 {
