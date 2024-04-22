@@ -59,7 +59,7 @@ To regulate the mixture of $\Loss_S$ and $\Loss_C$, we introduce weighting
 parameter $\lambda$. In the most general form, we assume $\lambda$ to be
 dependent on the input text $x$ since the performance of the teacher models
 might vary across different inputs. In particular, we can expect $\lambda$ to
-be dependent on the length of the input since, for shorter inputs, the context
+depend on the length of the input since, for shorter inputs, the context
 is minimal and, therefore, expendable. Abstract formulation of the loss is
 given in Equation~\ref{eq:abstract_loss}. We explore concrete options for
 $\Loss_S$, $\Loss_C$ and $\lambda(x)$ in Chapter~\ref{chapter:experiments}.
@@ -92,10 +92,10 @@ contextual embedding.
   \centering
   \includegraphics[width=0.8\textwidth]{./img/training_architecture.pdf}
 
-  \caption{Architecture of our teacher-student training. We distill the
+  \caption{The architecture of our teacher-student training. We distill the
   qualities of the teachers' embeddings through corresponding losses into a
   student model. Since we do not update the weights of either teacher,
-  generation of their embeddings can be done offline, before training.}
+  the generation of their embeddings can be done offline before training.}
 
   \label{fig:teacher_student_train_arch}
 
@@ -111,9 +111,9 @@ As explained in Chapter~\ref{chapter:document_representation}, each of the two
 mentioned models specializes in a different quality of produced embeddings.
 SBERT can compare word relationships on many levels and thus understand even
 complex text structures. However, it cannot process long texts. On the other
-hand, Paragraph Vector can produce embeddings even for long documents, but it
-processes text very shallowly, which prohibits understanding any complex
-structures. We hope to synthesize both of these qualities by combining the two
+hand, Paragraph Vectors can produce embeddings even for long documents, but they
+process text very shallowly, which prohibits understanding any complex
+structures. We hope to synthesize both qualities by combining the two
 teacher models in a single model.
 
 \subsection{SBERT}
@@ -121,7 +121,7 @@ teacher models in a single model.
 Sentence-BERT is a composition of a BERT-like \citep{devlin2019bert} encoder
 with a mean pooling layer above its last layer's hidden states. The model is
 finetuned with Natural Language Inference (\emph{NLI}) datasets to produce
-semantically meaningful embeddings. We show an illustration of SBERT's training
+semantically meaningful embeddings. We illustrate SBERT's training
 architecture in Figure~\ref{fig:sbert}. We have chosen SBERT as a structural
 teacher for its high structural capacity and strong performance in
 sentence-level text-understanding tasks \citep{reimers2019sentence}.
@@ -131,8 +131,8 @@ sentence-level text-understanding tasks \citep{reimers2019sentence}.
   \includegraphics[width=0.5\textwidth]{./img/sbert_architecture.pdf}
 
   \caption{Siamese network architecture used to train SBERT. The pair of
-  sentences from a NLI dataset are classified into three classes
-  ``entailment'', ``netural'' and ``contradiction''.}
+  sentences from an NLI dataset is classified into three classes
+  ``entailment'', ``neutral'' and ``contradiction''.}
 
   \label{fig:sbert}
 
@@ -140,16 +140,14 @@ sentence-level text-understanding tasks \citep{reimers2019sentence}.
 
 \subsection{Paragraph Vector}\label{section:paragraph_vector}
 
-Paragraph Vector \citep{le2014distributed} (also known as Doc2Vec) is a simple
+Paragraph Vector \citep{le2014distributed}, sometimes referred to as Doc2Vec, is a simple
 text-embedding model that views the input as a Bag of Words (or BoW). Paragraph
 Vector comprises two sub-models: Distributed Memory (DM) and Distributed Bag of
-Words (DBOW). While each model is trained separately, the authors recommend
-using both and concatenating their embeddings. The models are trained to
+Words (DBOW). While each model is trained separately, the authors recommend combining both architectures into a single model, where the combined models' embeddings are simply concatenated. The models are trained to
 predict a word within a window in the given document. As shown in
-Figure~\ref{fig:dbow}, DBOW bases its prediction only on the embedding of the
-whole paragraph. On the other hand, DM, whose architecture is depicted in
+Figure~\ref{fig:dbow}, DBOW bases its prediction only on the whole paragraph's embedding. On the other hand, DM, whose architecture is depicted in
 Figure~\ref{fig:dm}, additionally uses the embeddings of the surrounding words
-within given window.
+within a given window.
 
 We chose Paragraph Vector as a contextual teacher due to its unique
 architecture, which forces the model to develop a single vector that summarizes
@@ -158,7 +156,7 @@ limited maximum input length, so as a contextual teacher, it will always
 provide some signal to the student regarding the document's context. Also, even
 though Paragraph Vector cannot match the performance of substantially more
 complex models such as Transformers, \cite{dai2015document} show that for
-larger datasets, Paragraph Vector outperforms classical embedding models such
+larger datasets, Paragraph Vector, outperforms classical embedding models such
 as Latent Dirichlet Allocation \citep{blei2003latent} or TF-IDF weighted BoW
 model \citep{harris1954distributional}. Finally, Paragraph Vector's simple
 architecture allows it to train on significantly larger text corpora than other
@@ -193,7 +191,7 @@ In our teacher-student training, the student model is our primary embedding
 model, which we train based on the outputs of the teacher models. By using
 teacher-student training, we can avoid some of the architectural drawbacks of
 both teacher models while still benefiting from the qualities of the teachers'
-embeddings. We choose the student's architecture to be at a midpoint between
+embeddings. We choose the student's architecture at a midpoint between
 the two teachers' architectures. In other words, not to be as complex as the
 architecture of SBERT, so it can process longer inputs while still having a
 manageable memory footprint, but not as simple as the architecture of PV, so
@@ -238,11 +236,11 @@ selected per each input. Global attention's parameters are not pre-trained.
 Instead, at the beginning of the training, they are initialized by the
 parameters from local attention and finetuned for a given task. With dilated
 local attention, every key token attends to every $k$ neighboring query token.
-So it is analogous to a one-dimensional Convolution layer
+So, it is analogous to a one-dimensional Convolution layer
 \citep{van2016wavenet} with stride, or dilatation of $k$. However, to use
 dilated local attention, one has to use a custom CUDA kernel or a slow
 implementation in Python using loops. The authors also provide a reasonably
-fast and memory-efficient block implementation for global and local
+fast, memory-efficient block implementation for global and local
 attention.
 
 \subsubsection{Training}
@@ -262,10 +260,10 @@ on longer pieces of text. It includes the following datasets:
 
   \item English Wikipedia
 
-  \item One third of articles from Realnews dataset \citep{zellers2019defending}
+  \item One-third of articles from Realnews dataset \citep{zellers2019defending}
       with more than 1200 tokens
 
-  \item One third of the Stories corpus \citep{trinh2018simple}
+  \item One-third of the Stories corpus \citep{trinh2018simple}
 
 \end{itemize}
 
