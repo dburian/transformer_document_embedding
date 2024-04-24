@@ -171,32 +171,35 @@ class TorchTrainer:
         ):
             self._validation_step(batch)
 
-        if self._val_logger is not None:
-            self._val_logger.log(total_step, force=True)
-
-        self._model.train()
-
-        # TODO: Option to not do this at all?
+        # get_value must be called before log, where the metric resets
         new_score = (
             self._val_logger.get_value(self._main_metric_name, None)
             if self._val_logger is not None
             else None
         )
-        if new_score is not None:
-            is_better = (
-                (new_score < self._best_val_score)
-                if self._lower_is_better
-                else (new_score > self._best_val_score)
-            )
-            if is_better:
-                self._best_val_score = new_score
-                self._validations_without_improvement = 0
+        if self._val_logger is not None:
+            self._val_logger.log(total_step, force=True)
 
-                if self._save_model_callback is not None:
-                    logger.info("Saving checkpoint of model at step %d", total_step)
-                    self._save_model_callback(self._model, total_step)
-            else:
-                self._validations_without_improvement += 1
+        self._model.train()
+
+        if new_score is None:
+            return
+
+        # TODO: Option to not do this at all?
+        is_better = (
+            (new_score < self._best_val_score)
+            if self._lower_is_better
+            else (new_score > self._best_val_score)
+        )
+        if is_better:
+            self._best_val_score = new_score
+            self._validations_without_improvement = 0
+
+            if self._save_model_callback is not None:
+                logger.info("Saving checkpoint of model at step %d", total_step)
+                self._save_model_callback(self._model, total_step)
+        else:
+            self._validations_without_improvement += 1
 
     def _validation_step(self, batch: dict[str, torch.Tensor]) -> None:
         train_utils.batch_to_device(batch, self._device)
