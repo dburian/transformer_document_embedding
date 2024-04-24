@@ -388,7 +388,6 @@ class WindowedCCAMetricZoo(WindowedCCAMetric):
                 f"CCA computed with {','.join(problematic_vars)} smaller than "
                 f"n_components ({self.n_components})"
             )
-            print("asfsadfsfsadfsafsf asdfsadfsaf")
             return torch.tensor(torch.nan, device=self.views[0].device)
 
         views = (self.views[0].numpy(force=True), self.views[1].numpy(force=True))

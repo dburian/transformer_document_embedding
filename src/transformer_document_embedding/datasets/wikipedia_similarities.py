@@ -17,8 +17,8 @@ class WikipediaSimilarities(DocumentDataset):
 
     def __init__(
         self,
-        dataset: str,
         path: str,
+        dataset: str,
         **kwargs,
     ) -> None:
         assert (
