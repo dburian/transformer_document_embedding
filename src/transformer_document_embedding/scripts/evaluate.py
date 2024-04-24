@@ -88,13 +88,6 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--save_trained_model",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
-        help="Whether to save trained model.",
-    )
-
-    parser.add_argument(
         "--save_trained_head",
         type=bool,
         action=argparse.BooleanOptionalAction,
@@ -108,6 +101,7 @@ def iterate_cross_validation_splits(
     base_document_dataset: DocumentDataset, split_name: str, num_folds: int
 ) -> Iterator[DocumentDataset]:
     cv_dataset = base_document_dataset.splits[split_name]
+    val_split = base_document_dataset.splits.get("validation", None)
     labels = cv_dataset.with_format("np")[col.LABEL]
     feats_placeholder = np.zeros(len(labels))
 
@@ -116,6 +110,7 @@ def iterate_cross_validation_splits(
         fold = DatasetDict(
             train=cv_dataset.select(train_indices),
             test=cv_dataset.select(test_indices),
+            validation=val_split,
         )
 
         yield ExplicitDocumentDataset(fold, base_document_dataset.evaluation_kind)
@@ -125,6 +120,7 @@ def cross_validate_single_dataset(
     config: EvaluationInstanceSpec,
     model: EmbeddingModel,
     exp_path: str,
+    args: argparse.Namespace,
 ) -> dict[str, float]:
     assert config.cross_validate is not None
     logger.info(
@@ -145,15 +141,21 @@ def cross_validate_single_dataset(
     )
 
     fold_results = []
-    for fold in iterate_cross_validation_splits(
+    folds = iterate_cross_validation_splits(
         base_dataset, config.cross_validate.split, config.cross_validate.num_folds
-    ):
+    )
+    for i, fold in enumerate(folds):
         head = None if config.head is None else config.head.initialize(model)
+        fold_exp_path = os.path.join(exp_path, f"fold_{i}")
+        os.makedirs(fold_exp_path, exist_ok=True)
 
         training_pipeline = finetune_factory(
             fold.evaluation_kind, config.finetune_pipeline_kwargs
         )
-        training_pipeline(model, head, fold, exp_path)
+        training_pipeline(model, head, fold, fold_exp_path)
+
+        if head is not None and args.save_trained_head:
+            save_model_weights(head, os.path.join(fold_exp_path, "trained_head"))
 
         fold_results.append(
             evaluate(
@@ -186,7 +188,7 @@ def evaluate_single_dataset(
     save_config(config, exp_path)
 
     if config.cross_validate is not None:
-        return cross_validate_single_dataset(config, model, exp_path)
+        return cross_validate_single_dataset(config, model, exp_path, args)
 
     dataset = config.dataset.initialize()
     head = None if config.head is None else config.head.initialize(model)
@@ -195,10 +197,6 @@ def evaluate_single_dataset(
         dataset.evaluation_kind, config.finetune_pipeline_kwargs
     )
     training_pipeline(model, head, dataset, exp_path)
-
-    if args.save_trained_model:
-        save_path = os.path.join(exp_path, "trained_model")
-        model.save_weights(save_path)
 
     if head is not None and args.save_trained_head:
         save_model_weights(head, os.path.join(exp_path, "trained_head"))
