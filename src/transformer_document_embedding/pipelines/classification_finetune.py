@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from os import path
+from typing import Callable, Optional, TYPE_CHECKING
 
 from datasets import Dataset
 from torch.utils.data import DataLoader
@@ -9,6 +10,7 @@ from transformer_document_embedding.datasets.document_dataset import EvaluationK
 from transformer_document_embedding.pipelines.helpers import classification_metrics
 from transformer_document_embedding.torch_trainer import MetricLogger, TorchTrainer
 from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
+from transformer_document_embedding.utils.net_helpers import save_model_weights
 import transformer_document_embedding.utils.training as train_utils
 
 from transformer_document_embedding.pipelines.pipeline import TrainPipeline
@@ -91,7 +93,8 @@ class GenericTorchFinetune(TrainPipeline):
     patience: Optional[int]
     # TODO: Load the best model after?
     save_best: bool
-    save_after_steps: Optional[int] = None
+    main_metric: str = "loss"
+    lower_is_better: bool = True
 
     embed_pred_batch_size: int
 
@@ -134,6 +137,20 @@ class GenericTorchFinetune(TrainPipeline):
     ) -> list[TrainingMetric]:
         return [VMemMetric(log_freq)]
 
+    def get_save_model_callback(
+        self, saving_permitted: bool, head: torch.nn.Module, log_dir: Optional[str]
+    ) -> Optional[Callable[[torch.nn.Module, int], None]]:
+        if not saving_permitted or log_dir is None:
+            return None
+
+        def _cb(_, total_steps: int) -> None:
+            save_model_weights(
+                head,
+                path.join(log_dir, "head_checkpoints", f"checkpoint_{total_steps}"),
+            )
+
+        return _cb
+
     def __call__(
         self,
         model: EmbeddingModel,
@@ -175,8 +192,12 @@ class GenericTorchFinetune(TrainPipeline):
             grad_accumulation_steps=self.grad_accumulation_steps,
             lr_scheduler=lr_scheduler,
             validate_every_step=self.validate_every_step,
-            save_model_callback=None,
+            save_model_callback=self.get_save_model_callback(
+                self.save_best, head, log_dir
+            ),
             patience=self.patience,
+            main_metric=self.main_metric,
+            lower_is_better=self.lower_is_better,
         )
         trainer.train(
             epochs=self.epochs,
