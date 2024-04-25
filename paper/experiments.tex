@@ -176,14 +176,14 @@ Longformer's base version with about 126M parameters implemented by HuggingFace
 \texttt{transformers}
 library\footnote{\url{https://huggingface.co/allenai/longformer-base-4096}}.
 
-We pool the last layer's hidden states and
-compute their mean to obtain the input's embedding. We do not use global attention and employ sliding window
+We pool the last layer's hidden states and compute their mean to obtain the
+input's embedding. We do not use global attention and employ sliding window
 attention, with the window sizes $\omega$ set to the default 512 tokens. In our
 preliminary experiments, we also tested using global attention to the
 \texttt{CLS} token and taking its hidden state from the last layer as the
 input's embedding. However, the mean-pooling approach proved to be superior.
-Additionally, with mean-pooling, we found global attention
-is not beneficial, so we avoided it.
+Additionally, with mean-pooling, we found global attention is not beneficial,
+so we avoided it.
 
 We aim for fast convergence with a small
 memory footprint when we train the student model. We, therefore, use a high learning rate, no gradient accumulation
@@ -236,13 +236,14 @@ iterations of Longformer's pre-training with an eight times smaller batch size.
 
 We compare the students to the two teachers to see how much performance our
 training method ignores or takes advantage of. If our student model performs
-worse than a particular teacher, we need to improve how we distill
-the teacher's embeddings into the student's embeddings. As the student has
+worse than a particular teacher, we need to improve how we distill the
+teacher's embeddings into the student's embeddings. As the student has
 architectural advantages compared to both teachers, such as longer maximum
-context, we hypothesize it can match and surpass both teachers' performance. We discuss the configuration of the structural teacher in the
-following section. Paragraph Vector's training is a part of our training
-method, so we discuss further details in Section~\ref{section:pv_training},
-where we experiment with PV's training hyperparameters.
+context, we hypothesize it can match and surpass both teachers' performance. We
+discuss the configuration of the structural teacher in the following section.
+Paragraph Vector's training is a part of our training method, so we discuss
+further details in Section~\ref{section:pv_training}, where we experiment with
+PV's training hyperparameters.
 
 \section{Structural loss}\label{section:structural_loss}
 
@@ -264,8 +265,8 @@ model with above-average
 performance\footnote{\url{https://sbert.net/docs/pretrained_models.html}}. We
 use SBERT's implementation from the HuggingFace \texttt{transformers}
 library\footnote{\url{https://huggingface.co/sentence-transformers/all-mpnet-base-v2}}
-with a mean pooling layer above the last layer's hidden states. We do not perform
-any finetuning and use the pre-trained weights only.
+with a mean pooling layer above the last layer's hidden states. We do not
+perform any finetuning and use the pre-trained weights only.
 
 As explained in Section~\ref{section:abstract_loss}, we choose structural loss
 to be more restrictive, forcing an exact similarity between the two embeddings.
@@ -373,22 +374,23 @@ losses using MSE seem to benefit from the negative loss component, as 3 out of 4
 
 \subsubsection{Analysis of composite losses}\label{section:composite_analysis}
 
-The results of composite losses presented in Figure~\ref{fig:structural_composite_vs_simple} suggest that the composite
+The results of composite losses presented in
+Figure~\ref{fig:structural_composite_vs_simple} suggest that the composite
 losses using MSE benefit from the negative loss component, whereas the ones
-using cosine do not. Furthermore, for most MSE max-marginals losses, the benefit
-of the negative loss component is only minimal. To explain these results, we
-compare the distances to positives and negatives for several chosen models in
-Figure~\ref{fig:composite_distances}. Composite losses using MSE widen the gap
-between positives and negatives at the expense of increasing the distance to
-positives. So, the benefit of the negative component is not that it gives a
-more precise training signal and causes a faster convergence to the structural
-teacher's embeddings. Conversely, the benefit comes from a more apparent separation
-between embeddings of different documents, even if the generated embeddings do
-not correspond to the teacher's embeddings well. The situation is
-different for cosine since its range is limited. Therefore, the
-only option to increase the gap between the positives and the negatives is
-to decrease the distances to the positives. Besides, all of the negatives
-are almost perpendicular to the generated embedding and, therefore, direct the
+using cosine do not. Furthermore, for most MSE max-marginals losses, the
+benefit of the negative loss component is only minimal. To explain these
+results, we compare the distances to positives and negatives for several chosen
+models in Figure~\ref{fig:composite_distances}. Composite losses using MSE
+widen the gap between positives and negatives at the expense of increasing the
+distance to positives. So, the benefit of the negative component is not that it
+gives a more precise training signal and causes a faster convergence to the
+structural teacher's embeddings. Conversely, the benefit comes from a more
+apparent separation between embeddings of different documents, even if the
+generated embeddings do not correspond to the teacher's embeddings well. The
+situation is different for cosine since its range is limited. Therefore, the
+only option to increase the gap between the positives and the negatives is to
+decrease the distances to the positives. Besides, all of the negatives are
+almost perpendicular to the generated embedding and, therefore, direct the
 generated embedding in only one dimension out of the 768. Consequently, the
 benefit of the negative component in cosine composite losses is minimal.
 
@@ -410,42 +412,48 @@ benefit of the negative component in cosine composite losses is minimal.
   \end{subfigure}
 
   \caption{Distribution to distances between the model's and the structural
-  teacher's embeddings. A distance to the teacher's embedding of the same document
-  is labeled as \emph{positive}, whereas distances to the teacher's embedding of
-  another document are labeled as \emph{negative}. We generated the distances from the first 1000 documents of \Dataset{val-500k}'s validation split.}
+  teacher's embeddings. A distance to the teacher's embedding of the same
+  document is labeled as \emph{positive}, whereas distances to the teacher's
+  embedding of another document are labeled as \emph{negative}. We generated
+  the distances from the first 1000 documents of \Dataset{val-500k}'s
+  validation split.}
 
   \label{fig:composite_distances}
 
 \end{figure}
 
-Contrary to our initial hypothesis, the negative loss component
-does not ensure faster convergence of the student's embeddings to those of the
-structural teacher. The negative component causes the student's
-embedding to move away from the structural teacher's embedding and, hence, goes
-against the goal of our training. Nonetheless, as we do not want to throw away
-a well-performing model and are interested in how the composite loss cooperates with a contextual loss, we keep experimenting with the best-performing
-composite loss in the following sections. Nonetheless, the pure cosine loss remains
-the preferred structural loss since it is consistent with the goal of our
-training. For brevity, we label the student model trained with just the
-max-marginals MSE structural loss, with $\gamma=1.0$ as
-\Model{only-structural;mm-MSE}.
+Contrary to our initial hypothesis, the negative loss component does not ensure
+faster convergence of the student's embeddings to those of the structural
+teacher. The negative component causes the student's embedding to move away
+from the structural teacher's embedding and, hence, goes against the goal of
+our training. Nonetheless, as we do not want to throw away a well-performing
+model and are interested in how the composite loss cooperates with a contextual
+loss, we keep experimenting with the best-performing composite loss in the
+following sections. Nonetheless, the pure cosine loss remains the preferred
+structural loss since it is consistent with the goal of our training. For
+brevity, we label the student model trained with just the max-marginals MSE
+structural loss, with $\gamma=1.0$ as \Model{only-structural;mm-MSE}.
 
 \section{Structural and contextual loss}\label{section:structural_and_contextual}
 
-This section explores contextual losses that complement the best-performing structural and composite structural loss we selected in the previous
-section. Since there are several hyperparameters to explore, we split this
-section into parts. Each part focuses on a different aspect of the contextual
-loss or the weighting of the contextual and structural loss. At the end of each part, we select a few
-best-performing variants, which serve as a starting point for the subsequent section. First, we must train the
-contextual teacher to experiment with the contextual loss. We do so in Section~\ref{section:pv_training}, where we
-train several Paragraph Vectors and pick the most promising ones. Then, we
+This section explores contextual losses that complement the best-performing
+structural and composite structural loss we selected in the previous section.
+Since there are several hyperparameters to explore, we split this section into
+parts. Each part focuses on a different aspect of the contextual loss or the
+weighting of the contextual and structural loss. At the end of each part, we
+select a few best-performing variants, which serve as a starting point for the
+subsequent section. First, we must train the contextual teacher to experiment
+with the contextual loss. We do so in Section~\ref{section:pv_training}, where
+we train several Paragraph Vectors and pick the most promising ones. Then, we
 experiment with the contextual loss's configuration for all selected Paragraph
-Vectors in Section~\ref{section:contextual_loss}. To illustrate the importance of the structural teacher, we show the performance we reach when we use only the contextual loss. More importantly, we test
-the contextual losses with cosine and max-marginals MSE structural
-losses. We pick the best-performing combination of
-the contextual loss and the contextual teacher for each structural loss. Finally, we explore
-different ways to weigh the contextual and structural loss for each of the two
-combinations in Section~\ref{section:weighting_experiments}.
+Vectors in Section~\ref{section:contextual_loss}. To illustrate the importance
+of the structural teacher, we show the performance we reach when we use only
+the contextual loss. More importantly, we test the contextual losses with
+cosine and max-marginals MSE structural losses. We pick the best-performing
+combination of the contextual loss and the contextual teacher for each
+structural loss. Finally, we explore different ways to weigh the contextual and
+structural loss for each of the two combinations in
+Section~\ref{section:weighting_experiments}.
 
 \subsection{Optimizing Paragraph Vector's training}\label{section:pv_training}
 
@@ -456,9 +464,9 @@ scratch. We use PV's implementation from the Gensim
 library\footnote{\label{fn:link_to_gensim}\url{https://radimrehurek.com/gensim}}
 and explore some of the hyperparameters that govern the training of PV. We
 focus on four hyperparameters that we consider important and adopt the
-recommendation of the library or related literature. We enumerate the adopted and the grid-searched hyperparameters in
-Table~\ref{table:pv_hyperparams}. To explain the meaning of all hyperparameters,
-we provide the following summary:
+recommendation of the library or related literature. We enumerate the adopted
+and the grid-searched hyperparameters in Table~\ref{table:pv_hyperparams}. To
+explain the meaning of all hyperparameters, we provide the following summary:
 
 
 \begin{itemize}

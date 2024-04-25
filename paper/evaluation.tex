@@ -58,10 +58,10 @@ and documents from Realnews dataset~\citep{zellers2019defending} that have above
      both datasets. Because Wikipedia does not have a validation split, we
      sample the validation documents again from its train split, avoiding
      already chosen training documents. We label the resulting dataset as
-     \Dataset{train\_1500k} to clearly identify it. As can be seen in the
-     Table~\ref{table:train_data_stats}, \Dataset{train\_1500k} contains 1.5
+     \Dataset{train-1M} to clearly identify it. As can be seen in the
+     Table~\ref{table:train_data_stats}, \Dataset{train-1M} contains 1.5
      million long documents out of which only about 30\% can be processed by our
-     structural teacher whole. Though \Dataset{train\_1500k}'s length
+     structural teacher whole. Though \Dataset{train-1M}'s length
      distribution, which is depicted in Figure~\ref{fig:train_data_ecdf}, is far
      from uniform.
 
@@ -71,15 +71,16 @@ and documents from Realnews dataset~\citep{zellers2019defending} that have above
 \toprule
 Split & Train & Validation \\
 \midrule
-Documents & 1 500 000 & 30 000 \\
-Tokens & 2.06e+09 & 4.15e+07 \\
-Avg. tokens per document & 1374.18$\pm$1736.64 & 1382.12$\pm$1697.09 \\
-SBERT tokens over 384 & 70.54\% & 70.73\% \\
-SBERT tokens over 512 & 66.36\% & 66.84\% \\
+\# documents & 1 000 000 & 30 000 \\
+\# tokens & 1.37e+09 & 4.15e+07 \\
+Avg. tokens per document & 1374.62$\pm$1737.66 & 1382.12$\pm$1697.09 \\
+SBERT tokens over 384 & 70.57\% & 70.73\% \\
+SBERT tokens over 512 & 66.38\% & 66.84\% \\
 \bottomrule
 \end{tabular}
 
-    \caption{Statistics of \Dataset{train\_1500k}. For each split we also show
+
+    \caption{Statistics of \Dataset{train-1M}. For each split we also show
     the percentage of documents with the number of SBERT tokens above given
     threshold.}
 
@@ -88,10 +89,10 @@ SBERT tokens over 512 & 66.36\% & 66.84\% \\
 \end{table}
 
 \begin{figure}
-    \includegraphics[width=\textwidth]{./img/train_data_ecdf.png}
+    \includegraphics[width=\textwidth]{./img/train_data_dist.pdf}
 
-    \caption{Estimated cumulative distribution function of number of Longformer
-    tokens per document in \Dataset{train\_1500k}.}
+    \caption{Distribution of number of Longformer tokens per document in
+    \Dataset{train-1M}.}
 
     \label{fig:train_data_ecdf}
 \end{figure}
@@ -125,7 +126,9 @@ SBERT tokens over 512 & 66.36\% & 66.84\% \\
 % worthless
 
 
-\section{Classification tasks}
+\section{Tasks}
+
+\subsection{Classification tasks}
 
 Classification is a typical type of evaluation task for a textual embedding. In
 our evaluation set we cover several use cases including classification based on
@@ -219,7 +222,7 @@ difficult to estimate the benefits of our training method.
 \end{table}
 
 \begin{figure}
-    \includegraphics[width=\textwidth]{./img/eval_tasks_token_ecdf.png}
+    \includegraphics[width=\textwidth]{./img/eval_tasks_token_ecdf.pdf}
 
     \caption{Estimated cumulative length distribution of the number of
     Longformer tokens in a document.}
@@ -253,102 +256,91 @@ difficult to estimate the benefits of our training method.
   \label{table:head_train_eval_params}
 \end{table}
 
-\subsection{Tasks' descriptions}
 
-\subsubsection{IMDB movie reviews}
+\paragraph{IMDB movie reviews} The IMDB dataset~\citep{maas2011learning}
+(denoted as \Task{imdb}) is a binary classification dataset that is quite
+frequently included in evaluation of long-context NLP
+models~\citep{zaheer2020big, beltagy2020longformer, le2014distributed}. The
+datasets consists of movie reviews, each with associated rating on a 10 point
+scale. The reviews that rated the movie with 7 points or higher are classified
+as positive, and reviews with less than 4 points are classified as negative.
+For each movie there can be up to 30 reviews and the test set contains disjoint
+set of movies. Along with the train and test splits the dataset contains also
+an unsupervised split without any rating or class labels. While the majority of
+the reviews are shorter; around 25\% of documents are longer than the maximal
+context of our structural teacher and around 14\% being longer than 512 tokens.
+Consequently, we use IMDB dataset to gain an estimate of the performance of our
+model on short to medium documents.
 
-The IMDB dataset~\citep{maas2011learning} (denoted as \Task{imdb}) is a binary
-classification dataset that is quite frequently included in evaluation of
-long-context NLP models~\citep{zaheer2020big, beltagy2020longformer,
-le2014distributed}. The datasets consists of movie reviews, each with associated
-rating on a 10 point scale. The reviews that rated the movie with 7 points or
-higher are classified as positive, and reviews with less than 4 points are
-classified as negative. For each movie there can be up to 30 reviews and the
-test set contains disjoint set of movies. Along with the train and test splits
-the dataset contains also an unsupervised split without any rating or class
-labels. While the majority of the reviews are shorter; around 25\% of documents
-are longer than the maximal context of our structural teacher and around 14\%
-being longer than 512 tokens. Consequently, we use IMDB dataset to gain an
-estimate of the performance of our model on short to medium documents.
+\paragraph{Arxiv papers} Arxiv papers~\citep{arxiv_papers} (denoted as
+\Task{arxiv}) is a collection of papers from ArXiv\footnote{\url{arxiv.org}} --
+online archive of scholary papers. Each paper contains its full text spanning
+at least 1000 words. The longest papers are truncated to 10000 words. The
+papers are classified to 11 groups, that correspond to the scientific field of
+the paper. Since each paper can be associated with several scientific fields a
+small portion of the documents ($\approx$~3.1\%) appears more than once, but
+with different label each time. The scientific fields cover mainly fields of
+Computer science such as Artificial intelligence or Data structures but also
+fields connected with Mathematics such as Group theory or Statistics theory.
+The classes are not quite balanced with the most numerous class having around
+12\% of documents, while the least numerous class only having around 7\%.
+\Task{arxiv} represents the extreme case of very long documents. As 97\% of the
+dataset's documents are longer than the maximum context length of our student
+model.
 
-\subsubsection{Arxiv papers}
+\paragraph{ACL Anthology Network Corpus citations} The ACL Anthology Network
+Corpus citations dataset~\citep{zhou2020multilevel} (denoted as \Task{aan}) is
+a citation prediciton dataset. Each example in the dataset contains a pair of
+paper's abstracts and is classified as positive if the first document cites the
+second one, or negative if it does not. The dataset is compiled from the ACL
+Anothology Network Corpus~\citep{radev2013acl}, where each source paper creates
+positive pairs with all cited papers and negative pair with one other randomly
+sampled non-cited paper. The focus of this dataset is on very short documents;
+just around 4\% of documents are longer than 256 tokens. \Task{aan} has the
+shortest documents of all datasets in our evaluation set.
 
-Arxiv papers~\citep{arxiv_papers} (denoted as \Task{arxiv}) is a collection of
-papers from ArXiv\footnote{\url{arxiv.org}} -- online archive of scholary
-papers. Each paper contains its full text spanning at least 1000 words. The
-longest papers are truncated to 10000 words. The papers are classified to 11
-groups, that correspond to the scientific field of the paper. Since each paper
-can be associated with several scientific fields a small portion of the
-documents ($\approx$~3.1\%) appears more than once, but with different label
-each time. The scientific fields cover mainly fields of Computer science such as
-Artificial intelligence or Data structures but also fields connected with
-Mathematics such as Group theory or Statistics theory. The classes are not quite
-balanced with the most numerous class having around 12\% of documents, while the
-least numerous class only having around 7\%. \Task{arxiv} represents the extreme
-case of very long documents. As 97\% of the dataset's documents are longer than
-the maximum context length of our student model.
+\paragraph{Semantic Scholar Open Corpus citations} The Semantic Scholar Open
+Corpus citations dataset~\citep{zhou2020multilevel} (denoted as \Task{oc}) is
+also a citation prediction dataset in the same format as \Task{aan}. As the
+dataset name suggests it was compiled from the Semantic Scholar Open
+Corpus~\citep{bhagavatula2018content}. In this dataset, only a single positive
+pair is generated for each source paper, which results in much higher count of
+unique papers in the dataset compared to \Task{aan}. \Task{oc} contains
+relatively shorter sequences with only 12\% of documents larger than the
+maximum context of our structural teacher.
 
-\subsubsection{ACL Anthology Network Corpus citations}
-
-The ACL Anthology Network Corpus citations dataset~\citep{zhou2020multilevel}
-(denoted as \Task{aan}) is a citation prediciton dataset. Each example in the
-dataset contains a pair of paper's abstracts and is classified as positive if
-the first document cites the second one, or negative if it does not. The dataset
-is compiled from the ACL Anothology Network Corpus~\citep{radev2013acl}, where
-each source paper creates positive pairs with all cited papers and negative pair
-with one other randomly sampled non-cited paper. The focus of this dataset is on
-very short documents; just around 4\% of documents are longer than 256 tokens.
-\Task{aan} has the shortest documents of all datasets in our evaluation set.
-
-\subsubsection{Semantic Scholar Open Corpus citations}
-
-The Semantic Scholar Open Corpus citations dataset~\citep{zhou2020multilevel}
-(denoted as \Task{oc}) is also a citation prediction dataset in the same format
-as \Task{aan}. As the dataset name suggests it was compiled from the Semantic
-Scholar Open Corpus~\citep{bhagavatula2018content}. In this dataset, only a
-single positive pair is generated for each source paper, which results in much
-higher count of unique papers in the dataset compared to \Task{aan}. \Task{oc}
-contains relatively shorter sequences with only 12\% of documents larger than
-the maximum context of our structural teacher.
-
-\subsubsection{Semantic Scholar Open Research Corpus citations}
-
-The Semantic Scholar Open Research Corpus citations
-dataset~\citep{zhou2020multilevel} (denoted as \Task{s2orc}) is our third and
-final citation prediciton dataset. The source of this dataset is the Semantic
-Scholar Open Research Corpus~\citep{lo2019s2orc} where each paper is divided
-into sections that are connected via links to papers cited within the given
-sections. This structure is used to generate positive and negative pairs in the
-citation dataset \Task{s2orc}. A section is paired with an abstract of cited
-paper to create a positive pair and with an abstract of non-cited paper to
-create a negative pair.
-
-The documents in \Task{s2orc} are comparatively longer than those of the
+\paragraph{Semantic Scholar Open Research Corpus citations} The Semantic
+Scholar Open Research Corpus citations dataset~\citep{zhou2020multilevel}
+(denoted as \Task{s2orc}) is our third and final citation prediciton dataset.
+The source of this dataset is the Semantic Scholar Open Research
+Corpus~\citep{lo2019s2orc} where each paper is divided into sections that are
+connected via links to papers cited within the given sections. This structure
+is used to generate positive and negative pairs in the citation dataset
+\Task{s2orc}. A section is paired with an abstract of cited paper to create a
+positive pair and with an abstract of non-cited paper to create a negative
+pair. The documents in \Task{s2orc} are comparatively longer than those of the
 previously mentioned tasks, except for \Task{arxiv}, with over 50\% of document
 being longer than 256 tokens.
 
-\subsubsection{PAN plagiarism detection}
+\paragraph{PAN plagiarism detection} The final classification dataset is the
+PAN plagiarism detection dataset~\citep{zhou2020multilevel} (denoted as
+\Task{pan}). It was constructed from PAN plagiarism alignment
+task~\citep{potthast2013overview}, which is a collection of pairs of web
+documents, where the sections relevant to plagiarism are humanly annotated both
+in the source as well as in the suspicious document. \Task{pan} is a binary
+classification task where each document pair is classified as positive or
+negative. Positive inputs pair the source's plagiarised section with a part of
+the suspicious document containing the corresponding plagiarised section.
+Negative pairs are constructed from the positives one by replacing the source's
+segment by different part of the same document that is not annotated as being
+plagiarised. \Task{pan} contains longer documents; around 60\% are longer than
+the maximum context size of our structural teacher and just under 50\% of
+document are longer than 512 tokens. \Task{pan} therefore creates an
+intermediate step between documents of medium length in tasks such as
+\Task{imdb} or \Task{s2orc} and extremely long documents in \Task{arxiv}.
 
-The final classification dataset is the PAN plagiarism detection
-dataset~\citep{zhou2020multilevel} (denoted as \Task{pan}). It was constructed
-from PAN plagiarism alignment task~\citep{potthast2013overview}, which is a
-collection of pairs of web documents, where the sections relevant to plagiarism
-are humanly annotated both in the source as well as in the suspicious document.
-\Task{pan} is a binary classification task where each document pair is
-classified as positive or negative. Positive inputs pair the source's
-plagiarised section with a part of the suspicious document containing the
-corresponding plagiarised section. Negative pairs are constructed from the
-positives one by replacing the source's segment by different part of the same
-document that is not annotated as being plagiarised. \Task{pan} contains longer
-documents; around 60\% are longer than the maximum context size of our
-structural teacher and just under 50\% of document are longer than 512 tokens.
-\Task{pan} therefore creates an intermediate step between documents of medium
-length in tasks such as \Task{imdb} or \Task{s2orc} and extremely long documents
-in \Task{arxiv}.
 
-\subsection{Results}
-
-\section{Similarity-based tasks}
+\subsection{Similarity-based tasks}
 
 Besides from classification tasks we also evaluate our model on two tasks that
 are based on similarity metrics between two embeddings. Our evaluation set
@@ -388,21 +380,17 @@ result.
 
 \end{table}
 
-\subsection{Tasks' description}
+\paragraph{Wines and Video games Wikipedia articles} Both of our
+similarity-based tasks are datasets consisting of Wikipedia articles from two
+fields of interests: wines (denoted as \Task{wines}) and video games (denoted
+as \Task{games})~\citep{ginzburg2021self}. Each dataset contains around 90
+source articles each associated with around 10 similar articles. We find the
+two datasets unique as they combine two aspects which are rarely seen together.
+First the similarities are based on human annotations and not on proxy measures
+such as common citations or outgoing links. Second the documents are relatively
+long with around 90\% of documents being longer than 512 tokens.
 
-\subsubsection{Wines and Video games Wikipedia articles}
-
-Both of our similarity-based tasks are datasets consisting of Wikipedia
-articles from two fields of interests: wines (denoted as \Task{wines}) and
-video games (denoted as \Task{games})~\citep{ginzburg2021self}. Each dataset
-contains around 90 source articles each associated with around 10 similar
-articles. We find the two datasets very unique as they combine two aspects
-which are rarely seen together. First the similarities are based on human
-annotations and not on proxy measures such as common citations or outgoing
-links. Second the documents are relatively long with around 90\% of documents
-being longer than 512 tokens.
-
-\subsection{Results}
+\section{Results}
 
 % \section{Tasks}
 

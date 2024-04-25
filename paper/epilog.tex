@@ -1,7 +1,39 @@
 \chapter*{Conclusion}
 \addcontentsline{toc}{chapter}{Conclusion}
 
-\begin{itemize}
-    \item what i have done --- what are the model's results
-    \item other findings
-\end{itemize}
+In pursuit of our goal to train a Transformer document embedder with low
+computational resources and unsupervised text corpora, we use a teacher-student
+training approach. We combine the qualities of two distinct embedding models
+and distill their embeddings into a single student model. For the two teachers
+we choose SBERT \citep{reimers2019sentence} for its capacity to model complex
+text structure and Paragraph Vector \citep{le2014distributed} for its
+unlimited context length. We label the teachers as \emph{structural} and
+\emph{contextual} respectively. For our student model we choose an efficient
+transformer with sparse attention that is still able to capture text structure,
+but has longer context length than a vanilla Transformer. In our case we
+initialize our student model with Longformer \citep{beltagy2020longformer},
+though as our technique does not rely on any specific Longformer's features, it
+can be theoretically applied to any other Transformer with sparse attention
+such as BigBird \citep{zaheer2020big}.
+
+We train the student model on a mixture of two losses, each corresponding to
+one teacher. We choose the structural loss to enforce exact similarity with the
+structural teacher's embeddings. We train several losses, but obtain the best
+results with max-marginals Mean Squared Error (\emph{MSE}) loss. For the
+contextual loss we use a variant of Canonical Correlation Analysis (\emph{CCA})
+\citep{hotelling1992relations} called SoftCCA \citep{chen2016training}. SoftCCA
+forces correlation between the student's and the contextual teacher's
+embeddings projected via two separate feed-forward networks. While the
+contextual loss alone can improve Longformer's performance, we find the
+performance gain not as significant as with the structural loss. However, the
+student benefits from training on both losses simultaneously.
+
+We evaluate ...
+
+
+% start talking about loss
+%   - what are the goals of each loss
+%   - one is more strict
+%   - explain what variants we try for each loss
+%   - explain what variants we choose for each loss
+%   - mention the conclusions from experiments chapter
