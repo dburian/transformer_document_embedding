@@ -72,6 +72,10 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--text_col_name", type=str, default=col.TEXT, help="Text column to embed."
+    )
+
+    parser.add_argument(
         "--embedding_col_name",
         type=str,
         default=col.EMBEDDING,
@@ -144,8 +148,16 @@ def generate_embeddings(
             )
             continue
 
+        prediction_split = split
+        if args.text_col_name != col.TEXT:
+            if col.TEXT in split.column_names:
+                prediction_split = prediction_split.remove_columns([col.TEXT])
+            prediction_split = prediction_split.rename_column(
+                args.text_col_name, col.TEXT
+            )
+
         split_embeddings = Dataset.from_generator(
-            embed_generator, gen_kwargs={"split": split}
+            embed_generator, gen_kwargs={"split": prediction_split}
         )
         embeddings[split_name] = concatenate_datasets([split, split_embeddings], axis=1)
     hf_logging.enable_progress_bar()
