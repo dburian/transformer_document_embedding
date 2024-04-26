@@ -19,7 +19,7 @@ from transformer_document_embedding.scripts.utils import (
 
 import coolname
 
-from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
+from transformer_document_embedding.pipelines.helpers import smart_unbatch
 from transformer_document_embedding.scripts.config_specs import ExperimentSpec
 
 

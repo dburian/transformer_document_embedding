@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Iterable, Iterator, TYPE_CHECKING
 
 from torcheval.metrics import (
     BinaryAccuracy,
@@ -10,6 +11,9 @@ from torcheval.metrics import (
     MulticlassF1Score,
     MulticlassPrecision,
 )
+
+if TYPE_CHECKING:
+    import torch
 
 
 def classification_metrics(num_classes: int, **metric_kwargs) -> dict[str, Metric]:
@@ -49,3 +53,14 @@ def classification_metrics(num_classes: int, **metric_kwargs) -> dict[str, Metri
         "macro_f1": macro_f1,
         # "macro_recall": macro_recall,
     }
+
+
+def smart_unbatch(
+    iterable: Iterable[torch.Tensor],
+    single_dim: int,
+) -> Iterator[torch.Tensor]:
+    for batch in iterable:
+        if len(batch.shape) > single_dim:
+            yield from smart_unbatch(batch, single_dim)
+        else:
+            yield batch

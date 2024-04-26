@@ -9,7 +9,7 @@ from transformer_document_embedding.datasets import col
 from transformer_document_embedding.datasets.document_dataset import EvaluationKind
 from transformer_document_embedding.pipelines.helpers import classification_metrics
 from transformer_document_embedding.torch_trainer import MetricLogger, TorchTrainer
-from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
+from transformer_document_embedding.pipelines.helpers import smart_unbatch
 from transformer_document_embedding.utils.net_helpers import save_model_weights
 import transformer_document_embedding.utils.training as train_utils
 
@@ -26,6 +26,10 @@ if TYPE_CHECKING:
 
 
 def get_default_features(split: Dataset, model: EmbeddingModel, **kwargs) -> Dataset:
+    # Checks RIGHT BEFORE embeddings are generated, if they need to be
+    if col.EMBEDDING in split.column_names:
+        return split
+
     def gen_embeds():
         split_columns = split.remove_columns(list(col.IDS & set(split.column_names)))
         for batch, embedding in zip(
@@ -42,6 +46,10 @@ def get_default_features(split: Dataset, model: EmbeddingModel, **kwargs) -> Dat
 def get_pair_bin_cls_features(
     split: Dataset, model: EmbeddingModel, **kwargs
 ) -> Dataset:
+    # Checks RIGHT BEFORE embeddings are generated, if they need to be
+    if col.EMBEDDING in split.column_names:
+        return split
+
     def gen_embeds():
         split_columns = split.remove_columns(list(col.IDS & set(split.column_names)))
 
@@ -104,13 +112,8 @@ class GenericTorchFinetune(TrainPipeline):
     def to_dataloader(
         self, split: Dataset, model: EmbeddingModel, training: bool = True
     ) -> DataLoader[torch.Tensor]:
-        embeddings = (
-            split
-            if col.EMBEDDING in split.column_names
-            else self.get_features(split, model)
-        )
         return DataLoader(
-            embeddings.with_format("torch"),
+            self.get_features(split, model).with_format("torch"),
             batch_size=self.batch_size,
             shuffle=training,
         )

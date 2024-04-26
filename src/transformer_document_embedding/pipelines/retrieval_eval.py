@@ -2,14 +2,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import reduce
 from typing import Any, Iterable, Optional, TYPE_CHECKING, cast
-from datasets.fingerprint import generate_random_fingerprint
 import faiss
 import numpy as np
 from sklearn.metrics import average_precision_score, ndcg_score
 from tqdm.auto import tqdm
 
 from transformer_document_embedding.datasets import col
-from transformer_document_embedding.pipelines.classification_eval import smart_unbatch
+from transformer_document_embedding.pipelines.classification_finetune import (
+    get_default_features,
+)
 from transformer_document_embedding.pipelines.pipeline import EvalPipeline
 
 
@@ -26,15 +27,17 @@ class RetrievalEval(EvalPipeline):
 
     def _get_nearest_ids_from_faiss(
         self,
-        true_dataset: Dataset,
-        embeddings: Iterable[np.ndarray],
+        dataset: Dataset,
         *,
         k: Optional[int] = None,
     ) -> Iterable[tuple[list[int], list[int]]]:
-        faiss_dataset = true_dataset.add_column(
-            name=col.EMBEDDING,
-            column=map(lambda vec: vec / np.linalg.norm(vec), embeddings),
-            new_fingerprint=generate_random_fingerprint(),
+        def norm_embeddings(docs: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+            embeds = docs[col.EMBEDDING]
+            normed = embeds / np.linalg.norm(embeds, axis=1).reshape(-1, 1)
+            return {col.EMBEDDING: normed}
+
+        faiss_dataset = dataset.with_format("numpy").map(
+            norm_embeddings, batched=True, batch_size=256
         )
         faiss_dataset.add_faiss_index(
             col.EMBEDDING, metric_type=faiss.METRIC_INNER_PRODUCT
@@ -148,17 +151,12 @@ class RetrievalEval(EvalPipeline):
         dataset: DocumentDataset,
     ) -> dict[str, float]:
         test_split = dataset.splits["test"]
-        embeddings_iter = (
-            embed.numpy(force=True)
-            for embed in smart_unbatch(
-                model.predict_embeddings(test_split, batch_size=self.batch_size),
-                1,
-            )
+        with_embeds = get_default_features(
+            test_split, model, batch_size=self.batch_size
         )
 
         true_pred_ids_iter = self._get_nearest_ids_from_faiss(
-            test_split,
-            embeddings_iter,
+            with_embeds,
             k=1000,
         )
 
