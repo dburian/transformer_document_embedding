@@ -7,7 +7,7 @@ from transformer_document_embedding.datasets.document_dataset import (
     DocumentDataset,
     EvaluationKind,
 )
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from datasets import DatasetDict
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class ExplicitDocumentDataset(DocumentDataset):
     def __init__(
         self,
-        evaluation_kind: EvaluationKind,
+        evaluation_kind: Union[EvaluationKind, str],
         path: Optional[str] = None,
         splits: Optional[DatasetDict] = None,
         **kwargs,
@@ -27,15 +27,14 @@ class ExplicitDocumentDataset(DocumentDataset):
 
         super().__init__(**kwargs)
 
-        if splits is not None:
-            self._splits = splits
+        self._splits = splits
         self._path = path
 
-        self._eval_kind = evaluation_kind
-
-    @property
-    def splits(self) -> DatasetDict:
-        return self._splits
+        self._eval_kind = (
+            EvaluationKind(evaluation_kind)
+            if isinstance(evaluation_kind, str)
+            else evaluation_kind
+        )
 
     def _retrieve_dataset(self) -> DatasetDict:
         assert self._path is not None
