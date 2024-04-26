@@ -113,7 +113,10 @@ def iterate_cross_validation_splits(
             validation=val_split,
         )
 
-        yield ExplicitDocumentDataset(fold, base_document_dataset.evaluation_kind)
+        yield ExplicitDocumentDataset(
+            evaluation_kind=base_document_dataset.evaluation_kind,
+            splits=fold,
+        )
 
 
 def cross_validate_single_dataset(
