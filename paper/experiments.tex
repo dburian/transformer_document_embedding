@@ -130,9 +130,9 @@ Table~\ref{table:head_train_params}.
 
   \caption{Validation tasks we use to compare embedding models in this chapter.
   We truncated splits marked with {\dag} to speed up the evaluation process. We
-  truncate a split by downsampling it following its label distribution. The
-  class distributions of all tasks are well balanced except for \Task{aan}, as
-  can be seen from the mean and standard deviation of class percentages.}
+  truncate a split by downsampling it following its label distribution. We also
+  show the mean and standard deviation of class percentages to show all tasks
+  have failry balanced class distributions.}
 
   \label{table:validation_tasks}
 
@@ -532,18 +532,20 @@ it inevitably causes.
 \end{table}
 
 We train all variants on the whole \Dataset{val-500k} corpus. We follow the
-recommendations of \cite{le2014distributed} and also evaluate the combination of
-both architectures. However, we only select the best three models
-from each architecture and evaluate all nine combinations. We call these models
+recommendations of \cite{le2014distributed} and also evaluate the combination
+of both architectures. However, we only select the best three models from each
+architecture and evaluate all nine combinations. We call these models
 \emph{compound} Paragraph Vectors. In total, there are 45 models whose
 performance on validation tasks we report in Figure~\ref{fig:pv_val_scores}.
-The single models favor large embedding dimensions and low minimum count. Additionally, on average, stemming or lowercasing leads to higher scores
-than not pre-processing the words. DBOWs vary more in performance,
-occupying the best and the worst positions, whereas DMs are more
-consistent. We achieve a slight improvement by concatenating a DM and a DBOW
-model, but considering the resulting model has an embedding twice as large, the improvement is not surprising. Interestingly, all compound models
-perform very similarly, suggesting that slight imperfections of one model can
-be compensated by another model of a different architecture.
+The single models favor large embedding dimensions and low minimum count.
+Additionally, on average, stemming or lowercasing leads to higher scores than
+not pre-processing the words. DBOWs vary more in performance, occupying the
+best and the worst positions, whereas DMs are more consistent. We achieve a
+slight improvement by concatenating a DM and a DBOW model, but considering the
+resulting model has an embedding twice as large, the improvement is not
+surprising. Interestingly, all compound models perform very similarly,
+suggesting that slight imperfections of one model can be compensated by another
+model of a different architecture.
 
 \begin{figure}
 
@@ -551,20 +553,20 @@ be compensated by another model of a different architecture.
 
     \caption{Performance of all Paragraph Vector variants on validation tasks.
     We identify a model by its architecture, embedding dimension, text
-    pre-processing, and minimum count. Compound models are identified as a concatenation of such identifiers separated
-    by $+$.}
+    pre-processing, and minimum count. Compound models are identified as a
+    concatenation of such identifiers separated by $+$.}
 
     \label{fig:pv_val_scores}
 
 \end{figure}
 
-In our preliminary experiments, we saw that the dimension of contextual
-teacher embedding plays a significant role in teacher-student training.
-So, we select three paragraph vectors with varying vector sizes. We pick the
-best model with small vector size (\Model{DM;100;lowercase;2}), the best
-single model (\Model{DBOW;1024;None;2}) and the best model composed of both
-architectures (\Model{DM;1024;stem;2+DBOW;1024;None;2}). For brevity we label
-these models as \Model{DM;100d}, \Model{DBOW;1024d} and \Model{PV;2048d} respectively.
+In our preliminary experiments, we saw that the dimension of contextual teacher
+embedding plays a significant role in teacher-student training. So, we select
+three paragraph vectors with varying vector sizes. We pick the best model with
+small vector size (\Model{DM;100;lowercase;2}), the best single model
+(\Model{DBOW;1024;None;2}) and the best model composed of both architectures
+(\Model{DM;1024;stem;2+DBOW;1024;None;2}). For brevity we label these models as
+\Model{DM;100d}, \Model{DBOW;1024d} and \Model{PV;2048d} respectively.
 
 \subsection{Contextual loss}\label{section:contextual_loss}
 
