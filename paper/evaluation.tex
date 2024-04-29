@@ -48,6 +48,7 @@ between 0 and 500 tokens or 1200 and 1700 tokens.
 
 \begin{table}
     \centering
+    \footnotesize
 \begin{tabular}{lrr}
 \toprule
 Split & Train & Validation \\
@@ -167,12 +168,12 @@ while limiting the tasks' training data to different amounts.
       \cline{4-5}
       Dataset & Inputs & Classes & Train & Test \\
       \midrule
-      \Task{arxiv} & documents & 11 & 9.09$\pm$1.25\% & 9.09$\pm$1.30\% \\
-      \Task{imdb} & documents & 2 & 50.00$\pm$0.00\% & 50.00$\pm$0.00\% \\
-      \Task{aan} & pairs of documents & 2 & 50.00$\pm$1.50\% & 50.00$\pm$0.77\% \\
-      \Task{oc} & pairs of documents & 2 & 50.00$\pm$0.07\% & 50.00$\pm$0.34\% \\
-      \Task{pan} & pairs of documents & 2 & 50.00$\pm$0.00\% & 50.00$\pm$0.00\% \\
-      \Task{s2orc} & pairs of documents & 2 & 50.00$\pm$0.09\% & 50.00$\pm$0.33\% \\
+      \Task{arxiv} & documents & 11 & 10$\pm$1\% & 9$\pm$1\% \\
+      \Task{imdb} & documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
+      \Task{aan} & pairs of documents & 2 & 50$\pm$2\% & 50$\pm$1\% \\
+      \Task{oc} & pairs of documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
+      \Task{pan} & pairs of documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
+      \Task{s2orc} & pairs of documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
       \bottomrule
   \end{tabular}
 
@@ -275,7 +276,7 @@ context of our structural teacher.
 
 \subsection{Tasks' description}
 
-\paragraph{IMDB movie reviews} The IMDB dataset~\citep{maas2011learning}
+\paragraph{IMDB movie reviews.} The IMDB dataset~\citep{maas2011learning}
 (denoted as \Task{imdb}) is a binary classification dataset frequently used to
 evaluate long-context NLP models~\citep{zaheer2020big, beltagy2020longformer,
 le2014distributed}. The dataset consists of movie reviews, each with an
@@ -286,7 +287,7 @@ movie, and the test set contains a disjoint set of movies. Along with the train
 and test splits, the dataset contains an unsupervised split without rating or
 class labels.
 
-\paragraph{Arxiv papers} Arxiv papers~\citep{arxiv_papers} (denoted as
+\paragraph{Arxiv papers.} Arxiv papers~\citep{arxiv_papers} (denoted as
 \Task{arxiv}) is a collection of papers from ArXiv\footnote{\url{arxiv.org}},
 an online archive of scholarly papers. Each paper contains its text truncated
 to 10000 words but spanning at least 1000 words. The papers are classified into
@@ -297,7 +298,7 @@ The scientific fields cover mainly fields of Computer science, such as
 Artificial intelligence or Data structures, but also fields connected with
 Mathematics, such as Group theory or Statistics theory.
 
-\paragraph{ACL Anthology Network Corpus citations} The ACL Anthology Network
+\paragraph{ACL Anthology Network Corpus citations.} The ACL Anthology Network
 Corpus citations dataset~\citep{zhou2020multilevel} (denoted as \Task{aan}) is
 a citation prediction dataset. Each example in the dataset contains a pair of
 paper abstracts and is classified as positive if the first document cites the
@@ -306,7 +307,7 @@ Anthology Network Corpus~\citep{radev2013acl}, where each source paper creates
 positive pairs with all cited papers and a negative pair with one other randomly
 sampled non-cited paper.
 
-\paragraph{Semantic Scholar Open Corpus citations} The Semantic Scholar Open
+\paragraph{Semantic Scholar Open Corpus citations.} The Semantic Scholar Open
 Corpus citations dataset~\citep{zhou2020multilevel} (denoted as \Task{oc}) is
 also a citation prediction dataset in the same format as \Task{aan}. As the
 dataset name suggests, it was compiled from the Semantic Scholar Open
@@ -314,7 +315,7 @@ Corpus~\citep{bhagavatula2018content}. In this dataset, only a single positive
 pair is generated for each source paper, resulting in a much higher count of
 unique papers compared to \Task{aan}.
 
-\paragraph{PAN plagiarism detection} The final classification dataset is the
+\paragraph{PAN plagiarism detection.} The final classification dataset is the
 PAN plagiarism detection dataset~\citep{zhou2020multilevel} (denoted as
 \Task{pan}). It was constructed from PAN plagiarism alignment
 task~\citep{potthast2013overview}, which is a collection of pairs of web
@@ -327,7 +328,7 @@ Negative pairs are constructed from the positives by replacing the source's
 segment with a different part of the same document that is not annotated as being
 plagiarised.
 
-\paragraph{Semantic Scholar Open Research Corpus citations} The Semantic
+\paragraph{Semantic Scholar Open Research Corpus citations.} The Semantic
 Scholar Open Research Corpus citations dataset~\citep{zhou2020multilevel}
 (denoted as \Task{s2orc}) is our third and final citation prediction dataset.
 The source of this dataset is the Semantic Scholar Open Research
@@ -338,7 +339,7 @@ abstract of a cited paper to create a positive pair or an abstract of
 a non-cited paper to create a negative pair.
 
 
-\paragraph{Wines and Video games Wikipedia articles} Both of our
+\paragraph{Wines and Video games Wikipedia articles.} Both of our
 similarity-based tasks are datasets consisting of Wikipedia articles from two
 fields of interest: wines (denoted as \Task{wines}) and video games (denoted
 as \Task{games})~\citep{ginzburg2021self}. Each dataset contains around 90

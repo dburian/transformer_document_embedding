@@ -1,98 +1,75 @@
 \chapter*{Introduction}
 \addcontentsline{toc}{chapter}{Introduction}
 
-% text embeddings
-
-% document embeddings
-
-% how important document embeddings are
-  % make tasks such as semantic retrieval, clustering and visualization possible
-  %
-
-% bring in transformers
-  % for shorter text pieces transformers are sota
-  % transformers faced difficulty with large memory consumption
-  % recently a lot of research went into making transformers memory efficient even for longer inputs
-
-% with longer transformers the method of learning document embeddings has been
-% based on contrasting different inputs between each other
-  % large memory consumption
-  % structure in training data
-
-
-% what problems our method solves
-  % no large memory necessary -- we focus on low-resources scenario
-  % no structure in data
-
-% how our method works
-  % distiallation of embedding qualities via two teachers
-  % transformer architecture with longer context and complex
-
-
 Text embeddings are the center point of Natural Language Processing
-(\emph{NLP}) in machine learning. Although it is difficult to show what
-information embeddings contain, we often think of them as encodings of the
-input's meaning. This thesis focuses on dense representations of long
-continuous pieces of text or simply \emph{documents}. Document embeddings
-condense information into a fixed-sized vector, thus making any subsequent
-computation significantly faster. For some tasks, such as document semantic
-search or clustering, embeddings are so crucial that the computation without
-them would be infeasible. For other tasks, such as classification or
-prediction, embeddings provide meaningful features with lower dimensionality
-than the original text. However, training a document embedding model presents
-several challenges.
+(\emph{NLP}) in machine learning. They allow machine learning models to process
+and understand pieces of text by representing them using a vector of numbers.
+While we are able to train high-quality word and sentence embeddings, we
+struggle to create similarly performant document embeddings. Document
+embeddings condense an entire document into a single vector. These
+low-dimensional representations can be used to train significantly smaller,
+purposely designed models that fulfill a particular task, such as
+classification or regression. Thus, document embeddings make any further
+computation more efficient. For tasks such as semantic search or clustering,
+the increased efficiency of the embeddings is so crucial that the tasks'
+computation would be infeasible without it.
 
-As texts get longer, they cover more topics, which connect in increasingly
-complex ways. This increase in complexity can be well illustrated with the
-Transformer architecture \citep{vaswani2017attention}. Transformers have become
-state-of-the-art architectures for many NLP tasks
-\citep{devlin2019bert,liu2019roberta}, particularly for sentence embedding with
-models such as SBERT \citep{reimers2019sentence} or SimCSE
-\citep{gao2021simcse}. However, using Transformers for longer inputs presents a
-practical challenge as the Transformer's memory footprint scales quadratically
-with the input length. \emph{Efficient Transformers} \citep{tay2022efficient},
-such as Longformer \citep{beltagy2020longformer}, decrease the memory
-consumption of a vanilla Transformer architecture by replacing its
-self-attention layer with a less powerful counterpart. With these alterations,
-Transformers can be used even for tasks where large contexts are necessary,
-such as document summarization or embedding. However, despite the theoretical
-advancements, training a Transformer document embedding model still requires a
-large amount of computational resources.
+However, training a document embedding model presents several challenges.
+Scaling up the maximum context of Transformers, which are the most performant
+architecture of sentence embedding models
+\citep{reimers2019sentence,gao2021simcse}, requires a quadratic amount of
+memory in the number of processed tokens. Despite relatively recent theoretical
+advancements such as sparse attention \citep{child2019generating}, training a
+Transformer document embedding model still requires insignificant computational
+resources. Furthermore, current approaches to training document embedding
+models either use extremely large batches \citep{neelakantan2022text}, which
+further increases the amount of computational resources necessary, or a complex
+training setup \citep{izacard2021unsupervised}. Other approaches
+\citep{ostendorff2022neighborhood, cohan2020specter} use datasets with an
+inherent structure, such as Wikipedia articles connected via links or academic
+papers related via citations. However, as there are only a limited amount of
+such datasets, these models lack the universality of an embedding model trained
+on a mixture of document formats. Finally, due to the complexity and cost of
+document annotation, there are few high-quality supervised long document
+datasets. Consequently, researchers settle for datasets with shorter documents
+or lower-quality automatic annotation, making the evaluation results less
+reliable.
 
-Another challenge lies in the lack of supervised datasets due to the
-time-consuming and complex annotation of documents. Consequently, the training
-of document embeddings is either completely unsupervised or takes advantage of
-a structure within the corpora. Previous unsupervised training approaches for
-Transformers usually rely on contrastive learning, which requires either a
-large amount of memory \citep{neelakantan2022text} or a complex training
-system, such as maintaining two embedding models
-\citep{izacard2021unsupervised}. Other training approaches
-\citep{ostendorff2022neighborhood,cohan2020specter} focus only on document
-corpora with an inherent structure, such as Wikipedia articles connected via
-links or academic papers related via citations. However, such embedding models
-lack the universality of an embedding model trained on a mixture of document
-formats.
+In this work, we tackle some challenges described above while coping with the
+rest. We propose a training method that consumes a small amount of resources
+and is not dependent on any structure within the training data. We use an
+efficient Transformer with sparse attention that can represent texts up to 4096
+tokens long with a single vector while having a significantly smaller memory
+footprint than a Transformer with full attention. While we do not create a new
+dataset that would comply with our high standards, we evaluate our document
+embedding model on several tasks covering multiple topics, task types, and
+document lengths to make our results more reliable.
 
-Ultimately, the lack of supervised corpora also hinders the evaluation of
-document embedding models. Supervised document datasets also suffer from low
-quality, where a document's label is derived automatically instead of being
-directly based on the document's content. Furthermore, while datasets may claim
-to contain documents, they often consist of shorter texts, such as abstracts.
-This results in a small number of available high-quality datasets that evaluate
-embeddings on long pieces of text. However, a document embedding model should
-be tested on several tasks spanning different lengths, formats, and topics in
-order to show consistent performance.
+Our training method is centered around two embedding models, each having a
+distinct quality: Sentence-BERT (\emph{SBERT}) \citep{reimers2019sentence} and
+Paragraph Vector \citep{le2014distributed}. SBERT is a sentence embedding
+Transformer model that captures the text structure well thanks to its dense
+architecture. On the other hand, Paragraph Vector is a much smaller document
+embedding model that can embed documents of any length. We see SBERT's capacity
+to capture structure and Paragraph Vector's ability to capture extended context
+as two complementary qualities desirable to a document embedding model. So, we
+combine these qualities and distill them into our document embedding model
+using teacher-student training. We train our embedding model to mimic SBERT's
+and Paragraph Vector's outputs. In this context, we label the embedding model
+as \emph{student}, while SBERT and Paragraph Vector as \emph{teachers}. We
+explore several variants of losses for each teacher that force the student to
+mimic them. We show that both teachers' qualities can benefit the student
+model's performance. We evaluate the student model on six classification tasks
+and two retrieval tasks. The results show that our method performs consistently
+and significantly improves the students' performance over its base checkpoint.
+Our method is especially effective in scenarios with few finetuning data
+available, where the trained student model outperforms both teachers.
 
-In this work, we tackle some of the challenges described above while coping
-with the rest. We train a Transformer-based document embedding model with a
-small number of resources on two fully unsupervised text corpora without any
-structure. We evaluate our model on several tasks that cover sentiment
-analysis, citation prediction, and semantic search.
-
-We base our method on teacher-student training, where a student model is
-trained to mimic the teacher model. However, instead of one teacher model, we
-use two and capitalize on both of their strengths. Each teacher model is a
-document embedding model with a different architecture generating embeddings
-with distinct qualities. We distill both of these qualities into a single
-student model. For the student model, we use an efficient Transformer with
-sparse attention that can embed texts up to 4096 tokens long.
+In this thesis, we first describe the motivation behind our method in
+Chapter~\ref{chapter:document_representation}. We then review all research we
+consider relevant to embedding documents with Transformers in
+Chapter~\ref{chapter:related_work}. Chapter~\ref{chapter:training_method}
+describes our training method in detail and defines most of the terms related
+to our method. We then conduct several experiments with our training method in
+Chapter~\ref{chapter:experiments} and thoroughly evaluate it in
+Chapter~\ref{chapter:evaluation}.

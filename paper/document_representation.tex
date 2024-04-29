@@ -1,31 +1,23 @@
 \chapter{Document representation}\label{chapter:document_representation}
 
-Representing a piece of text by a dense vector, also known as text embedding,
-is ubiquitous in Natural Language Processing (\emph{NLP}). However, embedding
-long, continuous pieces of text such as documents is substantially more complex
-than embedding words or sentences, as the longer and more involved input still
-needs to be compressed into a similarly sized vector. In this chapter, we first
-briefly explore the use cases of document embeddings. Afterward, we describe
-the qualities of document embeddings that we deem beneficial and build up the
-motivation behind our training method, which we describe in
-Chapter~\ref{chapter:training_method}.
+Text embeddings are ubiquitous in Natural Language Processing. However,
+embedding long, continuous pieces of text such as documents is substantially
+more complex than embedding words or sentences, as the longer and more involved
+input still needs to be compressed into a similarly sized vector. In this
+chapter, we first briefly explore the use cases of document embeddings.
+Afterward, we describe the qualities of document embeddings that we deem
+beneficial and build up the motivation behind our training method, which we
+describe in Chapter~\ref{chapter:training_method}.
 
 \section{Use cases of document embeddings}
 
-Embeddings that capture the document's semantics in a low-dimensional
-vector reduce the noise in the raw input while making the subsequent operations
-more efficient.
-% Maybe we can insert some theory about embedding models such as "Embedding
-% models are trained to capture the maximum amount of information while being
-% constrained by a fixed sized vector. Consequently, they have to minimise noise
-% harmful in the downstream tasks while learning to capture meaning from the
-% input."
-These are the main reasons why document embeddings are
-widely used across different tasks such as
-classification \citep{cohan2020specter, neelakantan2022text,
-izacard2021unsupervised, ostendorff2022neighborhood}, ad-hoc
-search \citep{singh2022scirepeval, zamani2018neural}, query
-answering \citep{neelakantan2022text}, visualization \citep{cohan2020specter,
+Embeddings that capture the document's semantics in a low-dimensional vector
+reduce the noise in the raw input while making the subsequent operations more
+efficient. These are the main reasons why document embeddings are widely used
+across different tasks such as classification \citep{cohan2020specter,
+neelakantan2022text, izacard2021unsupervised, ostendorff2022neighborhood},
+ad-hoc search \citep{singh2022scirepeval, zamani2018neural}, query answering
+\citep{neelakantan2022text}, visualization \citep{cohan2020specter,
 dai2015document} and regression \citep{singh2022scirepeval}.
 
 While some models \citep{singh2022scirepeval} can generate different embeddings

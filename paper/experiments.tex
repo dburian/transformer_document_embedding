@@ -1205,6 +1205,8 @@ the more we train with both losses the worse is the model going to be.
 
 \section{Summary}\label{section:experiments_summary}
 
+% TODO: check this
+
 After an extensive experimentation with our teacher-student training method, we
 summarize what we test, but mainly how we interpret the results and what
 conclusions we draw from them.
@@ -1234,7 +1236,7 @@ contextual teacher's embeddings projected via two feed-forward networks. After
 finding promising training hyperparameters for Paragraph Vector, we show that
 the contextual loss alone can improve Longformer's results. Yet, it cannot
 surpass SBERT or the student models trained with only the structural loss. This
-demonstrates that, in our setting, the contextual teacher is more important to
+demonstrates that, in our setting, the structural teacher is more important to
 the student's performance than the contextual teacher. We also find the optimal
 contextual loss for cosine and max-margin MSE loss. We show that the student
 can benefit from both cosine structural loss and the SoftCCA contextual loss,
@@ -1244,7 +1246,7 @@ projections, that would together with the max-margin MSE structural loss
 improve the performance of a student trained with the given structural loss
 only.
 
-We also try more ways to weigh the contextual and the structural loss. In the
+We also try several ways to weigh the contextual and the structural loss. In the
 case of max-margin MSE structural loss, we find that even with a significant
 emphasis on the structural loss, the student model suffers from both the
 contextual loss and the max-margin MSE loss used simultaneously. On the other
