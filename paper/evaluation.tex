@@ -27,11 +27,13 @@ Table~\ref{table:experiments_final_config}, respectively.
 
 \subsection{Training data}
 
-We compile our training corpus the same as \Dataset{val-500k}. Ultimately, we want to gauge the performance of our training method using the
-performance of the trained student models. So, to have a meaningful
-baseline, we train the student models only using Longformer's training data.
-Without any new training data, the performance of our student model is
-dependent only on our training method. Hence, the performance of the student models is proportional to our training method's performance.
+We compile our training corpus the same as \Dataset{val-500k}. Ultimately, we
+want to gauge the performance of our training method using the performance of
+the trained student models. So, to have a meaningful baseline, we train the
+student models only using Longformer's training data. Without any new training
+data, the performance of our student model is dependent only on our training
+method. Hence, the performance of the student models is proportional to our
+training method's performance.
 
 Following Longformer's approach, we equally sample articles from the English
 Wikipedia\footnote{\url{https://huggingface.co/datasets/wikipedia/viewer/20220301.en}}
@@ -89,17 +91,18 @@ use the best-performing hyperparameters from Section~\ref{section:pv_training}
 labelled as \Model{PV;2048d} and \Model{DM;100d} respectively.
 
 We compile the contextual teacher's training dataset in the same manner as
-\Dataset{train-1M}. We avoid new data, as the contextual
-teachers' training data also becomes the student's training data. Therefore, we
-restrict the contextual teachers' training data to Longformer's training data for the reasons we mention in the previous section. However, as PV is a significantly
+\Dataset{train-1M}. We avoid new data, as the contextual teachers' training
+data also becomes the student's training data. Therefore, we restrict the
+contextual teachers' training data to Longformer's training data for the
+reasons we mention in the previous section. However, as PV is a significantly
 smaller model than our student model, we can afford to train it with
-substantially more data. We use all available data from RealNews
-articles and an equal amount of Wikipedia documents. The resulting dataset has 8.3 million documents. We label the
-trained 2048-dimensional and 100-dimensional teachers \Model{DM} and
-\Model{PV}. To keep the models' memory footprint manageable, we restrict
-\Model{DM}'s vocabulary to $6\times 10^7$ words and \Model{PV}'s vocabulary to
-$1.2\times 10^7$ words. With these limitations, the models take up approximately
-96GB and 124GB of memory during prediction.
+substantially more data. We use all available data from RealNews articles and
+an equal amount of Wikipedia documents. The resulting dataset has 8.3 million
+documents. We label the trained 2048-dimensional and 100-dimensional teachers
+\Model{DM} and \Model{PV}. To keep the models' memory footprint manageable, we
+restrict \Model{DM}'s vocabulary to $6\times 10^7$ words and \Model{PV}'s
+vocabulary to $1.2\times 10^7$ words. With these limitations, the models take
+up approximately 96GB and 124GB of memory during prediction.
 
 \subsection{Training of student models}
 
@@ -149,7 +152,8 @@ Table~\ref{table:eval_cls_tasks_overview}. Besides ordinary classification
 tasks, we also include classifications of pairs of documents. In these tasks,
 the classifier bases its prediction on the comparison of two documents, or in
 our case,  their two embeddings. As can be seen from
-Table~\ref{table:evaluation_tasks_stats}, the amount of the tasks' finetuning and evaluation data ranges greatly. This becomes particularly important in
+Table~\ref{table:evaluation_tasks_stats}, the amount of the tasks' finetuning
+and evaluation data ranges greatly. This becomes particularly important in
 Section~\ref{section:eval_cls_tasks}, where we evaluate the student models
 while limiting the tasks' training data to different amounts.
 
@@ -248,12 +252,13 @@ However, \Task{games} has substantially more documents.
 \end{table}
 
 We pay special attention to the lengths of documents contained in the datasets
-and try to cover a span of lengths as large as possible. However, high-quality long
-document datasets are very rare due to their annotation's high complexity and cost. Often, a dataset is said to be composed of documents, but it
-contains only shorter pieces of text, such as abstracts. So, we include only one
-dataset containing very long documents. As
-Figure~\ref{fig:eval_tasks_length_dist} shows, the tasks arguably focus more
-on documents up to around 1024 tokens. Nonetheless, as we show in
+and try to cover a span of lengths as large as possible. However, high-quality
+long document datasets are very rare due to their annotation's high complexity
+and cost. Often, a dataset is said to be composed of documents, but it contains
+only shorter pieces of text, such as abstracts. So, we include only one dataset
+containing very long documents. As Figure~\ref{fig:eval_tasks_length_dist}
+shows, the tasks arguably focus more on documents up to around 1024 tokens.
+Nonetheless, as we show in
 Tables~\ref{table:evaluation_tasks_stats}~and~\ref{table:eval_sims_tasks} the
 tasks still contain a considerable number of documents longer than the maximum
 context of our structural teacher.
@@ -271,23 +276,25 @@ context of our structural teacher.
 \subsection{Tasks' description}
 
 \paragraph{IMDB movie reviews} The IMDB dataset~\citep{maas2011learning}
-(denoted as \Task{imdb}) is a binary classification dataset frequently used to evaluate long-context NLP
-models~\citep{zaheer2020big, beltagy2020longformer, le2014distributed}. The
-dataset consists of movie reviews, each with an associated rating on a 10-point
-scale. The reviews that rated the movie with 7 points or higher are classified
-as positive, and reviews with less than 4 points are classified as negative.
-There can be up to 30 reviews for each movie, and the test set contains a disjoint
-set of movies. Along with the train and test splits, the dataset contains
-an unsupervised split without rating or class labels.
+(denoted as \Task{imdb}) is a binary classification dataset frequently used to
+evaluate long-context NLP models~\citep{zaheer2020big, beltagy2020longformer,
+le2014distributed}. The dataset consists of movie reviews, each with an
+associated rating on a 10-point scale. The reviews that rated the movie with 7
+points or higher are classified as positive, and reviews with less than 4
+points are classified as negative. There can be up to 30 reviews for each
+movie, and the test set contains a disjoint set of movies. Along with the train
+and test splits, the dataset contains an unsupervised split without rating or
+class labels.
 
 \paragraph{Arxiv papers} Arxiv papers~\citep{arxiv_papers} (denoted as
 \Task{arxiv}) is a collection of papers from ArXiv\footnote{\url{arxiv.org}},
-an online archive of scholarly papers. Each paper contains its text
-truncated to 10000 words but spanning at least 1000 words. The papers are classified
-into 11 groups based on the scientific field of the given paper. Since each paper
+an online archive of scholarly papers. Each paper contains its text truncated
+to 10000 words but spanning at least 1000 words. The papers are classified into
+11 groups based on the scientific field of the given paper. Since each paper
 can be associated with several scientific fields, a small portion of the
-documents ($\approx$~3.1\%) appear more than once but with different labels. The scientific fields cover mainly fields of Computer science, such
-as Artificial intelligence or Data structures, but also fields connected with
+documents ($\approx$~3.1\%) appear more than once but with different labels.
+The scientific fields cover mainly fields of Computer science, such as
+Artificial intelligence or Data structures, but also fields connected with
 Mathematics, such as Group theory or Statistics theory.
 
 \paragraph{ACL Anthology Network Corpus citations} The ACL Anthology Network
@@ -324,7 +331,7 @@ plagiarised.
 Scholar Open Research Corpus citations dataset~\citep{zhou2020multilevel}
 (denoted as \Task{s2orc}) is our third and final citation prediction dataset.
 The source of this dataset is the Semantic Scholar Open Research
-Corpus~\citep{lo2019s2orc}, where each paper is divided into sections 
+Corpus~\citep{lo2019s2orc}, where each paper is divided into sections
 connected via links to the papers cited within the given section. This structure is
 used to generate positive and negative pairs. A section is paired with an
 abstract of a cited paper to create a positive pair or an abstract of
@@ -346,26 +353,26 @@ often based on a few details mentioned throughout the document.
 
 \section{Results}\label{section:eval_results}
 
-This section evaluates the student models on the previously mentioned
-tasks. To put the performance of the student models into context, we compare
-them to four baselines. First, to estimate the contribution of our training
-method, we compare the students to their base checkpoint, Longformer, with a mean pooling layer over its last hidden states. We also include the
-performances of the two contextual teachers \Model{PV} and \Model{DM} and the
-structural teacher SBERT. These models showcase the potential of our method.
-Ideally, we would like the student models to combine knowledge from all their
-teachers and surpass all of them. We evaluate all embedding models without any
-finetuning. With finetuning on each task, the models' performance also depends
-on the used finetuning method, which makes it more difficult to estimate the
-contribution of our training method.
+This section evaluates the student models on the previously mentioned tasks. To
+put the performance of the student models into context, we compare them to four
+baselines. First, to estimate the contribution of our training method, we
+compare the students to their base checkpoint, Longformer, with a mean pooling
+layer over its last hidden states. We also include the performances of the two
+contextual teachers \Model{PV} and \Model{DM} and the structural teacher SBERT.
+These models showcase the potential of our method. Ideally, we would like the
+student models to combine knowledge from all their teachers and surpass all of
+them. We evaluate all embedding models without any finetuning. With finetuning
+on each task, the models' performance also depends on the used finetuning
+method, which makes it more difficult to estimate the contribution of our
+training method.
 
-As a classifier, we use a heavily regularized neural network. We
-train the classifier with cross-entropy loss for several epochs. We list the
-complete list of training hyperparameters in
-Table~\ref{table:head_train_eval_params}. We assess the performance of a model
-based on micro or binary accuracy, depending on the number of classes. We use micro-averaging for
-tasks with more classes to give each input the same
-weight. When we compare embedding models across several tasks, we use
-\emph{normalized accuracy}, which we define in
+As a classifier, we use a heavily regularized neural network. We train the
+classifier with cross-entropy loss for several epochs. We list the complete
+list of training hyperparameters in Table~\ref{table:head_train_eval_params}.
+We assess the performance of a model based on micro or binary accuracy,
+depending on the number of classes. We use micro-averaging for tasks with more
+classes to give each input the same weight. When we compare embedding models
+across several tasks, we use \emph{normalized accuracy}, which we define in
 Section~\ref{section:validation_tasks}.
 
 \begin{table}
@@ -398,31 +405,33 @@ Section~\ref{section:validation_tasks}.
 \end{table}
 
 We evaluate the classification tasks in three rounds. In each round, we limit
-the number of documents on which the classifier is trained. We find that evaluating the student models in all three contexts presents a more detailed picture of
-the students' performances and highlights the advantages and disadvantages
-of our training method. In the first round, we limit the finetuning
-documents to 1 thousand. With so few finetuning documents, the features that
-help the classifier predict the correct label must be obvious. In
+the number of documents on which the classifier is trained. We find that
+evaluating the student models in all three contexts presents a more detailed
+picture of the students' performances and highlights the advantages and
+disadvantages of our training method. In the first round, we limit the
+finetuning documents to 1 thousand. With so few finetuning documents, the
+features that help the classifier predict the correct label must be obvious. In
 this setting, models that encode a few main features of their input should
 achieve the best results. In the second round, we increase the number of
-finetuning documents to 10 thousand. Finally, in the last round, we do not limit
-the amount of finetuning data. With more finetuning data, the
-classifiers can pick up on more complex features. Therefore, in this context,
-models that compress as much information as possible into their embedding
-should, in theory, achieve the best results. Contrary to the
-evaluations in Chapter~\ref{chapter:experiments}, we do not limit the number of
-test documents. Thus, overfitting with less data should be obvious. When
-truncating the training splits, we downsample it following its label
-distribution. So, the downsampled training splits have almost equal class
-distribution to the original split.
+finetuning documents to 10 thousand. Finally, in the last round, we do not
+limit the amount of finetuning data. With more finetuning data, the classifiers
+can pick up on more complex features. Therefore, in this context, models that
+compress as much information as possible into their embedding should, in
+theory, achieve the best results. Contrary to the evaluations in
+Chapter~\ref{chapter:experiments}, we do not limit the number of test
+documents. Thus, overfitting with less data should be obvious. When truncating
+the training splits, we downsample it following its label distribution. So, the
+downsampled training splits have almost equal class distribution to the
+original split.
 
 For retrieval tasks, we measure the embedding's proximity with cosine distance.
 As we do not do any training, we use the whole dataset for evaluation. We
-measure the models' performances based on Mean Average Precision (\emph{MAP}) but also present Mean Reciprocal Rank (MRR). While MAP scores the
-entire predicted ordering, MRR is more interpretable and can be more important
-in scenarios where we only care about the first positive result. When we
-compare models across both tasks, we use \emph{normalized MAP}, which is
-computed similarly to normalized accuracy.
+measure the models' performances based on Mean Average Precision (\emph{MAP})
+but also present Mean Reciprocal Rank (MRR). While MAP scores the entire
+predicted ordering, MRR is more interpretable and can be more important in
+scenarios where we only care about the first positive result. When we compare
+models across both tasks, we use \emph{normalized MAP}, which is computed
+similarly to normalized accuracy.
 
 We show an overview of the models' performances in
 Table~\ref{table:final_evals}.
@@ -491,10 +500,12 @@ Table~\ref{table:final_evals}.
 
   \end{subtable}
 
-  \caption{Performance of evaluated embedding models on all downstream tasks. For classification tasks, we show the performance on all three rounds, revealing the performance with all finetuning data first, then with them being limited to 1k and 10k documents. For classification
-  tasks, we show binary or micro accuracy. For retrieval tasks, we
-  show MAP. We also display the mean score and the mean of normalized
-  scores for each model.}
+  \caption{Performance of evaluated embedding models on all downstream tasks.
+  For classification tasks, we show the performance on all three rounds,
+  revealing the performance with all finetuning data first, then with them
+  being limited to 1k and 10k documents. For classification tasks, we show
+  binary or micro accuracy. For retrieval tasks, we show MAP. We also display
+  the mean score and the mean of normalized scores for each model.}
 
   \label{table:final_evals}
 
@@ -533,18 +544,19 @@ in detail.
 %     both contextual teachers
 
 First, we focus on the overall models' performance throughout the three
-evaluation rounds, which we present in Figure~\ref{fig:final_eval_norm_all}. The
-relative performance of the baselines and student models is similar to what we witness in
-Chapter~\ref{chapter:experiments}. In the first two rounds, the students
-outperform all baselines. In the last round, they beat all contextual teachers
-and improve the score of Longformer. However, they are only just worse than
-SBERT. The best student is {\OnlyMSEStudent} followed by
-{\MSEStudent}. We witness the same order of corresponding models on validation tasks at the end of Chapter~\ref{chapter:experiments}. However, as {\CosineStudent} is trained with
-the structural loss only on short inputs, it receives 3.26 times fewer update
-steps with the structural loss than the other two students. Consequently,
-{\CosineStudent} often outperforms its contextual teacher only by a fraction,
-creating a noticeable performance gap between it and the
-other two students.
+evaluation rounds, which we present in Figure~\ref{fig:final_eval_norm_all}.
+The relative performance of the baselines and student models is similar to what
+we witness in Chapter~\ref{chapter:experiments}. In the first two rounds, the
+students outperform all baselines. In the last round, they beat all contextual
+teachers and improve the score of Longformer. However, they are only just worse
+than SBERT. The best student is {\OnlyMSEStudent} followed by {\MSEStudent}. We
+witness the same order of corresponding models on validation tasks at the end
+of Chapter~\ref{chapter:experiments}. However, as {\CosineStudent} is trained
+with the structural loss only on short inputs, it receives 3.26 times fewer
+update steps with the structural loss than the other two students.
+Consequently, {\CosineStudent} often outperforms its contextual teacher only by
+a fraction, creating a noticeable performance gap between it and the other two
+students.
 
 \begin{figure}
 
@@ -558,33 +570,35 @@ other two students.
 
 \end{figure}
 
-In the first round, Longformer's and SBERT's performance is underwhelming. At the same time, the best student model achieves, on average, nearly 80\% of the best
-performance for a given task achieved by an embedding model with all finetuning
-data. We see this as a considerable achievement since there are 17 to 240 times more
-finetuning documents in the last round compared to the first one. In the second
-round, the classifiers are trained on 10k finetuning documents, and the
-performances naturally increase. Particularly for SBERT, as it now surpasses
-\Model{PV}, which improves by a relatively small amount. These effects are also
-noticeable in the performance of {\CosineStudent} as there is a more significant gap
-between it and the other two students that rely more on SBERT. Finally, with all
-finetuning data, the differences between models' performances diminish as the
-best models improve only marginally. SBERT takes the greatest advantage of the
-increase in finetuning data and surpasses all other models. We see this as a
-demonstration that the embedding model does not strictly
-need a large maximum context for the selected set of tasks. In other words, despite the moderately large
-documents, we can reach a competitive performance by only
-considering the first 384 tokens of each input. This is apparent, especially for
-\Task{arxiv}, where we can imagine classifying the field of a scholarly paper
-based on just its abstract. So, as the context is of minor importance, SBERT
-benefits from its full attention and surpasses the best student by a small
-fraction. Nonetheless, all student models can improve the scores of their
-contextual teachers and base checkpoints. Moreover, the students reach
-consistent and comparable performances despite being trained differently.
-{\CosineStudent} trains with a different contextual teacher, contextual loss,
-structural loss, and weighting of the two losses than the rest of the students.
-{\MSEStudent} trains with a significantly less performant contextual teacher,
-while {\OnlyMSEStudent} does not use a contextual teacher. This shows that
-our method is robust and open to multiple changes in various aspects.
+In the first round, Longformer's and SBERT's performance is underwhelming. At
+the same time, the best student model achieves, on average, nearly 80\% of the
+best performance for a given task achieved by an embedding model with all
+finetuning data. We see this as a considerable achievement since there are 17
+to 240 times more finetuning documents in the last round compared to the first
+one. In the second round, the classifiers are trained on 10k finetuning
+documents, and the performances naturally increase. Particularly for SBERT, as
+it now surpasses \Model{PV}, which improves by a relatively small amount. These
+effects are also noticeable in the performance of {\CosineStudent} as there is
+a more significant gap between it and the other two students that rely more on
+SBERT. Finally, with all finetuning data, the differences between models'
+performances diminish as the best models improve only marginally. SBERT takes
+the greatest advantage of the increase in finetuning data and surpasses all
+other models. We see this as a demonstration that the embedding model does not
+strictly need a large maximum context for the selected set of tasks. In other
+words, despite the moderately large documents, we can reach a competitive
+performance by only considering the first 384 tokens of each input. This is
+apparent, especially for \Task{arxiv}, where we can imagine classifying the
+field of a scholarly paper based on just its abstract. So, as the context is of
+minor importance, SBERT benefits from its full attention and surpasses the best
+student by a small fraction. Nonetheless, all student models can improve the
+scores of their contextual teachers and base checkpoints. Moreover, the
+students reach consistent and comparable performances despite being trained
+differently. {\CosineStudent} trains with a different contextual teacher,
+contextual loss, structural loss, and weighting of the two losses than the rest
+of the students. {\MSEStudent} trains with a significantly less performant
+contextual teacher, while {\OnlyMSEStudent} does not use a contextual teacher.
+This shows that our method is robust and open to multiple changes in various
+aspects.
 
 
 % Per task:
