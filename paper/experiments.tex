@@ -230,7 +230,7 @@ Longformer \citep{beltagy2020longformer}, SBERT \citep{reimers2019sentence},
 and PV \citep{le2014distributed}. We compare students to Longformer to judge
 how our training method improves document embeddings. As we mentioned above, we
 use a subset of Longformer's pre-training data. So, the student model cannot
-gain performance just due to the training data as it has already seen them
+gain performance just due to the training data, as it has already seen them
 during pre-training. For context, we train the student models for only 3.8\%
 iterations of Longformer's pre-training with an eight times smaller batch size.
 
@@ -308,14 +308,14 @@ trained with only the structural loss as \Model{only-structural;cosine}.
 
 Besides the cosine and the MSE, we also explore losses that combine a positive
 and a negative component, such as contrastive loss. We call these losses
-\emph{composite} as opposed to the \emph{simple} losses, such as MSE or cosine
-distance. Composite losses compare the student's embedding to a teacher
-embedding corresponding to the same input, which we call \emph{positive} and to
-teacher's embeddings corresponding to different inputs, which we call
+\emph{composite} to differentiate them from \emph{simple} losses, such as MSE or cosine
+distance. Composite losses compare the student's embedding to a teacher's
+embedding of the same input, which we call \emph{positive}, and to
+the teacher's embedding of different inputs, which we call
 \emph{negatives}. They reward the student model for close proximity to
 positives or large distances to the negatives. Therefore, structural composite
-losses optimize two aspects: they decrease the distance to SBERT's embeddings,
-while increasing the margin between student's embeddings of different inputs.
+losses optimize two aspects: they decrease the distance to SBERT's embeddings
+while increasing the margin between the student's embeddings of different inputs.
 
 We explore two types of composite losses: max-margin and contrastive. To
 formulate these losses, we label the student's embedding as $y$, the
