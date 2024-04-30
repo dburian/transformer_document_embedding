@@ -122,26 +122,26 @@
 Dedication.
 }
 
-% Abstract (recommended length around 80-200 words; this is not a copy of your thesis assignment!)
-\def\Abstract{%
-We develop a method to train a document embedding model with an unsupervised
-dataset and low resources. Using teacher-student training, we distill SBERT's
-capacity to capture text structure and Paragraph Vector's ability to encode
-extended context into the resulting embedding model. We test our method on
-Longformer, a Transformer model with sparse attention that can process up to
-4096 tokens. We explore several loss functions to enforce the distillation of
-knowledge from the two teachers (SBERT and Paragraph Vector) to our student
-model (Longformer). Throughout experimentation, we show that despite SBERT's
-short maximum context, its distillation is more critical to the student's
-performance. Additionally, we demonstrate that the student model can benefit
-from both teachers. Finally, our method improves Longformer's performance on
-several downstream tasks, including citation prediction, plagiarism detection,
+% Abstract (recommended length around 80-200 words; this is not a copy of your
+% thesis assignment!)
+
+\def\Abstract{We develop a method to train a document embedding model with an
+unlabeled dataset and low resources. Using teacher-student training, we
+distill SBERT's capacity to capture text structure and Paragraph Vector's
+ability to encode extended context into the resulting embedding model. We test
+our method on Longformer, a Transformer model with sparse attention that can
+process up to 4096 tokens. We explore several loss functions to enforce the
+distillation of knowledge from the two teachers (SBERT and Paragraph Vector) to
+our student model (Longformer). Throughout experimentation, we show that
+despite SBERT's short maximum context, its distillation is more critical to the
+student's performance. However, as we also demonstrate, the student model can
+benefit from both teachers. Our method improves Longformer's performance on
+eight downstream tasks, including citation prediction, plagiarism detection,
 and similarity search. Our method shows exceptional performance with few
 finetuning data available, where the trained student model outperforms both
 teacher models. By showing consistent performance of differently configured
 student models, we demonstrate our method's robustness to various changes and
-suggest areas for future work.
-}
+suggest areas for future work.}
 
 % 3 to 5 keywords (recommended), each enclosed in curly braces
 \def\Keywords{%
@@ -181,11 +181,11 @@ suggest areas for future work.
 \include{bibliography}
 
 %%% Figures used in the thesis (consider if this is needed)
-\listoffigures
+% \listoffigures
 
 %%% Tables used in the thesis (consider if this is needed)
 %%% In mathematical theses, it could be better to move the list of tables to the beginning of the thesis.
-\listoftables
+% \listoftables
 
 %%% Abbreviations used in the thesis, if any, including their explanation
 %%% In mathematical theses, it could be better to move the list of abbreviations to the beginning of the thesis.
