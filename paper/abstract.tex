@@ -14,12 +14,12 @@
 %% Do not forget to edit abstract.xmpdata.
 
 %% EN
-We develop a method to train a document embedding model with an
-unlabeled dataset and low resources. Using teacher-student training, we
+We develop a method to train a document embedding model with an unlabeled
+dataset and low computational resources. Using teacher-student training, we
 distill SBERT's capacity to capture text structure and Paragraph Vector's
 ability to encode extended context into the resulting embedding model. We test
 our method on Longformer, a Transformer model with sparse attention that can
-process up to 4096 tokens. We explore several loss functions to enforce the
+process up to 4096 tokens. We explore several loss functions for the
 distillation of knowledge from the two teachers (SBERT and Paragraph Vector) to
 our student model (Longformer). Throughout experimentation, we show that
 despite SBERT's short maximum context, its distillation is more critical to the
@@ -41,7 +41,7 @@ našeho výsledného embedovacího modelu. Naší metodu testujeme na Longformer
 Transformeru s řídkou attention vrstvou, který je schopný zpracovat dokumenty
 dlouhé až 4096 tokenů. Prozkoumáme několik ztrátových funkcí, které nutí
 studenta (Longformera) napodobovat výstupy obou učitelů (SBERTa a Paragraph
-Vektoru). Při experimentaci ukazujeme, že i přes omezený kontext SBERTa, je
+Vektoru). V experimentech ukazujeme, že i přes omezený kontext SBERTa, je
 distilace jeho výstupů pro výkon studenta zásadnější. Nicméně, také ukazujeme,
 že student získává prospěch z obou učitelů. Naše metoda dokáže vylepšit
 výsledek Longformera na osmi úlohách, které zahrnují predikci citace, detekci

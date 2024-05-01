@@ -14,17 +14,17 @@ computation more efficient. For tasks such as semantic search or clustering,
 the increased efficiency of the embeddings is so crucial that the tasks'
 computation would be infeasible without it.
 
-However, training a document embedding model presents several challenges.
-Scaling up the maximum context of Transformers, which are the most performant
-architecture of sentence embedding models
-\citep{reimers2019sentence,gao2021simcse}, requires a quadratic amount of
-memory in the number of processed tokens. Despite relatively recent theoretical
-advancements such as sparse attention \citep{child2019generating}, training a
-Transformer document embedding model still requires insignificant computational
-resources. Furthermore, current approaches to training document embedding
-models either use extremely large batches \citep{neelakantan2022text}, which
-further increases the amount of computational resources necessary, or a complex
-training setup \citep{izacard2021unsupervised}. Other approaches
+Training a document embedding model presents several challenges. Scaling up the
+maximum context of Transformers, which are the most performant architecture of
+sentence embedding models \citep{reimers2019sentence,gao2021simcse}, requires a
+quadratic amount of memory in the number of processed tokens. Despite
+relatively recent theoretical advancements such as sparse attention
+\citep{child2019generating}, training a Transformer document embedding model
+still requires considerable computational resources. Furthermore, current
+approaches to training document embedding models either use extremely large
+batches \citep{neelakantan2022text}, which further increases the amount of
+computational resources necessary, or a complex training setup
+\citep{izacard2021unsupervised}. Other approaches
 \citep{ostendorff2022neighborhood, cohan2020specter} use datasets with an
 inherent structure, such as Wikipedia articles connected via links or academic
 papers related via citations. However, as there are only a limited amount of
@@ -57,19 +57,24 @@ combine these qualities and distill them into our document embedding model
 using teacher-student training. We train our embedding model to mimic SBERT's
 and Paragraph Vector's outputs. In this context, we label the embedding model
 as \emph{student}, while SBERT and Paragraph Vector as \emph{teachers}. We
-explore several variants of losses for each teacher that force the student to
-mimic them. We show that both teachers' qualities can benefit the student
-model's performance. We evaluate the student model on six classification tasks
-and two retrieval tasks. The results show that our method performs consistently
-and significantly improves the students' performance over its base checkpoint.
-Our method is especially effective in scenarios with few finetuning data
-available, where the trained student model outperforms both teachers.
+explore several loss functions for each teacher that force the student to mimic
+them. We show that both teachers' qualities can benefit the student model's
+performance. We evaluate the student model on six classification tasks and two
+retrieval tasks. The results show that our method performs consistently and
+significantly improves the students' performance over its base checkpoint. Our
+method is especially effective in scenarios with few finetuning data available,
+where the trained student model outperforms both teachers.
 
 In this thesis, we first describe the motivation behind our method in
 Chapter~\ref{chapter:document_representation}. We then review all research we
 consider relevant to embedding documents with Transformers in
 Chapter~\ref{chapter:related_work}. Chapter~\ref{chapter:training_method}
 describes our training method in detail and defines most of the terminology
-related to our method. We then conduct several experiments with our training
-method in Chapter~\ref{chapter:experiments} and thoroughly evaluate it in
-Chapter~\ref{chapter:evaluation}.
+related to our method. In Chapter~\ref{chapter:experiments}, we go through all
+hyperparameters of our method, test different variants, and select those
+performing the best on validation tasks. Finally, in
+Chapter~\ref{chapter:evaluation}, we train a few student models with the
+best-performing variants of our method on a large dataset and evaluate them on
+all evaluation tasks. For classification tasks, we evaluate the student models
+with different numbers of available finetuning documents and demonstrate their
+excellent performance when the amount of finetuning data is limited.

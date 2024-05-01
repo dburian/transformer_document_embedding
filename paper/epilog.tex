@@ -1,5 +1,5 @@
-\chapter*{Conclusion}
-\addcontentsline{toc}{chapter}{Conclusion}
+\chapter*{Conclusions}
+\addcontentsline{toc}{chapter}{Conclusions}
 
 In pursuit of our goal to train a Transformer document embedding model with low
 computational resources and text corpora, we use a teacher-student training
@@ -37,28 +37,27 @@ configuration, the student can simultaneously benefit from training on both
 losses.
 
 We evaluate the student models on six classification and two retrieval tasks.
-With the classification tasks, we explore three contexts that differ in the
-amount of finetuning data available. We demonstrate that in scenarios with less
-finetuning data, our training method can boost the student's performance above
-the level of both teachers and Longformer. Consequently, even with small
-amounts of finetuning data, our trained model is surprisingly performant.
-Although we select tasks with an insignificant percentage of long documents,
-the results suggest that an embedding model's large context is relatively
-unimportant. Consequently, as the number of finetuning documents grows, the
-denser architecture of SBERT gives it a significant advantage over the less
-performant architecture of the student model. Nonetheless, the student model
-significantly improves Longformer's performance in all three contexts. In
+With the classification tasks, we show results for three different amounts of
+finetuning data available for the classifiers to train on. We demonstrate that
+in scenarios with less finetuning data, our training method can boost the
+student's performance above the level of both teachers and Longformer. Although
+we select tasks with an insignificant percentage of long documents, the results
+suggest that an embedding model's large context is relatively unimportant.
+Consequently, as the number of finetuning documents grows, the denser
+architecture of SBERT gives it a significant advantage over the less capable
+architecture of the student model. Nonetheless, the student model significantly
+improves Longformer's performance with all three finetuning data limits. In
 retrieval tasks, the best student model outperforms SBERT, and all tested
 student models again surpass both the contextual teacher and Longformer.
 
-To summarize, we design a training method for document embedding models that
-requires few resources and boosts the model's performance. The model's
-improvement is especially noticeable in scenarios with few finetuning data,
-where the trained model quickly becomes proficient compared to its base
-performance.
+To summarize, we design a method to train document embedding models with small
+amount of computational resources that significantly improves the model's
+performance. The benefit of our method is especially noticeable in scenarios
+with few finetuning data, where the trained model quickly becomes proficient
+compared to its base performance.
 
 
-\section{Future work}
+\section*{Future work}
 
 While this work touches on many research areas, the most opportunities to
 extend it lie in the distillation training. We use two losses to distill the
@@ -87,10 +86,10 @@ techniques require complex setups or large amounts of memory, our approach does
 not. In particular, increasing the number of negatives is simple and does not
 inflict a larger memory footprint.
 
-Finally, even though we have concrete reasons for training with two teacher
+Finally, even though we have specific reasons for training with two teacher
 models, we propose experimenting with more. In this regard, our method is
 easily scalable, and more teachers could result in more consistent performance
 of the resulting models. Additionally, as we demonstrate throughout this work,
 there are no restrictions on the dimensionality of the teacher's embeddings or
-on the teacher's architecture. This context offers great freedom and space for
-original and unique methods.
+on the teacher's architecture. This offers great freedom and space for original
+and unique solutions.

@@ -4,26 +4,27 @@ In this chapter, we evaluate the most promising configurations of our training
 method. We train three student models on 1M documents with the best-performing
 hyperparameters from Chapter~\ref{chapter:experiments} to show the effects of
 long training with our teacher-student method. We evaluate the student models
-on six classification and two retrieval tasks. For classification tasks, we consider
-three contexts, each having a different amount of available supervised data. We
-show how the models' performances change for each context and thus
-highlight the advantages and disadvantages of our training method.
+on six classification and two retrieval tasks. For classification tasks, we
+consider three different limits on the amount of available supervised data. We
+show the models' performances varies for different limits and thus highlight
+the strengths and limitations of our training method.
 
 \section{Student models}
 
-We focus on the three best-performing variants of our training method from
-Chapter~\ref{chapter:experiments}. More specifically, we use the hyperparameters
-listed in Table~\ref{table:experiments_final_config}. However, as we train the
-student models and the contextual teachers on significantly more data, we label
-the models differently to avoid confusion. {\CosineStudent} is trained with an
-equal mixture of contextual loss and cosine structural loss, which is masked
-out for inputs longer than the structural teacher's maximum context length.
-{\MSEStudent} is trained with an equal mixture of contextual loss and a
-max-margin MSE structural loss. Finally, {\OnlyMSEStudent} is trained only on
-the max-margin MSE structural loss. These models' hyperparameters correspond to
-the configurations of \Model{masked-cosine;$\lambda$=0.5},
-\Model{mm-MSE;$\lambda$=0.5}, and \Model{only-structural;mm-MSE} from
-Table~\ref{table:experiments_final_config}, respectively.
+We only evaluate the three best-performing variants of our training method from
+Chapter~\ref{chapter:experiments}. More specifically, we use the
+hyperparameters listed in Table~\ref{table:experiments_final_config}. However,
+as we train the student models and the contextual teachers on significantly
+more data, we label the models differently to avoid confusion. {\CosineStudent}
+is trained with a balanced mix of contextual loss and cosine structural loss,
+which is masked out for inputs longer than the structural teacher's maximum
+context length. {\MSEStudent} is trained with an equal mixture of contextual
+loss and a max-margin MSE structural loss. Finally, {\OnlyMSEStudent} is
+trained only on the max-margin MSE structural loss. These models'
+hyperparameters correspond to the configurations of
+\Model{masked-cosine;$\lambda$=0.5}, \Model{mm-MSE;$\lambda$=0.5}, and
+\Model{only-structural;mm-MSE} from Table~\ref{table:experiments_final_config},
+respectively.
 
 \subsection{Training data}
 
@@ -31,7 +32,7 @@ We compile our training corpus the same as \Dataset{val-500k}. Ultimately, we
 want to gauge the performance of our training method using the performance of
 the trained student models. So, to have a meaningful baseline, we train the
 student models only using Longformer's training data. Without any new training
-data, the performance of our student model is dependent only on our training
+data, the performance of our student model depends only on our training
 method. Hence, the performance of the student models is proportional to our
 training method's performance.
 
@@ -92,7 +93,7 @@ use the best-performing hyperparameters from Section~\ref{section:pv_training}
 labelled as \Model{PV;2048d} and \Model{DM;100d} respectively.
 
 We compile the contextual teacher's training dataset in the same manner as
-\Dataset{train-1M}. We avoid new data, as the contextual teachers' training
+\Dataset{train-1M}. We avoid adding new data, as the contextual teachers' training
 data also becomes the student's training data. Therefore, we restrict the
 contextual teachers' training data to Longformer's training data for the
 reasons we mention in the previous section. However, as PV is a significantly
@@ -164,22 +165,23 @@ while limiting the tasks' training data to different amounts.
 
   \begin{tabular}{llrrr}
       \toprule
-      \multicolumn{3}{c}{} & \multicolumn{2}{c}{Class percentage} \\
+      \multicolumn{3}{c}{} & \multicolumn{2}{c}{Class percentage $\sigma$} \\
       \cline{4-5}
       Dataset & Inputs & Classes & Train & Test \\
       \midrule
-      \Task{arxiv} & documents & 11 & 10$\pm$1\% & 9$\pm$1\% \\
-      \Task{imdb} & documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
-      \Task{aan} & pairs of documents & 2 & 50$\pm$2\% & 50$\pm$1\% \\
-      \Task{oc} & pairs of documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
-      \Task{pan} & pairs of documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
-      \Task{s2orc} & pairs of documents & 2 & 50$\pm$0\% & 50$\pm$0\% \\
+      \Task{arxiv} & documents & 11 & 1.25 & 1.30 \\
+      \Task{imdb} & documents & 2 & 0.00 & 0.00 \\
+      \Task{aan} & pairs of documents & 2 & 1.50 & 0.77 \\
+      \Task{oc} & pairs of documents & 2 & 0.07 & 0.34 \\
+      \Task{pan} & pairs of documents & 2 & 0.00 & 0.00 \\
+      \Task{s2orc} & pairs of documents & 2 & 0.09 & 0.33 \\
       \bottomrule
   \end{tabular}
 
-  \caption{Overview of the classification tasks. For each task, we
-  include the type of input classified and the mean and standard
-  deviation of class percentages.}
+  \caption{Overview of the classification tasks. For each task, we include the
+  type of input classified. The class distributions for all tasks are on
+  average balanced, thus we show only the standard deviation of class
+  percentages.}
 
   \label{table:eval_cls_tasks_overview}
 
@@ -194,23 +196,23 @@ while limiting the tasks' training data to different amounts.
         \cline{4-5}
         Dataset & Split & Documents & Over 384 & Over 512 \\
         \midrule
-        \multirow[c]{2}{*}{\Task{arxiv}} & Train & 28 388 & 100.00\% & 100.00\% \\
-        & Test & 2 500 & 100.00\% & 100.00\% \\
+        \multirow[c]{2}{*}{\Task{arxiv}} & Train & 28 388 & 100\% & 100\% \\
+        & Test & 2 500 & 100\% & 100\% \\
         \cline{1-5}
-        \multirow[c]{2}{*}{\Task{imdb}} & Train & 25 000 & 24.56\% & 14.68\% \\
-        & Test & 25 000 & 23.54\% & 13.95\% \\
+        \multirow[c]{2}{*}{\Task{imdb}} & Train & 25 000 & 25\% & 15\% \\
+        & Test & 25 000 & 24\% & 14\% \\
         \cline{1-5}
-        \multirow[c]{2}{*}{\Task{aan}} & Train & 106 592 & 0.37\% & 0.06\% \\
-        & Test & 13 324 & 0.45\% & 0.08\% \\
+        \multirow[c]{2}{*}{\Task{aan}} & Train & 106 592 & 0\% & 0\% \\
+        & Test & 13 324 & 0\% & 0\% \\
         \cline{1-5}
-        \multirow[c]{2}{*}{\Task{oc}} & Train & 240 000 & 12.31\% & 1.07\% \\
-        & Test & 30 000 & 12.24\% & 1.02\% \\
+        \multirow[c]{2}{*}{\Task{oc}} & Train & 240 000 & 12\% & 1\% \\
+        & Test & 30 000 & 12\% & 1\% \\
         \cline{1-5}
-        \multirow[c]{2}{*}{\Task{pan}} & Train & 17 968 & 69.93\% & 59.45\% \\
-        & Test & 2 906 & 60.82\% & 47.37\% \\
+        \multirow[c]{2}{*}{\Task{pan}} & Train & 17 968 & 70\% & 59\% \\
+        & Test & 2 906 & 61\% & 47\% \\
         \cline{1-5}
-        \multirow[c]{2}{*}{\Task{s2orc}} & Train & 152 000 & 33.24\% & 18.67\% \\
-        & Test & 19 000 & 32.96\% & 18.20\% \\
+        \multirow[c]{2}{*}{\Task{s2orc}} & Train & 152 000 & 33\% & 19\% \\
+        & Test & 19 000 & 33\% & 18\% \\
         \cline{1-5}
         \bottomrule
     \end{tabular}
@@ -238,15 +240,15 @@ However, \Task{games} has substantially more documents.
     \cline{5-6}
     Dataset & Documents & Sources & Targets per source & Over 384 & Over 512 \\
     \midrule
-    \Task{wines} & 1 662 & 89 & 8.92$\pm$1.23 & 100.00\% & 90.43\% \\
-    \Task{games} & 21 228 & 88 & 8.74$\pm$2.35 & 100.00\% & 91.78\% \\
+    \Task{wines} & 1 662 & 89 & 8.92$\pm$1.23 & 100\% & 90\% \\
+    \Task{games} & 21 228 & 88 & 8.74$\pm$2.35 & 100\% & 92\% \\
     \bottomrule
   \end{tabular}
 
   \caption{Statistics of our similarity-based evaluation tasks. Each dataset
-  has around 90 source documents, each similar to around nine target documents. We
-  also include the percentage of documents with SBERT tokens above
-  the given threshold.}
+  has around 90 source documents, each similar to around nine target documents.
+  We also include the percentage of documents with SBERT tokens above the given
+  threshold.}
 
   \label{table:eval_sims_tasks}
 
@@ -288,7 +290,7 @@ and test splits, the dataset contains an unsupervised split without rating or
 class labels.
 
 \paragraph{Arxiv papers.} Arxiv papers~\citep{arxiv_papers} (denoted as
-\Task{arxiv}) is a collection of papers from ArXiv\footnote{\url{arxiv.org}},
+\Task{arxiv}) is a collection of papers from ArXiv (\url{arxiv.org}),
 an online archive of scholarly papers. Each paper contains its text truncated
 to 10000 words but spanning at least 1000 words. The papers are classified into
 11 groups based on the scientific field of the given paper. Since each paper
@@ -407,10 +409,10 @@ Section~\ref{section:validation_tasks}.
 
 We evaluate the classification tasks in three rounds. In each round, we limit
 the number of documents on which the classifier is trained. We find that
-evaluating the student models in all three contexts presents a more detailed
-picture of the students' performances and highlights the advantages and
-disadvantages of our training method. In the first round, we limit the
-finetuning documents to 1 thousand. With so few finetuning documents, the
+evaluating the student models with varying amounts of finetuning data presents
+a more detailed picture of the students' performances and highlights the
+strengths and limitations of our training method. In the first round, we limit
+the finetuning documents to 1 thousand. With so few finetuning documents, the
 features that help the classifier predict the correct label must be obvious. In
 this setting, models that encode a few main features of their input should
 achieve the best results. In the second round, we increase the number of
@@ -444,23 +446,6 @@ Table~\ref{table:final_evals}.
     \begin{tabular}{lrrrrrrrr}
     \toprule
       Model & \Task{arxiv} & \Task{imdb} & \Task{aan} & \Task{oc} & \Task{pan} & \Task{s2orc} & Mean & Norm. mean \\
-    \midrule
-      Longformer                  &         .649 & \textbf{.913}&         .625 &         .889 &         .675 &         .899 &         .775 &         .894 \\
-      \TableModel{DM}             &         .710 &         .731 &         .570 &         .835 &         .685 &         .835 &         .728 &         .843 \\
-      \TableModel{PV}             & \textbf{.840}&         .865 &         .703 &         .891 &         .602 &         .899 &         .800 &         .923 \\
-      SBERT                       &         .819 &         .890 & \textbf{.805}& \textbf{.935}&         .640 & \textbf{.944}& \textbf{.839}& \textbf{.969}\\
-      \TableModel{cosine-masked}  &         .779 &         .843 &         .751 &         .918 &         .638 &         .925 &         .809 &         .935 \\
-      \TableModel{MSE-contextual} &         .776 &         .842 &         .767 &         .930 &         .720 &         .942 &         .829 &         .961 \\
-      \TableModel{only-MSE}       &         .773 &         .837 &         .760 &         .929 & \textbf{.740}&         .941 &         .830 &         .962 \\
-      \midrule
-      \multicolumn{9}{c}{10k finetuning documents} \medskip \\
-      Longformer                  &         .508 & \textbf{.892}&         .521 &         .742 &         .660 &         .770 &         .682 &         .837 \\
-      \TableModel{DM}             &         .650 &         .699 &         .520 &         .683 &         .695 &         .697 &         .657 &         .813 \\
-      \TableModel{PV}             & \textbf{.821}&         .852 &         .537 &         .771 &         .585 &         .771 &         .723 &         .885 \\
-      SBERT                       &         .785 &         .872 &         .544 &         .787 &         .599 &         .786 &         .729 &         .893 \\
-      \TableModel{cosine-masked}  &         .747 &         .821 &         .568 &         .865 &         .629 &         .868 &         .750 &         .918 \\
-      \TableModel{MSE-contextual} &         .752 &         .826 & \textbf{.630}&         .886 &         .702 &         .901 &         .783 & \textbf{.963}\\
-      \TableModel{only-MSE}       &         .748 &         .821 &         .619 & \textbf{.892}& \textbf{.717}& \textbf{.904}& \textbf{.784}& \textbf{.963}\\
       \midrule
       \multicolumn{9}{c}{1k finetuning documents} \medskip \\
       Longformer                  &         .252 & \textbf{.835}&         .509 &         .655 &         .602 &         .677 &         .588 &         .814 \\
@@ -470,6 +455,24 @@ Table~\ref{table:final_evals}.
       \TableModel{cosine-masked}  &         .584 &         .726 &         .529 &         .747 &         .658 &         .703 &         .658 &         .922 \\
       \TableModel{MSE-contextual} & \textbf{.645}&         .762 &         .541 & \textbf{.770}&         .629 &         .733 & \textbf{.680}& \textbf{.953}\\
       \TableModel{only-MSE}       &         .642 &         .746 & \textbf{.545}&         .763 &         .635 & \textbf{.750}& \textbf{.680}& \textbf{.953}\\
+      \midrule
+      \multicolumn{9}{c}{10k finetuning documents} \medskip \\
+      Longformer                  &         .508 & \textbf{.892}&         .521 &         .742 &         .660 &         .770 &         .682 &         .837 \\
+      \TableModel{DM}             &         .650 &         .699 &         .520 &         .683 &         .695 &         .697 &         .657 &         .813 \\
+      \TableModel{PV}             & \textbf{.821}&         .852 &         .537 &         .771 &         .585 &         .771 &         .723 &         .885 \\
+      SBERT                       &         .785 &         .872 &         .544 &         .787 &         .599 &         .786 &         .729 &         .893 \\
+      \TableModel{cosine-masked}  &         .747 &         .821 &         .568 &         .865 &         .629 &         .868 &         .750 &         .918 \\
+      \TableModel{MSE-contextual} &         .752 &         .826 & \textbf{.630}&         .886 &         .702 &         .901 &         .783 & \textbf{.963}\\
+      \TableModel{only-MSE}       &         .748 &         .821 &         .619 & \textbf{.892}& \textbf{.717}& \textbf{.904}& \textbf{.784}& \textbf{.963}\\
+    \midrule
+      \multicolumn{9}{c}{All finetuning documents} \medskip \\
+      Longformer                  &         .649 & \textbf{.913}&         .625 &         .889 &         .675 &         .899 &         .775 &         .894 \\
+      \TableModel{DM}             &         .710 &         .731 &         .570 &         .835 &         .685 &         .835 &         .728 &         .843 \\
+      \TableModel{PV}             & \textbf{.840}&         .865 &         .703 &         .891 &         .602 &         .899 &         .800 &         .923 \\
+      SBERT                       &         .819 &         .890 & \textbf{.805}& \textbf{.935}&         .640 & \textbf{.944}& \textbf{.839}& \textbf{.969}\\
+      \TableModel{cosine-masked}  &         .779 &         .843 &         .751 &         .918 &         .638 &         .925 &         .809 &         .935 \\
+      \TableModel{MSE-contextual} &         .776 &         .842 &         .767 &         .930 &         .720 &         .942 &         .829 &         .961 \\
+      \TableModel{only-MSE}       &         .773 &         .837 &         .760 &         .929 & \textbf{.740}&         .941 &         .830 &         .962 \\
     \bottomrule
     \end{tabular}
 
@@ -502,11 +505,10 @@ Table~\ref{table:final_evals}.
   \end{subtable}
 
   \caption{Performance of evaluated embedding models on all downstream tasks.
-  For classification tasks, we show the performance on all three rounds,
-  revealing the performance with all finetuning data first, then with them
-  being limited to 1k and 10k documents. For classification tasks, we show
-  binary or micro accuracy. For retrieval tasks, we show MAP. We also display
-  the mean score and the mean of normalized scores for each model.}
+  For classification tasks, we show the performance with all finetuning data
+  and with limiting them to 1k and 10k documents. For classification tasks, we
+  show binary or micro accuracy. For retrieval tasks, we show MAP. We also
+  display the mean score and the mean of normalized scores for each model.}
 
   \label{table:final_evals}
 
@@ -645,84 +647,29 @@ aspects.
 %   - [x] Longformer and IMDB
 
 We now examine the models' performances per each task, which we plot in
-Figure~\ref{fig:final_cls_evals}. The relative models' performances on a
-given task stay consistent throughout the three rounds, so we focus only on the
-last two. With 10k finetuning documents, the students perform best on
+Figure~\ref{fig:final_cls_evals}. The relative models' performances on a given
+task stay consistent throughout the three rounds, so we focus only on the last
+two. With 10k finetuning documents, the students perform best on
 classifications of document pairs. On \Task{imdb}, Longformer shows the best
 performance, which is surprising given it is the second-worst model in both
 rounds. On \Task{arxiv}, PV shows the best performance as it benefits from its
 large embedding and unlimited context. Arguably, both of these attributes play
-a role, as \Model{DM} with the same unlimited context but with more than 50 times smaller embedding performs admirably well but worse than \Model{PV}. As
-we increase the number of finetuning documents, SBERT substantially improves.
-We register the largest performance increase for tasks with the most
-finetuning data available. These are \Task{aan}, \Task{oc}, and \Task{s2orc}.
-We also highlight SBERT's performance on \Task{arxiv} in both rounds, where it
-outperforms all students with eight times larger maximum context and comes
-relatively close to the performance of \Model{PV}. This demonstrates that, despite the task being composed of only very long documents, we can achieve a
-competitive performance based on just the first few hundred tokens. The insignificance of an embedding model's lack of context may
-partly explain why the students' performances for a given task are not affected by the length of the tasks' documents. For example, on tasks with
-longer documents such as \Task{arxiv} or \Task{pan}, {\CosineStudent} and
-{\MSEStudent} perform on par with {\OnlyMSEStudent} despite being trained with
-a contextual teacher, which should theoretically provide the students with a
-larger context.
-
-
-% With one thousand finetuning documents some tasks are very difficult.
-% Especially \Task{aan} with Longformer's or \Model{DM}'s embeddings, where the
-% classifiers perform almost as well as a majority classifier. On the other
-% hand, \Task{imdb} turns out to be relatively easy, as even with 1k finetuning
-% documents Longformer was able to reach 83\% accuracy. That said, Longformer's
-% training seems to be unbalanced as it outperforms all models on \Task{imdb},
-% despite being the second worst model in all three rounds. These issue do not
-% propagate to the student models. With 10k finetuning documents
-
-
-% As we show in Table~\ref{table:final_evals_cls}, the students are successful
-% especially on classifications of document pairs. On \Task{arxiv} \Model{PV}
-% shows the strongest performance apart from the first round with the least
-% finetuning documents. In the final two rounds, \Model{PV} benefits from its
-% large embedding and unlimited context. Arguably, both of these attributes
-% play a role, as \Model{DM} with the same unlimited context but with more than
-% 50 times smaller embedding performs admirably well but worse than \Model{PV}.
-% On \Task{imdb} Longformer consistently reaches the best performance, which is
-% surprising since it is the second worst model on 4 out of the 6 tasks. As we
-% increase the number of finetuning documents SBERT substantially improves.
-% SBERTs increases its per
-
-% If we
-% focus separately on each round, we find that with only 1k of finetuning
-% documents some tasks turn out to be very difficult. Especially on \Task{aan}
-% with Longformer's or \Model{DM}'s embeddings, where the classifiers perform
-% almost as well as a majority classifier. As we see in
-% Figure~\ref{fig:final_cls_evals}, with 10k finetuning documents
-
-% As we show in Figure~\ref{fig:final_cls_evals}, SBERT is able to surpass all
-% other models in the final round thanks to its performance on
-
-% Arguably it is not only thanks to its larger embedding
-% but also its unlimited context, since \Model{DM} with more than 50
-% times smaller embedding performs admirably well.
-
-% also has an unlimited context and its performance is noticeably
-% worse.
-
-% thanks to its unlimited context. its large
-% embedding dimension and unlimited context.
-
-
-% all
-% classifiers surpass
-
-% The students' outperform all baselines in \Task{arxiv},
-% \Task{aan}, \Task{oc} and \Task{s2orc}.
-
-% by only a fraction.
-
-% With only one thousand documents most classifiers perform poorly.
-
-% We now compare the models' performances per task for the final two rounds in
-% Figure~\ref{fig:final_cls_evals}. We also refer to
-% Table~\ref{table:final_evals_cls} for exact values.
+a role, as \Model{DM} with the same unlimited context but with more than 50
+times smaller embedding performs better than Longformer but worse than
+\Model{PV}. As we increase the number of finetuning documents, SBERT
+substantially improves. We register the largest performance increase for tasks
+with the most finetuning data available. These are \Task{aan}, \Task{oc}, and
+\Task{s2orc}. We also highlight SBERT's performance on \Task{arxiv} in both
+rounds, where it outperforms all students with eight times larger maximum
+context and comes relatively close to the performance of \Model{PV}. This
+demonstrates that, despite the task being composed of only very long documents,
+we can achieve a competitive performance based on just the first few hundred
+tokens. The insignificance of an embedding model's lack of context may partly
+explain why the students' performances for a given task are not affected by the
+length of the tasks' documents. For example, on tasks with longer documents
+such as \Task{arxiv} or \Task{pan}, {\CosineStudent} and {\MSEStudent} perform
+on par with {\OnlyMSEStudent} despite being trained with a contextual teacher,
+which should theoretically provide the students with a larger context.
 
 \begin{figure}
 
@@ -736,154 +683,9 @@ larger context.
 
 \end{figure}
 
-
-%\subsection{With 1k finetuning documents}
-
-
-%With one thousand finetuning documents, the classifiers have minimum data to
-%learn the embeddings' structure. We present overall performance of all student
-%models and the baselines in Figure~\ref{fig:1k_norm_evals}. The student models
-%outperform both teachers as well as Longformer. The models' relative
-%performance is similar to that on validation tasks in
-%Chapter~\ref{chapter:experiments}. Using only max-margin MSE structural loss,
-%leads to the best results. Adding a contextual loss to the max-margin MSE loss
-%hurts the model's performance by a small fraction. With cosine structural loss
-%and contextual loss, {\CosineStudent} only just outperforms its contextual
-%teacher. We also plot the models' performance by task in
-%Figure~\ref{fig:1k_evals}. With only one thousand training documents, some task
-%seem to be very hard. Especially for \Task{aan}, and \Task{arxiv} on which some
-%classifiers perform only fractionally better than majority class classifier.
-%Also the length of documents has little effect on the models' performance.
-%SBERT's performance is nearly identical for \Task{arxiv}, \Task{oc} and
-%\Task{s2orc}, despite the length distributions of the tasks' documents being
-%very dissimilar. In similar fashion, the student's improvement over SBERT's
-%does not seem to correspond with the document's length across tasks.
-
-%% Longformer imdb surprise surprise
-
-
-%\begin{figure}
-
-%  \centering
-%  \includegraphics[width=0.85\textwidth]{img/1k_norm_evals.pdf}
-
-%  \caption{Overall performance of embedding models with 1k finetuning
-%  documents.}
-
-%  \label{fig:1k_norm_evals}
-
-%\end{figure}
-
-%\begin{figure}
-
-%  \includegraphics[width=\textwidth]{img/1k_evals.pdf}
-
-%  \caption{Performance of embedding models per task with 1k finetuning
-%  documents.}
-
-%  \label{fig:1k_evals}
-
-%\end{figure}
-
-
-%\subsection{With 10k finetuning documents}
-
-%With 10 thousand finetuning documents the classifiers have already a
-%substantial amount of data. Again we look first at the relative overall
-%performance of the embedding models in Figure~\ref{fig:short_norm_evals}.
-%Compared to the models' performances with only 1k of finetuning documents,
-%there are only few differences. The student models still surpass all baselines.
-%However, SBERT has significantly improved and now outperforms \Model{PV}. Also
-%the difference between {\CosineStudent} and the other two students seem to be
-%larger. We also plot the models' performances per each task in
-%Figure~\ref{fig:short_evals}. The significant increase in finetuning data can
-%reveal more performant embeddings. For instance \Model{PV}'s embeddings for
-%\Task{arxiv} are surpassing all other models, whereas with only 1k finetuning
-%documents they are on par with the students' embeddings. Note that in the case
-%of \Task{aan}, \Task{s2orc} or \Task{oc} the students' performances cannot be
-%explained by the teachers' or by Longformer's performances as all baselines
-%perform worse than all students. This demonstrate how much the students benefit
-%from combining knowledge from several other models.
-
-%% unexplicable performance of student models -- no teacher nor the base
-%% checkpoint performa as well
-
-%\begin{figure}
-
-%  \centering
-%  \includegraphics[width=0.85\textwidth]{img/short_norm_evals.pdf}
-
-%  \caption{Overall performance of embedding models with 10k finetuning
-%  documents.}
-
-%  \label{fig:short_norm_evals}
-
-%\end{figure}
-
-%\begin{figure}
-
-%  \includegraphics[width=\textwidth]{img/short_evals.pdf}
-
-%  \caption{Performance of embedding models per task with 10k finetuning
-%  documents.}
-
-%  \label{fig:short_evals}
-
-%\end{figure}
-
-%\subsection{With all finetuning data}
-
-%Without limiting the finetuning data, we examine the full performance the
-%embedding models can reach. We show the overall performance of all embedding
-%models in Figure~\ref{fig:final_norm_evals}. With significantly more finetuning
-%data, SBERT's embeddings show remarkable increase in performance. We
-%hypothesize, that this is due to a more complex embeddings, whose structure is
-%understandable only with larger amounts of data. Since our student models have
-%less dense architectures, their ability to generate complex embeddings is not
-%as high as SBERT's. Additionally, as we note in the previous sections, the
-%embeddings do not seem to benefit from the increased maximum context of the
-%student model. Consequently, this suggests that the contextual information is
-%not that important for the performance models' in our set of tasks.
-
-
-%We also plot the models' performances per each task in
-%Figure~\ref{fig:final_evals}.
-
-
-%\begin{figure}
-
-%  \centering
-%  \includegraphics[width=0.85\textwidth]{img/final_norm_evals.pdf}
-
-%  \caption{Overall performance of embedding models with all finetuning
-%  documents.}
-
-%  \label{fig:final_norm_evals}
-
-%\end{figure}
-
-%\begin{figure}
-
-%  \includegraphics[width=\textwidth]{img/final_evals.pdf}
-
-%  \caption{Performance of embedding models per task with all finetuning
-%  documents.}
-
-%  \label{fig:final_evals}
-
-%\end{figure}
-
 \subsection{Retrieval tasks}
 
-We plot the overall models' performances on the retrieval tasks in
-Figure~\ref{fig:final_eval_sims}. In terms of MAP, the best-performing model is
-{\OnlyMSEStudent} closely followed by SBERT and the other two student models.
-For Mean Reciprocal Rank, the best model is {\CosineStudent}, one
-of the most consistent models in both metrics. This suggests that using
-a structural teacher only for inputs, which it can process as a whole, may lead to a
-more consistent student model.
-
-\begin{figure}
+\begin{figure}[p]
 
   \includegraphics[width=\textwidth]{img/final_sims_evals.pdf}
 
@@ -894,16 +696,7 @@ more consistent student model.
 
 \end{figure}
 
-We also plot the models' performances per each task in
-Figure~\ref{fig:final_eval_sims_per_task}. As the results suggest, \Task{games}
-is an easier task than \Task{wines}. This may be unexpected since, compared to
-\Task{wines}, \Task{games} has more total documents but a similar amount of
-source and target documents. Consequently, \Task{games} contains much more
-``noise'' documents, which may hurt the performance. However, as we mention in
-the tasks' description, the selection of topics for \Task{games} is much wider, and the differences between documents are far less nuanced. On the other hand, the
-similarities of documents in \Task{wines} are sometimes based on a few details mentioned throughout the document.
-
-\begin{figure}
+\begin{figure}[t]
 
   \centering
   \includegraphics[width=0.85\textwidth]{img/final_sims_evals_per_task.pdf}
@@ -913,3 +706,23 @@ similarities of documents in \Task{wines} are sometimes based on a few details m
   \label{fig:final_eval_sims_per_task}
 
 \end{figure}
+
+We plot the overall models' performances on the retrieval tasks in
+Figure~\ref{fig:final_eval_sims}. In terms of MAP, the best-performing model is
+{\OnlyMSEStudent} closely followed by SBERT and the other two student models.
+For Mean Reciprocal Rank, the best model is {\CosineStudent}, one
+of the most consistent models in both metrics. This suggests that using
+a structural teacher only for inputs, which it can process as a whole, may lead to a
+more consistent student model.
+
+
+We also plot the models' performances per each task in
+Figure~\ref{fig:final_eval_sims_per_task}. As the results suggest, \Task{games}
+is an easier task than \Task{wines}. This may be unexpected since, compared to
+\Task{wines}, \Task{games} has more total documents but a similar amount of
+source and target documents. Consequently, \Task{games} contains much more
+``noise'' documents, which may hurt the performance. However, as we mention in
+the tasks' description, the selection of topics for \Task{games} is much wider,
+and the differences between documents are far less nuanced. On the other hand,
+the similarities of documents in \Task{wines} are sometimes based on a few
+details mentioned throughout the document.
