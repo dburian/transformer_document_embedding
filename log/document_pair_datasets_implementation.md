@@ -25,9 +25,9 @@ validation/test document appeared in training set, it's id would be inferred.
 
 ## Statistics
 
-dataset | train pairs | unique train docs
----     | ---         | ---
-OC      | 240 000     | 458 219
-S2ORC   | 152 000     | 233 243
-AAN     | 106 592     |  11 895
-PAN     |  17 968     |  26 254
+dataset | train pairs | unique train docs | val pairs | unique train docs
+---     | ---         | ---               | ---       | ---
+OC      | 240 000     | 458 219           | 30 000    | ?
+S2ORC   | 152 000     | 233 243           | 19 000    | ?
+AAN     | 106 592     |  11 895           | 13 324    | ?
+PAN     |  17 968     |  26 254           |  2 908    | ?

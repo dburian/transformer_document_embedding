@@ -381,17 +381,23 @@ Results:
   768d dbow projections
 
 
-### 19.3. Smaller student projections with 768d DBOW
+### 15.3.-23.3 Smaller student projections with 768d DBOW
 
 Relevant files: `hp_searches/soft_cca_projections_dbow_768`
 
 Hyperparameters:
 - student projection:
     - 768
+    - no layer
     - 256(linear)x768
 
 Results:
-- Validation CCA is all over the place, but
+- Validation CCA still jumps a lot
+- validation CCA (best to worst):
+    - 768,
+    - 256(linear)x768
+    - no layer
+- During training 265(linear)x768 is slightly better than just 768
 
 
 ### 15.- 25.3. Validation unreadable experiments
@@ -430,6 +436,301 @@ Results:
   conclude that sliding window mean works)
     - a surprise effect of the sliding window was that we compute CCA less often
       which speeds up the training from 2h just to 40mins
+
+### 29.3. 2048d experiments
+
+Considering if we pick the best *concat PV* model we'll have 2048d contextual
+teacher. For the contextual embeddings I used the best concat model from
+validation experiments. Ergo it was trained only on `val_corpus_500k`, that's why
+there is 'debug' everywhere.
+
+Relevant files:
+- `hp_searches/cca_projections_2048d_debug`
+- `hp_searches/mm_mse_cca_projections_2048d_debug` -- with max marginals
+  structural loss
+- `hp_searches/cos_cca_projections_2048d_debug` - with cos dist structural loss
+
+Hyperparameters (apart from the structural losses):
+- student projections:
+    - 2048
+    - 1024(relu)x2048
+- contextual projection:
+    - no projection
+    - 2048
+    - 1024(linear)x2048
+
+
+#### Results
+
+No structural loss:
+- val CCA
+    - unsurprisingly the variants with PV projection were worst
+    - best version was that with just 2048 on the side of the transformer
+- correlations on final layers nicely decrease
+- cross correlations unfortunately decrease as well
+- there is a weird something happening at 2k iterations, which causes the loss
+  to jump up, sometimes more sometimes less
+- loss may diverge for 1024(relu)x2048 T, - PV, and slightly less probable would
+  be 2048 T, - PV
+    - the two losses are high due to L2 and oscillate a lot
+- sdl2 stays constant, sdl1 decreases
+
+
+### 29.3.-11.4. Projections GSs for validation (with evaluation)
+
+I worked with three variants of contextual teachers:
+  - 100d DM -- best, smallest vector size, in case soft CCA would have trouble
+    distilling large contextual embeddings
+  - 1024 DBOW -- overall best model
+  - 2048 PV -- concatenation of the best DBOW and best DM
+
+For each i tried different projections, mostly without dropout and norms. I did
+one GS without structural teacher, all others with.
+
+Relevant files:
+  - GS: format is {teacher}_cca_projections_{dim}d_debug
+    - `hp_searches/cca_projections_2048d_debug`
+    - `hp_searches/cca_projections_1024d_debug`
+    - `hp_searches/cca_projections_100d_debug`
+    - `hp_searches/mm_mse_cca_projections_2048d_debug`
+    - `hp_searches/mm_mse_cca_projections_1024d_debug`
+    - `hp_searches/mm_mse_cca_projections_100d_debug`
+    - `hp_searches/cos_cca_projections_2048d_debug`
+    - `hp_searches/cos_cca_projections_1024d_debug`
+    - `hp_searches/cos_cca_projections_100d_debug`
+  - Evaluations: each dim gets a folder
+    - `evaluations/cca_projections_2048d_debug`
+    - `evaluations/cca_projections_1024d_debug`
+    - `evaluations/cca_projections_100d_debug`
+
+#### 100d DM
+
+##### Round 1
+
+Tried variants
+  - student projections (T):
+    - 768(relu)x1024(relu)x768
+    - 768
+  - contextual projections (PV):
+    - 768
+    - 100(relu)x768
+  - structural loss
+    - cos
+    - mm_mse
+    - none (pure)
+
+Best models:
+  - mm_mse baseline
+  - mm_mse, T 768(relu)x1024(relu)x768, PV 768
+  - mm_mse, T 768(relu)x1024(relu)x768, PV 100(relu)x768
+  - cos baseline
+  - cos, T 768(relu)x1024(relu)x768, PV 768
+  - cos, T 768(relu)x1024(relu)x768, PV 100(relu)x768
+  - mm_mse, T 768 PV 768
+  - sbert
+  - cos, T 768, PV 768
+  - pure, T 768, PV 768
+  - pure, T 768(relu)x1024(relu)x768, PV 768
+  - ...
+  - longformer
+
+Review:
+- as with all the other projections, with structural larger projections are
+  preferred
+- no projection beat the baseline
+- no real difference between how cos and mm_mse behaves (apart from mm_mse
+  baseline being better, therefore the projections are better)
+
+
+
+#### 1024d DBOW
+
+##### Round 1
+
+Tried variants:
+- student projections (T)
+  - 1024
+  - 768(relu)x1024
+- contextual projections (PV)
+  - []
+  - 1024
+  - 768x1024
+- structural loss:
+  - mm_mse
+  - cos
+  - none (pure)
+
+
+Best variants:
+  - mm_mse baseline
+  - mm_mse T 768(relu)x1024, PV 768x1024
+  - cos baseline
+  - cos T 768(relu)x1024, PV 1024
+  - cos T 768(relu)x1024, PV []
+  - mm_mse T 768(relu)x1024, PV 1024
+  - mm_mse T 768(relu)x1024, PV []
+  - sbert
+  - cos T 768(relu)x1024, PV 768x1024
+  - cos T 1024, PV 768x1024
+  - cos T 1024, PV []
+  - ...
+  - just contextual (several places below the rest)
+    - sbert
+    - T 768(relu)x1024, PV []
+    - T 1024, PV []
+    - longformer
+    - large gap
+  - worse models (from better to worst):
+    - longformer
+    - pure T 1024, PV 1024
+    - mm_mse T 1024, PV 768x1024
+    - mm_mse T 1024, PV 1024 (random guesser)
+    - pure T 1024, PV 1024 (random guesser)
+
+Review:
+- Seems like larger projections are favored with structural losses.
+- MSE really needs larger projections, COS is not that needy.
+- We fail to improve the structural baselines in all cases.
+- The worst models are random guessers, so a small change in projections can
+  cause the model to be totally worthless. This shows how much the are
+  projections important.
+
+##### Round 2
+
+Tried variants:
+  - with cosine structural loss:
+    - student
+      - 768(relu)x4096(relu)x1024
+    - contextual
+      - []
+      - 1024
+      - 1024(relu)x1024
+      - 768(relu)x1024
+  - with mm_mse structural loss:
+    - student
+      - 768(relu)x4096(relu)x1024
+    - contextual
+      - 1024(relu)x1024
+      - 768(relu)x1024
+
+Best models:
+  - mm_mse baseline
+  - (round 1) mm_mse, T 768(relu)x1024, PV 768x1024
+  - cos, T 768(relu)x4096(relu)x1024, PV 768(relu)x1024
+  - cos, T 768(relu)x4096(relu)x1024, PV 1024
+  - mm_mse, T 768(relu)x4096(relu)x1024, PV 1024(relu)x1024
+  - cos baseline
+  - ...
+
+Review:
+  - with large projections we beat the cosine baseline
+  - for mm_mse we weren't able to (for some reason)
+
+#### 2048d PV
+
+##### Round 1
+
+Tried variants:
+  - student projections (T)
+    - 2048
+    - 1024(relu)x2048
+  - contextual projections (PV)
+    - []
+    - 2048
+    - 1024x2048
+  - structural loss:
+    - mm_mse
+    - cos
+    - none (pure)
+
+Best models:
+  - mm_mse baseline
+  - cos, T 1024(relu)x2048, PV []
+  - cos baseline
+  - mm_mse T 1024(relu)x2048, PV 1024x2048
+  - cos, T 1024(relu)x2048, PV 2048
+  - mm_mse T 1024(relu)x2048, PV []
+  - mm_mse T 1024(relu)x2048, PV 2048
+  - cos, T 1024(relu)x2048, PV 1024x2048
+  - sbert
+  - cos T 2048, PV []
+  - cos T 2048, PV 1024x2048
+  - cos T 2048, PV 2048
+  - mm_mse T 2048, PV []
+  - pure T 1024(relu)x2048, PV []
+  - pure T 2048, PV []
+  - longformer
+  - ...
+  - random guessers:
+    - pure T 2048, PV 1024x2048
+
+Round 1 review:
+  - with structural larger projections on the side of transformer are definitely
+    preferred
+  - projections for PV are a lot mixed
+
+##### Round 2
+
+Tried variants:
+  - with cosine structural loss
+    - student projections (T)
+      - 768x4096(relu)x2048
+    - contextual projections (PV)
+      - []
+      - 2048(relu)x2048
+      - 2048
+  - with cosine and dropout
+    - student projections (T)
+      - 0.1dx2048
+      - 0.5dx2048
+    - contextual projections (PV)
+      - []
+      - 2048
+  - with mm_mse structural loss
+    - student projections (T)
+      - 768x4096(relu)x2048
+    - contextual projections (PV)
+      - []
+      - 2048(relu)x2048
+      - 2048
+
+Best models:
+  - mm_mse baseline
+  - cos, T 768(relu)x4096(relu)x2048, PV []
+  - mm_mse, T 768(relu)x4096(relu)x2048, PV []
+  - (round 1) cos, T 1024(relu)x2048, PV []
+  - cos baseline
+  - (round 1) mm_mse, T 1024(relu)x2048, PV 1024x2048
+  - (round 1) cos, T 1024(relu)x2048, PV 2048
+  - mm_mse, T 768(relu)x4096x2048, PV 2048(relu)x2048
+  - cos, T 768(relu)x4096x2048, PV 2048(relu)x2048
+  - (round 1) mm_mse T 1024(relu)x2048, PV []
+  - (round 1) mm_mse T 1024(relu)x2048, PV 2048
+  - (round 1) cos, T 1024(relu)x2048, PV 1024x2048
+  - mm_mse, T 768(relu)x4096x2048, PV 2048
+  - sbert
+  - cos, T 768(relu)x4096x2048, PV 2048
+  - ...
+
+Review
+  - we beat the cosine baseline even more
+  - again mm_mse baseline remains unbeaten
+  - cosine projection was even better than mm_mse projection (!)
+  - it seems low PV projections are preferred if transformer projection is large
+    enough
+  - dropout fail to improve the scores (had worse score than the same
+    projections without dropout)
+    - we can say that 'according to our experience dropout does not improve the
+      score', but we can also leave out any mention regarding dropout
+
+#### Summary
+
+- 2 best cosine models:
+  - `cos_cca_projections_2048d_debug-h.k.c_h_k.s_p=[f=768-a=relu,f=4096-a=relu,f=2048]-h.k.c_h_k.c_p=[]`
+  - `cos_cca_projections_1024d_debug-h.k.c_h_k.s_p=[f=768-a=relu,f=4096-a=relu,f=1024]-h.k.c_h_k.c_p=[f=768-a=relu,f=1024]`
+- 2 best mm_mse models:
+  - `mm_mse_cca_projections_100d_debug-h.k.c_h_k.s_p=[f=768-a=relu,f=1024-a=relu,f=768]-h.k.c_h_k.c_p=[f=768]`
+  - `mm_mse_cca_projections_1024d_debug-h.k.c_h_k.s_p=[f=768-a=relu,f=1024]-h.k.c_h_k.c_p=[f=768,f=1024]`
 
 ## Evaluations
 

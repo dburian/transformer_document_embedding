@@ -148,8 +148,8 @@ The training was done on the whole `val_corpus_500k`
 ## 29.2. 2024 Evaluation of GS from 7.2. on Wikipedia corpus
 
 Relevant files:
-    - `evaluations/pv_dbow_gs_eval_correct`
-    - `evaluations/pv_dm_gs_eval_correct`
+    - `evaluations/old_pv_dbow_gs_eval`
+    - `evaluations/old_pv_dm_gs_eval`
 
 ### Permutation testing
 
@@ -352,6 +352,7 @@ see who is better (with each PV as a baseline as well)
 Relevant files:
     - `evaluations/pv_dm_gs_eval`
     - `evaluations/pv_dbow_gs_eval`
+    - `evaluations/pv_best_eval` -- concatenation of the best models from both architectures
 
 Context:
 - only true classification tasks
@@ -391,3 +392,14 @@ Results:
     - the architectures are comparable in aan, s2orc, oc
     - DBOW is better at imdb, pan
     - DM is better at arxiv
+
+- Concatenation of models:
+    - this experiment confirmed what I knew from previous experiments that the
+      mean accuracy rises by about 2 points (from best single model to best
+      concat model)
+    - otherwise the scores are very neck-to-neck between the concat models
+    - I already decided to go with the combination of the best DM and DBOW,
+      since I am low on time
+        - this variant is second in normalized accuracy but only by about 5e10-6
+          (as I said very neck-to-neck)
+        - with all models considered this variant is best by only about 4e10-5
