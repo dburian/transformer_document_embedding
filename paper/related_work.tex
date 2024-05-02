@@ -1,19 +1,21 @@
 \chapter{Related Work}\label{chapter:related_work}
 
-This chapter reviews the research we consider relevant to embedding
-long texts using Transformers \citep{vaswani2017attention}. First, we summarize
-efforts that have gone into making Transformers more efficient so that they
-can process long inputs. These advancements are crucial to embedding documents,
-often much longer than the standard 512 tokens. In the next section, we
-describe approaches to training embedding models. We also compare our training method to the existing ones and describe its benefits.
+This chapter reviews the research we consider relevant to embedding long texts
+using Transformers \citep{vaswani2017attention}. First, we summarize efforts
+that have gone into making Transformers more efficient so that they can process
+long inputs. These advancements are crucial to embedding documents, often much
+longer than the standard 512 tokens. In the next section, we describe
+approaches to training embedding models. We also compare our training method to
+the existing ones and describe its benefits.
 
 \section{Efficient transformers}\label{section:efficient_transformers}
 
-Though the Transformer architecture produces exceptional results on NLP tasks ��devlin2019bert, liu2019roberta, reimers2019sentence, it has one
+Though the Transformer architecture produces exceptional results on NLP tasks
+\citep{devlin2019bert, liu2019roberta, reimers2019sentence}, it has one
 inherent disadvantage regarding longer texts. The self-attention layer, the
 principal part of Transformer, consumes a quadratic amount of memory in the
-length of the input. This significantly limits Transformer's applicability
-in tasks that require longer contexts, such as document retrieval or
+length of the input. This significantly limits Transformer's applicability in
+tasks that require longer contexts, such as document retrieval or
 summarization.
 
 Thanks to the popularity of the Transformer architecture, a large
@@ -71,7 +73,7 @@ distributed throughout the input. In Longformer \citep{beltagy2020longformer},
 every token can attend to every $k$th distant token to increase its field of
 vision. BigBird \citep{zaheer2020big} computes dot products between randomly
 chosen pairs of key-query vectors. These serve as connecting nodes for other
-tokens exchanging information. The last typical sparse attention pattern is 
+tokens exchanging information. The last typical sparse attention pattern is
 global attention, computed only on a few tokens. Though such an attention
 pattern is costly, it is essential for tasks that require a representation of
 the whole input \citep{beltagy2020longformer}. In Longformer, some significant
@@ -105,7 +107,7 @@ engineering and kernels to approximate the elements of the previously mentioned 
 matrix $A$ as dot products of query and key feature vectors. Self-attention can
 then be approximated as a multiplication of four matrices: the projected query
 and key matrices, the normalization matrix substituting the division by $d$, and
-the value matrix. That allows the matrix multiplications to be reordered, 
+the value matrix. That allows the matrix multiplications to be reordered,
 multiplying the projected key and the value matrix first and then multiplying
 by the projected query matrix. Such reordering saves time and space by a
 factor of $O(N)$, making the self-attention linear in input length.

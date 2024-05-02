@@ -10,12 +10,14 @@ student in Section~\ref{section:student_model}.
 
 \section{Training methodology}\label{section:training_method}
 
-Our training methodology aims to improve a model's embeddings such that they represent the input more faithfully. As we describe in
+Our training methodology aims to improve a model's embeddings such that they
+represent the input more faithfully. As we describe in
 Chapter~\ref{chapter:document_representation}, we distinguish two qualities of
 faithful representations: structural and contextual. The goal is to instill
-both qualities into a single embedding model and thus gain the advantage of both of them at the same time. To do so, we use teacher-student
-training with two teacher embedding models, one with high structural capacity
-and the other with high contextual capacity.
+both qualities into a single embedding model and thus gain the advantage of
+both of them at the same time. To do so, we use teacher-student training with
+two teacher embedding models, one with high structural capacity and the other
+with high contextual capacity.
 
 In the following subsections, we describe teacher-student training in detail
 and give a high-level overview of the proposed loss function.
@@ -69,7 +71,7 @@ $\Loss_S$, $\Loss_C$ and $\lambda(x)$ in Chapter~\ref{chapter:experiments}.
     \lambda
   ) =
     \lambda(x) \Loss_S(y_\Student, y_{\Teacher_S}) +
-            (1 - \lambda(x)) \Loss_C(y_\Student, y_{\Teacher_S})
+            (1 - \lambda(x)) \Loss_C(y_\Student, y_{\Teacher_C})
 \end{equation}
 
 The two losses could push against each other and slow down or halt the
@@ -77,7 +79,8 @@ training. To avoid that, we choose one of the losses to be more strict while
 the other to be more forgiving. In that way, the more forgiving loss should
 adapt to the strict one instead of pushing against it. As mentioned in
 Section~\ref{section:combine_structural_and_contextual}, we view structural
-quality as the more important. Therefore, we choose the structural loss $\Loss_S$ as the stricter and exact loss, forcing the student to mimic the
+quality as the more important. Therefore, we choose the structural loss
+$\Loss_S$ as the stricter and exact loss, forcing the student to mimic the
 structural teacher as much as possible. On the other hand, the contextual loss
 $\Loss_C$ should give the student model more freedom in the form of the
 produced embedding but still force it to incorporate the information from the
@@ -101,14 +104,15 @@ contextual embedding.
 This section introduces the teacher models used during our experiments in
 Chapter~\ref{chapter:experiments}. We chose Sentence-BERT
 \citep{reimers2019sentence} as the structural teacher model and Paragraph
-Vector \citep{le2014distributed} (or \emph{PV}) as the contextual teacher model.
-As explained in Chapter~\ref{chapter:document_representation}, each of the two
-mentioned models can generate embedding of a different quality. SBERT can compare word relationships on many levels and thus understand even
-complex text structures. However, it cannot process long texts. On the other
-hand, Paragraph Vector can produce embeddings even for long documents, but it
+Vector \citep{le2014distributed} (or \emph{PV}) as the contextual teacher
+model. As explained in Chapter~\ref{chapter:document_representation}, each of
+the two mentioned models can generate embedding of a different quality. SBERT
+can compare word relationships on many levels and thus understand even complex
+text structures. However, it cannot process long texts. On the other hand,
+Paragraph Vector can produce embeddings even for long documents, but it
 processes text very shallowly, which prohibits understanding any complex
-structures. We hope to synthesize both qualities by distilling the knowledge of the two
-teacher models into a single model.
+structures. We hope to synthesize both qualities by distilling the knowledge of
+the two teacher models into a single model.
 
 \subsection{SBERT}
 
@@ -124,8 +128,8 @@ sentence-level text-understanding tasks \citep{reimers2019sentence}.
   \centering
   \includegraphics[width=0.5\textwidth]{./img/sbert_architecture.pdf}
 
-  \caption{Siamese network architecture used to train SBERT. During training, SBERT classifies a pair of
-  sentences from an NLI dataset into three classes
+  \caption{Siamese network architecture used to train SBERT. During training,
+  SBERT classifies a pair of sentences from an NLI dataset into three classes
   ``entailment'', ``neutral'' and ``contradiction''.}
 
   \label{fig:sbert}
@@ -134,13 +138,17 @@ sentence-level text-understanding tasks \citep{reimers2019sentence}.
 
 \subsection{Paragraph Vector}\label{section:paragraph_vector}
 
-Paragraph Vector \citep{le2014distributed}, sometimes referred to as Doc2Vec, is a simple
-text-embedding model that views the input as a Bag of Words (or BoW). Paragraph
-Vector comprises two sub-models: Distributed Memory (DM) and Distributed Bag of
-Words (DBOW). While each model is trained separately, the authors recommend combining both architectures into a single model, where the combined models' embeddings are concatenated. The models are trained to predict a word within a window in the given document. As shown in
-Figure~\ref{fig:dbow}, DBOW bases its prediction only on the whole paragraph's embedding. DM, whose architecture is depicted in
-Figure~\ref{fig:dm}, additionally uses the embeddings of the surrounding words
-within a given window.
+Paragraph Vector \citep{le2014distributed}, sometimes referred to as Doc2Vec,
+is a simple text-embedding model that views the input as a Bag of Words (or
+BoW). Paragraph Vector comprises two sub-models: Distributed Memory (DM) and
+Distributed Bag of Words (DBOW). While each model is trained separately, the
+authors recommend combining both architectures into a single model, where the
+combined models' embeddings are concatenated. The models are trained to predict
+a word within a window in the given document. As shown in
+Figure~\ref{fig:dbow}, DBOW bases its prediction only on the whole paragraph's
+embedding. DM, whose architecture is depicted in Figure~\ref{fig:dm},
+additionally uses the embeddings of the surrounding words within a given
+window.
 
 We chose Paragraph Vector as a contextual teacher due to its unique
 architecture, which forces the model to develop a single vector that summarizes
@@ -172,7 +180,7 @@ give it a slight advantage.
   \includegraphics[width=1\textwidth]{./img/dm_architecture.pdf}
 
   \caption{Distributed Memory model architecture. The model predicts the input
-  words' neighboring word for the input paragraph.}
+  words' neighboring word within the input paragraph.}
 
   \label{fig:dm}
 
@@ -180,20 +188,21 @@ give it a slight advantage.
 
 \section{Student model}\label{section:student_model}
 
-The student model is the embedding model we train based on the outputs of the teacher models. By using
-teacher-student training, we can avoid some of the architectural drawbacks of
-both teacher models while still benefiting from the qualities of the teachers'
-embeddings. We choose the student's architecture at a midpoint between
-the two teachers' architectures. In other words, not to be as complex as the
-architecture of SBERT but not as simple as the architecture of PV. Therefore the student model
-can model world relationships, similarly to SBERT, and process longer inputs, while still having a
-manageable memory footprint. We chose a Transformer
-with a sparse attention mechanism. Transformer is a well-tested architecture
-that is used throughout NLP. Additionally, with sparse attention, Transformers
-consume a relatively small amount of memory even for longer inputs, as we
-explain in Section~\ref{section:efficient_self_attn}. Another consideration is
-that we need a pre-trained model, as our method is not suited to train a model
-from scratch but to finetune a model's document embeddings.
+The student model is the embedding model we train based on the outputs of the
+teacher models. By using teacher-student training, we can avoid some of the
+architectural drawbacks of both teacher models while still benefiting from the
+qualities of the teachers' embeddings. We choose the student's architecture at
+a midpoint between the two teachers' architectures. In other words, not to be
+as complex as the architecture of SBERT but not as simple as the architecture
+of PV. Therefore the student model can model world relationships, similarly to
+SBERT, and process longer inputs, while still having a manageable memory
+footprint. We chose a Transformer with a sparse attention mechanism.
+Transformer is a well-tested architecture that is used throughout NLP.
+Additionally, with sparse attention, Transformers consume a relatively small
+amount of memory even for longer inputs, as we explain in
+Section~\ref{section:efficient_self_attn}. Another consideration is that we
+need a pre-trained model, as our method is not suited to train a model from
+scratch but to finetune a model's document embeddings.
 
 Contrary to the selection of architecture, selecting a concrete model is not
 crucial to our method. Our choice of the concrete model is governed more by

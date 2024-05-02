@@ -12,25 +12,27 @@ the strengths and limitations of our training method.
 \section{Student models}
 
 We only evaluate the three best-performing variants of our training method from
-Chapter~\ref{chapter:experiments}. We use the hyperparameters listed in Table~\ref{table:experiments_final_config}, however, as we train the student models and the contextual teachers on significantly
-more data, we label the models differently. {\CosineStudent}
-is trained with a balanced mix of contextual loss and cosine structural loss,
-which is masked out for inputs longer than the structural teacher's maximum
-context length. {\MSEStudent} is trained with an equal mixture of contextual
-loss and a max-margin MSE structural loss. Finally, {\OnlyMSEStudent} is
-trained only on the max-margin MSE structural loss. These models'
-hyperparameters correspond to the configurations of
-\Model{masked-cosine;$\lambda$=0.5}, \Model{mm-MSE;$\lambda$=0.5}, and
-\Model{only-structural;mm-MSE} from Table~\ref{table:experiments_final_config},
-respectively.
+Chapter~\ref{chapter:experiments}. We use the hyperparameters listed in
+Table~\ref{table:experiments_final_config}, however, as we train the student
+models and the contextual teachers on significantly more data, we label the
+models differently. {\CosineStudent} is trained with a balanced mix of
+contextual loss and cosine structural loss, which is masked out for inputs
+longer than the structural teacher's maximum context length. {\MSEStudent} is
+trained with an equal mixture of contextual loss and a max-margin MSE
+structural loss. Finally, {\OnlyMSEStudent} is trained only on the max-margin
+MSE structural loss. These models' hyperparameters correspond to the
+configurations of \Model{masked-cosine;$\lambda$=0.5},
+\Model{mm-MSE;$\lambda$=0.5}, and \Model{only-structural;mm-MSE} from
+Table~\ref{table:experiments_final_config}, respectively.
 
 \subsection{Training data}
 
 We compile our training corpus the same as \Dataset{val-500k}. We train the
 student models only using Longformer's training data. Without any new training
-data, the performance of our student model depends only on our training
-method. Hence, the performances of the student models are proportional to our
-training method's performance, which gives us an easy way to gauge the benefits of our training method.
+data, the performance of our student model depends only on our training method.
+Hence, the performances of the student models are proportional to our training
+method's performance, which gives us an easy way to gauge the benefits of our
+training method.
 
 Following Longformer's approach, we equally sample articles from the English
 Wikipedia\footnote{\url{https://huggingface.co/datasets/wikipedia/viewer/20220301.en}}
@@ -84,20 +86,22 @@ potential of our training method, we train the contextual teachers anew and
 with much more data than in the previous chapter. {\CosineStudent} uses a
 2048-dimensional Paragraph Vector \citep{le2014distributed} composed of
 Distributed Memory and Distributed Bag of Words models. {\MSEStudent} uses only
-a 100-dimensional Distributed Memory model. These contextual teachers correspond to \Model{PV;2048d} and \Model{DM;100d} from Section~\ref{section:pv_training} respectively.
+a 100-dimensional Distributed Memory model. These contextual teachers
+correspond to \Model{PV;2048d} and \Model{DM;100d} from
+Section~\ref{section:pv_training} respectively.
 
 We compile the contextual teacher's training dataset in the same manner as
-\Dataset{train-1M}. Since the contextual teachers' training
-data also becomes the student's training data, we restrict it to Longformer's training data for the
-reasons we mention in the previous section. However, as PV is a significantly
-smaller model than our student model, we can afford to train it with
-substantially more data. We use all available data from RealNews articles and
-an equal amount of Wikipedia documents. The resulting dataset has 8.3 million
-documents. We label the trained 100-dimensional and 2048-dimensional teachers
-\Model{DM} and \Model{PV}. To keep the models' memory footprint manageable, we
-restrict \Model{DM}'s vocabulary to $6\times 10^7$ words and \Model{PV}'s
-vocabulary to $1.2\times 10^7$ words. With these limitations, the models take
-up approximately 96GB and 124GB of memory during prediction.
+\Dataset{train-1M}. Since the contextual teachers' training data also becomes
+the student's training data, we restrict it to Longformer's training data for
+the reasons we mention in the previous section. However, as PV is a
+significantly smaller model than our student model, we can afford to train it
+with substantially more data. We use all available data from RealNews articles
+and an equal amount of Wikipedia documents. The resulting dataset has 8.3
+million documents. We label the trained 100-dimensional and 2048-dimensional
+teachers \Model{DM} and \Model{PV}. To keep the models' memory footprint
+manageable, we restrict \Model{DM}'s vocabulary to $6\times 10^7$ words and
+\Model{PV}'s vocabulary to $1.2\times 10^7$ words. With these limitations, the
+models take up approximately 96GB and 124GB of memory during prediction.
 
 \subsection{Training of student models}
 
@@ -316,21 +320,21 @@ task~\citep{potthast2013overview}, which is a collection of pairs of web
 documents, where the sections relevant to plagiarism are humanly annotated both
 in the source as well as in the suspicious document. \Task{pan} is a binary
 classification task where each document pair is classified as positive or
-negative. Positive inputs contain the source's plagiarised section, with a part of
-the suspicious document containing the corresponding plagiarised section.
+negative. Positive inputs contain the source's plagiarised section, with a part
+of the suspicious document containing the corresponding plagiarised section.
 Negative pairs are constructed from the positives by replacing the source's
-segment with a different part of the same document that is not annotated as being
-plagiarised.
+segment with a different part of the same document that is not annotated as
+being plagiarised.
 
-\paragraph{Semantic Scholar Open Research Corpus citations.} The Semantic
+\paragraph{Semantic Scholar Open Research Corpus citations.} The Semantic \\
 Scholar Open Research Corpus citations dataset~\citep{zhou2020multilevel}
 (denoted as \Task{s2orc}) is our third and final citation prediction dataset.
 The source of this dataset is the Semantic Scholar Open Research
-Corpus~\citep{lo2019s2orc}, where each paper is divided into sections
-connected via links to the papers cited within the given section. This structure is
-used to generate positive and negative pairs. A section is paired with an
-abstract of a cited paper to create a positive pair or an abstract of
-a non-cited paper to create a negative pair.
+Corpus~\citep{lo2019s2orc}, where each paper is divided into sections connected
+via links to the papers cited within the given section. This structure is used
+to generate positive and negative pairs. A section is paired with an abstract
+of a cited paper to create a positive pair or an abstract of a non-cited paper
+to create a negative pair.
 
 
 \paragraph{Wines and Video games Wikipedia articles.} Both of our
@@ -607,7 +611,7 @@ which should theoretically improve the students' performance on longer inputs.
 
 \subsection{Retrieval tasks}
 
-\begin{figure}[p]
+\begin{figure}
 
   \includegraphics[width=\textwidth]{img/final_sims_evals.pdf}
 
@@ -618,7 +622,7 @@ which should theoretically improve the students' performance on longer inputs.
 
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}
 
   \centering
   \includegraphics[width=0.85\textwidth]{img/final_sims_evals_per_task.pdf}
