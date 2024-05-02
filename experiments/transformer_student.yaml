@@ -8,10 +8,10 @@ model:
 head:
   module: structural_contextual_head:StructuralContextualHead
   kwargs:
-    max_structural_length: null
-    lam: 1
+    max_structural_length: 384
+    lam: 0.5
     structural_head_kwargs:
-      loss_type: max_marginals_cos_dist
+      loss_type: mse
       max_marginals_lam: 1
     contextual_head_kwargs:
       contextual_dim: 100
@@ -42,12 +42,12 @@ train_pipeline:
     validate_every_step: 100
     save_best: False
     patience: null
-    global_attention_type: cls
-    dataloader_sampling: default
+    global_attention_type: none
+    dataloader_sampling: consistent
     metric_window_size_mult: 5
     metric_window_shift_frac: 0.1
-    sampler_kwargs: null
-      #bucket_limits: [512, 1024, 1536, 2048, 2560, 3072, 3584, 4096]
+    sampler_kwargs:
+      bucket_limits: [512, 1024, 1536, 2048, 2560, 3072, 3584, 4096]
 
 dataset:
   module: teacher_embedding:TeacherEmbedding
