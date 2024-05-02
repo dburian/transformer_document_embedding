@@ -1,45 +1,39 @@
 \chapter{Experiments}\label{chapter:experiments}
 
-In this chapter, we experiment with the training method we introduced in
-Chapter~\ref{chapter:training_method}. While the main goal is to outperform
-both teacher models and the base student checkpoint, we also want to show how
-each teacher contributes to the student's performance.
+In this chapter, we experiment with the training method we introduce in
+Chapter~\ref{chapter:training_method}. This chapter's main goal is to show that our method improves the base student's performance and, ideally, also the performances of both teacher models. We also examine
+each teacher's contribution to the student's performance and find a mix of the teachers' capabilities that produce the best-performing student model.
 
 This chapter is laid out as follows. We describe the training data in
 Section~\ref{section:val_training_data}. Next, we discuss how we compare models
-in Section~\ref{section:validation_tasks} and present the student's
-configuration and define the baselines in
-Section~\ref{section:student_model_config_baselines}. Then, we experiment with
-the structural loss in Section~\ref{section:structural_loss}. With the
-structural loss already given, we find the best performing contextual loss and
+in Section~\ref{section:validation_tasks}. In Section~\ref{section:student_model_config_baselines}, we present the student's
+configuration and specify the baselines we try to beat in the following experiments. First, we experiment with the structural loss in Section~\ref{section:structural_loss}. Then, for the given best-performing structural loss, we find the best-performing contextual loss and
 the weighting of the two losses in Section~\ref{section:structural_and_contextual}.
 Finally, we summarize our experiments and findings in
 Section~\ref{section:experiments_summary}.
 
 \section{Training data}\label{section:val_training_data}
 
-Our training dataset mirrors Longformer's training dataset, except for few
-exceptions. We leave out Book corpus \citep{zhu2015aligning} and the Stories
-corpus \citep{trinh2018simple} as they are currently unavailable. So, we
-equally sample documents from English Wikipedia and RealNews articles
+Our training dataset mirrors Longformer's training dataset, except for a few
+exceptions. We have to leave out the Book corpus \citep{zhu2015aligning} and the Stories
+corpus \citep{trinh2018simple} as they are currently unavailable. Thus, we
+equally sample documents from English Wikipedia\footnote{\url{https://huggingface.co/datasets/wikipedia/viewer/20220301.en}} and RealNews articles
 \citep{zellers2019defending}, which are at least 1200 Longformer tokens long.
 We label the resulting dataset as \Dataset{val-500k} and show its statistics in
-Table~\ref{table:val_data_stats}. We compile our training dataset from
-Longformer's training data so that the comparison between our trained student
-model and Longformer is more fair. In this way, the trained student model, does
-not see any new data compared to Longformer, and therefore any difference
+Table~\ref{table:val_data_stats}. We compile our training dataset from Longformer's training data so that comparing our trained student model and Longformer is fair. In this way, the trained student model does
+not see any new data compared to Longformer. Therefore, any difference
 between the models' performances can be attributed to our training method. For
-the same reasons, we use identical method to generate dataset
-\Dataset{train-1M} for the final training of our student model in
+the same reasons, we use an identical method to generate the dataset
+\Dataset{train-1M} for the final training of a selected few student models in
 Chapter~\ref{chapter:evaluation}.
 
 Very similar to \Dataset{train-1M}, \Dataset{val-500k} contains long documents
 that are, on average, over 1300 tokens long. Consequently, only about 34\% of
 the documents could be processed whole using a traditional Transformer such as
-RoBERTa \citep{liu2019roberta} or SBERT. We also display the documents' length
-distribution in Figure~\ref{fig:val_data_dist}. As Wikipedia contains
+RoBERTa \citep{liu2019roberta}. We also display the documents' length
+distribution in Figure~\ref{fig:val_data_dist}. The source's distributions are well-spaced since Wikipedia contains
 relatively short documents, while RealNews does not contain documents shorter
-than 1200 tokens, the source's distributions are well-spaced.
+than 1200 tokens. Consequently, most training documents have either between 0 and 500 tokens or 1200 to 1700 tokens.
 
 \begin{table}
   \centering
@@ -81,8 +75,7 @@ than 1200 tokens, the source's distributions are well-spaced.
 We compare the embedding models based on their performance on downstream tasks.
 We use a subset of our evaluation tasks, described in detail in
 Chapter~\ref{chapter:evaluation}. We include tasks with either a large enough
-training split suitable for cross-validation or a validation split. As a result
-we validate embedding models only on classification tasks. All tasks are
+training split suitable for cross-validation or a validation split. As a result, we validate embedding models only on classification tasks. All tasks are
 evaluated using a validation split, except for \Task{IMDB}, where we take the
 mean score of five cross-validation folds. To make the validation faster to
 compute, we downsample the validation and train splits to 10000 examples. We
@@ -91,7 +84,7 @@ truncated split has a label distribution nearly identical to the original one.
 We present the validation tasks and their document count in
 Table~\ref{table:validation_tasks}.
 
-We use binary or micro-averaged accuracy as the scoring metric. Often, compare
+We use binary or micro-averaged accuracy as the scoring metric. Often, we compare
 performance across several tasks. However, not all tasks are equally difficult,
 so averaging accuracies would lead us to favor models that performed well on
 easy tasks and undervalue models that performed well on more difficult tasks.
@@ -102,11 +95,10 @@ we asses models based on the mean normalized accuracy. In visualizations, we
 mark mean normalized accuracy with a black triangle.
 
 When validating a trained embedding model on a task, we finetune a head that
-transforms the embeddings into the output format required for the given task. We
+transforms the embeddings into the output format required by the given task. We
 do not finetune the embedding model itself. Besides speeding up the validation,
 this gives us a more genuine picture of the embedding model's performance.
-Since all our validation tasks are classifications, the heads are just 2-layer
-neural network classifiers with a cross-entropy loss. We present the complete
+Since all our validation tasks are classifications, we train a classification head for all of them. For each task, we use the same 2-layer neural network with a cross-entropy loss. We present the complete
 list of the classifier's hyperparameters and training parameters in
 Table~\ref{table:head_train_params}.
 
@@ -171,27 +163,25 @@ Table~\ref{table:head_train_params}.
 
 \section{Student model's configuration and baselines}\label{section:student_model_config_baselines}
 
-As we explained in Section~\ref{section:student_model}, we initialize our
+As we explain in Section~\ref{section:student_model}, we initialize our
 student model with Longformer \citep{beltagy2020longformer}. We use
 Longformer's base version with about 126M parameters implemented by HuggingFace
 \texttt{transformers}
 library\footnote{\url{https://huggingface.co/allenai/longformer-base-4096}}.
 
-We pool the last layer's hidden states and compute their mean to obtain the
-input's embedding. We do not use global attention and employ sliding window
+We generate the student's embedding by computing a mean of the last layer's hidden states. We do not use global attention and employ sliding window
 attention, with the window sizes $\omega$ set to the default 512 tokens. In our
-preliminary experiments, we also tested using global attention to the
+preliminary experiments, we also tested setting global attention to the
 \texttt{CLS} token and taking its hidden state from the last layer as the
 input's embedding. However, the mean-pooling approach proved to be superior.
 Additionally, with mean-pooling, we found global attention is not beneficial,
-so we avoided it.
+so we do not use it.
 
-We aim for fast convergence with a small memory footprint when training the
-student model. We, therefore, use a high learning rate, no gradient
+During training, we aim for fast convergence with a small memory footprint. Therefore, we use a high learning rate, no gradient
 accumulation steps, mixed-precision training, and gradient checkpointing. We
 enumerate the complete list of student's training parameters in
-Table~\ref{table:student_train_params}. We use these values for all student's
-training in this chapter.
+Table~\ref{table:student_train_params}. We use these values for all students
+we train in this chapter.
 
 
 \begin{table}
@@ -223,16 +213,10 @@ training in this chapter.
 
 \subsection{Baselines}
 
-As mentioned, we aim to finetune our training method so the student model
-surpasses teachers and Longformer. To check how close we are to this goal
-throughout this chapter, we compare the student variants to three models:
+As mentioned, our goal is to find a configuration of our training method such that the trained student outperforms both teachers and Longformer. To check how close we are to this goal
+throughout this chapter, we compare the students to three models:
 Longformer \citep{beltagy2020longformer}, SBERT \citep{reimers2019sentence},
-and PV \citep{le2014distributed}. We compare students to Longformer to judge
-how our training method improves document embeddings. As we mentioned above, we
-use a subset of Longformer's pre-training data. So, the student model cannot
-gain performance just due to the training data, as it has already seen them
-during pre-training. For context, we train the student models for only 3.8\%
-iterations of Longformer's pre-training with an eight times smaller batch size.
+and PV \citep{le2014distributed}. We compare students to Longformer to judge how our training method improves document embeddings. Due to the selection of our training data, the student's performance depends only on our training method. Thus, the student model's performance becomes proportional to our training method's performance. As we also want to consume a minimum amount of resources, we train the student models only on 15k documents. In our preliminary experiments, we found this number of training documents to be enough to show the benefit of our method. For context, we train the student models for only 3.8\% of Longformer's pre-training iterations with an eight times smaller batch size.
 
 We compare the students to the two teachers to see how much performance our
 training method ignores or takes advantage of. If our student model performs
@@ -240,10 +224,7 @@ worse than a particular teacher, we need to improve how we distill the
 teacher's embeddings into the student's embeddings. As the student has
 architectural advantages compared to both teachers, such as longer maximum
 context, we hypothesize it can match and surpass both teachers' performance. We
-discuss the configuration of the structural teacher in the following section.
-Paragraph Vector's training is a part of our training method, so we discuss
-further details in Section~\ref{section:pv_training}, where we experiment with
-PV's training hyperparameters.
+discuss the configuration of the structural teacher in the following section. We train Paragraph Vector as a part of our method in Section~\ref{section:pv_training}.
 
 \section{Structural loss}\label{section:structural_loss}
 
@@ -252,10 +233,9 @@ loss compares the student's and the structural teacher's embeddings. Its
 goal is to encourage distillation of the quality of the structural teacher's
 embeddings into the student's embeddings. We focus on the structural loss first
 since, in our preliminary experiments, we observed that the structural quality
-is more significant to the performance of the student model than the contextual
+is more important to the performance of the student model than the contextual
 quality. We arrive at the same conclusions later in this chapter in
-Section~\ref{section:projections_only_contextual}. Therefore, we prioritize
-first finding the best-performing hyperparameters of the structural loss and
+Section~\ref{section:projections_only_contextual}. Therefore, we prioritize first finding the best-performing hyperparameters of the structural loss and
 adapting the contextual loss to it afterward.
 
 As we mention in Section~\ref{section:teacher_models}, we use SBERT
@@ -290,10 +270,9 @@ Longformer's, showing that unless Longformer's embeddings are finetuned, its
 longer context length or pre-training is of no benefit.
 
 These encouraging results show that using only the structural teacher can be a
-valid method of improving a model's embeddings. However, we hope to
-enhance the student's performance even further. In subsequent experiments, we
+valid method of improving a model's embeddings in itself, even without the contextual teacher. In subsequent experiments, we
 use cosine as the structural loss. For brevity, we label the student model
-trained with only the structural loss as \Model{only-structural;cosine}.
+trained with only the cosine structural loss as \Model{only-structural;cosine}.
 
 \begin{figure}
   \includegraphics[width=\textwidth]{img/structural_simple_losses.pdf}
@@ -314,7 +293,7 @@ embedding of the same input, which we call \emph{positive}, and to
 the teacher's embedding of different inputs, which we call
 \emph{negatives}. They reward the student model for close proximity to
 positives or large distances to the negatives. Therefore, structural composite
-losses optimize two aspects: they decrease the distance to SBERT's embeddings
+losses aim to optimize two objectives: they decrease the distance to SBERT's embeddings
 while increasing the margin between the student's embeddings of different inputs.
 
 We explore two types of composite losses: max-margin and contrastive. To
@@ -350,11 +329,11 @@ For max-margin loss, we try MSE and cosine distance as $\operatorname{sim}$ and
 simultaneously try several weightings $\gamma$. We compare models trained with
 the composite losses with those trained with the simple losses in
 Figure~\ref{fig:structural_composite_vs_simple}. Composite losses using MSE
-seem to benefit from the negative loss component, as 3 out of 4 outperform the
+seem to benefit from the negative loss component, as 3 out of the 4 tested outperform the
 simple MSE loss. However, despite the benefits, only one variant surpasses both
 baselines. With cosine, it seems that the negative loss component hurts the
 performance since only one version outperforms the simple cosine loss and does
-so by only $10^{-4}$. We carry out an analysis, to explain the differences
+so by only $10^{-4}$. We carry out an analysis to explain the differences
 between MSE and cosine composite losses and to show how the negatives
 contribute to the model's performance.
 
@@ -380,11 +359,11 @@ loss component is minimal for most student models. Except for
 shift in the distances' distributions. In terms of squared L2 distance,
 \Model{max-margin;MSE;$\gamma$=1.0} widens the gap between positives and
 negatives, yet it also increases the distances to the positives. However, this
-effect is much less pronounced for cosine distance. So, the model increases the
+effect is much less pronounced for cosine distance. This suggests that the model increases the
 embeddings' norm to create a large gap between positives and negatives in terms
-of squared L2 distance, while decreasing the cosine distance to positives. In
+of squared L2 distance while decreasing the cosine distance to positives. In
 other words, despite computing L2 distances, max-margin MSE loss with
-$\gamma=1.0$ optimizes cosine distance. Note that with $\gamma=1.5$ the
+$\gamma=1.0$ optimizes cosine distance. Note that with $\gamma=1.5$, the
 negative loss component has damaging effects in terms of both cosine and
 squared L2 distances.
 
@@ -403,17 +382,17 @@ squared L2 distances.
 \end{figure}
 
 To summarize, the effect of the negatives being included in the loss may be
-dual. With the right configuration, the composite losses may enforce larger
-separation between student's embeddings, while simultaneously decreasing their
-distance to the structural teacher's embeddings. So, besides
+dual. With the right configuration, the composite losses may enforce a larger
+separation between the student's embeddings while decreasing their
+distance from the structural teacher's embeddings. So, besides
 \Model{only-structural;cosine} we also continue experimenting with
 \Model{max-margin;MSE;$\gamma$=1.0}, which we label in further sections as
 \Model{only-structural;mm-MSE}.
 
 \section{Structural and contextual loss}\label{section:structural_and_contextual}
 
-This section explores contextual losses that complement the best-performing
-structural losses from previous section. Since there are several
+This section explores contextual losses to complement the best-performing
+structural losses from the previous section. Since there are several
 hyperparameters to explore, we split this section into parts. Each part focuses
 on a different aspect of the contextual loss or the weighting of the contextual
 and structural loss. At the end of each part, we select a few best-performing
@@ -423,7 +402,7 @@ Section~\ref{section:pv_training}. Then, we experiment with the contextual
 loss's configuration in Section~\ref{section:contextual_loss}. To illustrate
 the importance of the structural teacher, we show the performance we reach when
 we use only the contextual loss. More importantly, we test the contextual
-losses with both structural losses and select the best performing configuration
+losses with both selected structural losses and pick the best-performing configuration
 for each one. Finally, we explore different ways to weigh the contextual and
 structural loss for both combinations in
 Section~\ref{section:weighting_experiments}.
@@ -432,12 +411,12 @@ Section~\ref{section:weighting_experiments}.
 
 We choose Paragraph Vector \citep{le2014distributed} as our contextual teacher,
 as we elaborate on in Section~\ref{section:paragraph_vector}. Since there is no
-concept of a pre-trained PV, as in the case of transformers, we train PV from
+concept of a pre-trained PV, as in the case of Transformers, we train PV from
 scratch. We use PV's implementation from the Gensim
 library\footnote{\label{fn:link_to_gensim}\url{https://radimrehurek.com/gensim}}
 and explore some of the hyperparameters that govern the training of PV. We
 focus on four hyperparameters that we consider important and adopt the
-recommendation of the library or related literature. We enumerate the adopted
+recommendation of the library or related literature for the rest of them. We enumerate the adopted
 and the grid-searched hyperparameters in Table~\ref{table:pv_hyperparams}. To
 explain the meaning of all hyperparameters, we provide the following summary:
 
@@ -482,9 +461,9 @@ with both architectures. For each architecture, we try different values of
 which all control the model's regularization. Settings such as higher
 dimensional embedding, small minimum count, and no text pre-processing
 regularize the model the least. They give the model the most information on its
-inputs while providing it with large embedding through which it
+inputs while providing it with a large embedding through which it
 can express precisely. On the other hand, using lower dimensional embedding,
-large minimum count, and stemming the document's words forces the model to be
+large minimum count, and stemming forces the model to be
 more general and less precise. The model has less detailed information on its
 input and must squeeze all of it into a small vector. We do not see any value in
 trying dimensions of embeddings higher than 1024 since, in later experiments, we
@@ -497,7 +476,7 @@ document. Embeddings of such words would be poorly trained and not add
 meaningful information to the document's embedding. The last hyperparameter that is
 worth mentioning is \texttt{dbow\_words}. DBOW, on its own, does not train word
 embeddings, which are, by default, randomly generated. Setting \texttt{dbow\_words} to true
-causes DBOW also to train word embeddings using Word2Vec's Skip-gram model
+causes DBOW to train word embeddings using Word2Vec's Skip-gram model
 \citep{mikolov2013efficient} in each epoch. \cite{lau2016empirical} showed that
 random word embeddings significantly hurt the model. Consequently, when
 training DBOW, we also train word embeddings despite the slower training, which
@@ -535,8 +514,8 @@ We train all variants on the whole \Dataset{val-500k} corpus. We follow the
 recommendations of \cite{le2014distributed} and also evaluate the combination
 of both architectures. However, we only select the best three models from each
 architecture and evaluate all nine combinations. We call these models
-\emph{compound} Paragraph Vectors. In total, there are 45 models whose
-performance on validation tasks we report in Figure~\ref{fig:pv_val_scores}.
+\emph{compound} Paragraph Vectors. We evaluate 45 models and display their
+performance on validation tasks in Figure~\ref{fig:pv_val_scores}.
 The single models favor large embedding dimensions and low minimum count.
 Additionally, on average, stemming or lowercasing leads to higher scores than
 not pre-processing the words. DBOWs vary more in performance, occupying the
@@ -565,7 +544,7 @@ embedding plays a significant role in teacher-student training. So, we select
 three paragraph vectors with varying vector sizes. We pick the best model with
 small vector size (\Model{DM;100;lowercase;2}), the best single model
 (\Model{DBOW;1024;None;2}) and the best model composed of both architectures
-(\Model{DM;1024;stem;2+DBOW;1024;None;2}). For brevity we label these models as
+(\Model{DM;1024;stem;2+DBOW;1024;None;2}). For brevity, we label these models as
 \Model{DM;100d}, \Model{DBOW;1024d} and \Model{PV;2048d} respectively.
 
 \subsection{Contextual loss}\label{section:contextual_loss}
@@ -574,7 +553,7 @@ Contextual loss $\Loss_C$ compares the student's and the contextual teacher's
 embeddings and encourages distillation of the quality of the teacher's
 embedding into the student's embedding. As we discuss in
 Section~\ref{section:abstract_loss}, we choose $\Loss_C$ to be less strict and
-give the student model more freedom in encoding information into the
+give the student model more freedom in encoding the input into the
 document embedding. Consequently, we do not consider losses such as MSE or
 cosine since they enforce either an exact vector or a direction in the
 embedding space. Instead, we use a variant of \emph{Canonical Correlation
@@ -586,7 +565,7 @@ in Equation~\ref{def:cca_more_dim}.
 \begin{defn}[Canonical Correlation Analysis]\label{def:cca_more_dim}
 
   For two matrices $X_1 \in \mathbb{R}^{n_1 \times m_1}$ and $X_2 \in
-  \mathbb{R}^{n_2 \times m_1}$, Canonical Correlation Analysis for $k$
+  \mathbb{R}^{n_2 \times m_2}$, Canonical Correlation Analysis for $k$
   dimensions finds $P \in \mathbb{R}^{m_1 \times k}$ and $Q \in \mathbb{R}^{m_2
   \times k}$ that maximize
 
@@ -603,10 +582,7 @@ in Equation~\ref{def:cca_more_dim}.
 CCA gives the student the freedom to change its embeddings as long as their
 linear projections correlate more with the linear projections of the contextual
 teacher's embeddings. However, linear projection may still leave too little
-leeway for the student model to simultaneously mimic the structural teacher
-while increasing the correlation with the projected contextual teacher's
-embeddings. Ideally, we would like to regulate the strength of the projections.
-Such adjustment is possible with \emph{Deep CCA} (\emph{DCCA})
+leeway for the student model to mimic the structural teacher. Ideally, we would like to regulate the strength of the projections. Such adjustment is possible with \emph{Deep CCA} (\emph{DCCA})
 \citep{andrew2013deep}. DCCA projects the input vectors with two neural
 networks and feeds the projections to the vanilla CCA. The two networks are
 trained jointly with the embedding model based on the computed CCA, which is
@@ -635,12 +611,12 @@ Equations~\ref{def:cca_with_forbenious_first}-\ref{def:cca_with_forbenious_last}
 \end{align}
 
 Thus, by minimizing CCA, we effectively minimize the difference between two
-projections that have uncorrelated features. SoftCCA enforces the same behavior
+projections with uncorrelated features. SoftCCA enforces the same behavior
 with two separate losses:
 
 \begin{itemize}
 
-  \item L2 loss, which minimizes the difference between projected set of
+  \item L2 loss, which minimizes the difference between a projected set of
     vectors $Z_1$ and $Z_2$:
 
     \begin{equation}
@@ -665,7 +641,7 @@ with two separate losses:
 
 \end{itemize}
 
-Where the symbols above have the following meaning:
+Where the symbols above have the following meanings:
 
 \begin{itemize}
 
@@ -684,9 +660,7 @@ Where the symbols above have the following meaning:
 \end{itemize}
 
 The L2 loss forces the projected vectors to be equal, while the Soft
-Decorrelation Loss forces them to have uncorrelated features. SoftCCA is able
-to approximate CCA, by keeping a running mean of the projected vectors'
-covariance matrices. Similarly to Batch Normalization \citep{ioffe2015batch},
+Decorrelation Loss forces them to have uncorrelated features. SoftCCA can approximate CCA by keeping a running mean of the projected vectors' covariance matrices. Similarly to Batch Normalization \citep{ioffe2015batch},
 SDL updates the running mean during training but avoids any updates during
 inference. With the above losses and the weighting hyperparameter $\delta$, we
 define SoftCCA in Equation~\ref{eq:soft_cca}.
@@ -700,9 +674,8 @@ We use SoftCCA loss as a replacement for CCA in DCCA. To be explicit, we
 project the student's and the contextual teacher's embedding with two separate
 feed-forward neural networks. Then, we apply SoftCCA loss, which provides a
 training signal for the embedding model and the neural networks projecting the
-embeddings. For brevity, we call the neural networks projecting an embedding
-\emph{student} and \emph{contextual projections}, depending on which embedding
-they project. And so, we can finally express $\Loss_C$ from
+embeddings. Depending on which input the neural networks project, we call them
+\emph{student} and \emph{contextual projections}. And so, we can finally express $\Loss_C$ from
 Equation~\ref{eq:abstract_loss} more concretely. For a student projection
 $f_\Student$ and a contextual projection $f_C$, we formulate our contextual
 loss in Equation~\ref{eq:contextual_loss}. We also illustrate the architecture
@@ -737,8 +710,8 @@ accumulated mean compared to lower values of $\beta$.
 
 In the rest of this section, we experiment with the strength of the
 projections. In the following section, we build the basic intuition behind
-training with the contextual loss, while finding the ideal projections without
-any structural loss. In the subsequent sections, we study how different
+training with contextual loss while finding the ideal projections without
+structural loss. In the subsequent sections, we study how different
 structural losses influence the projections. First, we experiment with cosine
 and then with max-margin MSE loss. In all cases, we test the projections for
 each of the three contextual teachers: \Model{DM;100d}, \Model{DBOW;1024d} and
@@ -766,11 +739,11 @@ pressure on the student's side, where the gradients can propagate to the
 embedding model.
 
 As we mentioned before, we feed the projected outputs to SoftCCA loss
-$\Loss_{\text{SoftCCA}}$. As SoftCCA requires both inputs to be of the same
-dimension, both projections must end with an equally sized layer. We always use
+$\Loss_{\text{SoftCCA}}$. SoftCCA requires both inputs to be of the same
+dimension, so both projections must end with an equally sized layer. We always use
 the dimension of the larger embedding as the final projection dimension. We do
 so to preserve all the embeddings' information through the projection and force
-the student model to distill all contextual embedding's dimensions, not just
+the student model to distill all the contextual embedding's dimensions, not just
 their subset. Also, there is no point in projecting the embeddings to even more
 dimensions than the embeddings have. Due to the Pigeonhole principle, some
 features of the final projections would have to depend on the same embedding's
@@ -786,8 +759,7 @@ of a fully connected layer and an optional Rectified Linear Unit (\emph{ReLU}).
 In preliminary experiments, we also tried adding Dropout, Batch, or Layer
 Normalization layers at different places in a block. However, in all cases,
 they had either negligible or negative effects on the performance of the final
-model. We label each block with the dimension of the fully connected layer and
-with the activation's name in brackets if used. We identify a projection by
+model. We label each block with the dimension of the fully connected layer and the activation's name in brackets if used. We identify a projection by
 block's labels delimited by an ``x''. So, \Proj{768(ReLU)x1024} are two
 feed-forward layers with 768 and 1024 features connected via ReLU. To label
 projections without any layers, we use a dash. We present all the projections'
@@ -849,11 +821,9 @@ projections that scale with the contextual embedding, such as
 \Proj{1024d;S:1024;C:1024} and \Proj{2048d;S:2048;C:2048}. Consequently,
 distilling information from an embedding with fewer features seems easier than
 from a larger one. And so, even though PV with 2048 dimensions beats SBERT, the
-students trained with it fail to capitalize on this advantage and perform worse
-than the model trained with SBERT. Therefore, we conclude that according to our
-results, the structural teacher is more important to the student's performance
+students trained with it fail to capitalize on this advantage and perform worse than the model trained with SBERT. So, according to our results, the structural teacher is more important to the student's performance
 than the contextual teacher and justifies why we search for the ideal
-contextual loss to the best performing structural loss rather than the other
+contextual loss to the best-performing structural loss rather than the other
 way around.
 
 \begin{figure}
@@ -890,9 +860,8 @@ The cosine structural loss boosts the models' performance and lessens the
 negative impact of a poor projection. As a consequence, almost all of the
 student models surpass all baselines. The best-performing projections are much
 larger compared to the best projections trained without any structural loss.
-This seems logical, as the added structural loss puts more pressure on the
-student, and so the contextual loss needs to give the model more freedom in
-order to avoid conflict between the losses, which would slow down the training.
+As the added structural loss puts more pressure on the
+student, the contextual loss needs to give the model more freedom to avoid conflict between the losses, which would slow down the training.
 With the larger projections, we were able to surpass
 \Model{only-structural;cosine}. This shows that, with the right projections,
 the student model benefits from both losses being used during training. Even if
@@ -966,7 +935,7 @@ structural embeddings may complement each other in the right setting.
 \subsubsection{Contextual projection with max-margin MSE structural
 loss}\label{section:projections_mm_mse}
 
-Finally we find the optimal projections with the max-margin MSE structural
+Finally, we find the optimal projections for the max-margin MSE structural
 loss. We present all the tested projection variants in
 Table~\ref{table:mm_mse_contextual_projections}. We include successful
 projections from the previous section and add stronger contextual projections
@@ -979,10 +948,10 @@ loss, max-margin MSE loss boosts the students' performances. Consequently, the
 student's performances are not as dependent on the projections as those of
 students trained without structural loss. Contrary to what we witness in
 previous experiments, stronger contextual projections perform very well
-overall. This shows that max-margin MSE loss more pressure on the student's
+overall. This shows that max-margin MSE loss puts more pressure on the student's
 embedding than the cosine structural loss. Despite testing even more
-projections than in the case of cosine structural loss, we fail to find
-projections which would outperform \Model{only-structural;mm-MSE}. Nonetheless,
+projections for max-margin MSE than for cosine structural loss, we fail to find
+projections that would outperform \Model{only-structural;mm-MSE}. Nonetheless,
 we continue experimenting with the best projections we find.
 
 \begin{table}
@@ -1057,12 +1026,12 @@ loss}\label{section:weighting_experiments}
 
 The final loss is a weighted sum of the contextual and the structural loss. In
 this section, we explore two weighting mechanisms. We combine a static
-weighting of each loss with dynamic masking of the structural loss based on
-inputs' length. As the structural teacher has limited context length, its
+weighting of each loss with a dynamic masking of the structural loss based on
+the length of the inputs. As the structural teacher has limited context length, its
 embedding only reflects the information in the first 384 tokens. We use dynamic
 masking to train the student only on those inputs, which the structural teacher
 encodes whole. Therefore, in theory, the structural loss should be more
-reliable. To summarize, we grid-search two parameters:
+reliable. Without the masking, we might motivate the student model to focus only on the first 384 tokens and discard the rest. To summarize, we grid-search two parameters:
 \texttt{max\_structural\_len} and $\lambda$. \texttt{max\_structural\_len}
 determines which inputs' structural loss we mask out. $\lambda$ is the static
 weight used for unmasked inputs to balance the importance of the structural and
@@ -1131,7 +1100,7 @@ weighting variant on the first 15k documents from \Dataset{val-500k}.
 We search for the best weighting configuration for the cosine structural loss,
 \Model{PV;2048d} contextual teacher and \Proj{S:768(ReLU)x4096(ReLU)x2048;C:-}
 projections, which is the most promising combination. As we mention above, we
-label this combination without any weighting as \Model{no-weighting}. We
+label this combination as \Model{no-weighting}. We
 present all the models' performances in Figure~\ref{fig:cos_weighting}. All the
 weighting variants surpass all baselines. Interestingly, even if the weighting
 is set significantly toward one side, such as \Model{None;$\lambda$=0.95} or
@@ -1158,8 +1127,7 @@ part of its input confuses it, thereby hurting its performance.
 We highlight the difference in performance between \Model{None;$\lambda$=0.5}
 and \Model{no-weighting}. These models' losses are the same, except that
 \Model{None;$\lambda$=0.5} effectively halves all loss gradients. This results
-in a noticeable drop in performance. However, even with the gradients being
-halved, \Model{384;$\lambda$=0.5} beats \Model{no-weighting} variant. This
+in a noticeable drop in performance. However, even with the halved gradients, \Model{384;$\lambda$=0.5} beats \Model{no-weighting} variant. This
 further emphasizes the importance of masking out structural loss for long
 inputs.
 
@@ -1168,17 +1136,16 @@ loss}
 
 Now we explore weighting hyperparameters for the max-margin MSE structural
 loss, \Model{DM;100d} contextual teacher and
-\Proj{S:768(ReLU)x1024(ReLU)x768;C:768} projections. Even though, this is the
-best performing combination for max-margin MSE structural loss, it does not
+\Proj{S:768(ReLU)x1024(ReLU)x768;C:768} projections. Even though this is the best-performing combination for max-margin MSE structural loss, it does not
 surpass \Model{only-structural;mm-MSE}. So, we test if different weighting of
-the structural and contextual loss can improve the score of the
+the structural and the contextual loss can improve the score of the
 \Model{no-weighting} variant. We display the models' performances in
 Figure~\ref{fig:mm_mse_weighting}. Clearly, masking out some inputs' structural
 loss significantly hurts performance. As we discuss in
 Section~\ref{section:composite_analysis}, part of the benefit of max-margin
 loss is that it increases the distance between different inputs' embeddings. If
 long inputs are masked out, the loss cannot increase the margin between their
-embeddings and those of the short inputs, which have not been masked out.
+embeddings and those of the short inputs that have not been masked.
 Together with the smaller number of updates, this causes the student models to
 perform much worse. Note that the weighting variants with higher $\lambda$
 suffer considerably more.
@@ -1186,10 +1153,10 @@ suffer considerably more.
 Even without any masking, the different loss weightings fail to improve the
 score of \Model{only-structural;mm-MSE}. We highlight that
 \Model{None;$\lambda$=0.5} performed a bit better than \Model{no-weighting},
-which are nearly identical, except that \Model{no-weighting} trains with
-gradients twice as big. This shows that for max-margin MSE loss, the contextual
+which are identical, except that \Model{no-weighting} trains with
+gradients twice as big. This shows that for max-margin MSE loss, the contextual teacher
 does not bring any benefits. In fact, in this evaluation context, it seems that
-the more we train with both losses the worse is the model going to be.
+the more we train with both losses, the worse the model will be.
 
 \begin{figure}
 
@@ -1205,33 +1172,26 @@ the more we train with both losses the worse is the model going to be.
 
 \section{Summary}\label{section:experiments_summary}
 
-% TODO: check this
-
 After an extensive experimentation with our teacher-student training method, we
 summarize what we test, but mainly how we interpret the results and what
 conclusions we draw from them.
 
 First, in Section~\ref{section:structural_loss}, we experiment with simple and
-composite structural losses. While simple losses focus only on the similarity
-between the student's and the corresponding teacher's embedding, composite
+composite structural losses. Simple losses focus only on the similarity
+between the student's and the corresponding teacher's embedding, whereas composite
 losses also take advantage of the in-batch teacher's embedding of different
-inputs. Cosine is the best performing simple structural loss, surpassing even
+inputs. Cosine is the best-performing simple structural loss, surpassing even
 SBERT. These results show that the combination of Longformer's architecture and
 distillation of SBERT's embeddings can boost the student's performance even
-above the level of the structural teacher. The best composite loss, which is
-max-margin loss with MSE used as distance, performs even better. As we show in
+above the level of the structural teacher. The best composite loss, max-margin loss with MSE used as distance, performs even better. As we show in
 Section~\ref{section:composite_analysis}, with max-margin MSE loss, the student
-tries to mimic the structural teacher, while also increasing the distance
-between its embeddings. So the added benefit of max-margin MSE loss compared to
-cosine structural loss is better separation between student's embeddings.
-
-% We use SoftCCA to increase correlation
-% between the student's and the contextual teacher's embeddings projected via two
-% feed-forward neural networks. Using the projections gives the student more freedom
+tries to mimic the structural teacher while also increasing the distance
+between its embeddings of different inputs. So, the added benefit of max-margin MSE loss compared to
+cosine structural loss is a better separation between the student's embeddings.
 
 In Section~\ref{section:structural_and_contextual}, we try to leverage the
-contextual loss to improve the students even further. For our contextual loss
-we use SoftCCA loss, to increase the correlation of the student's and the
+contextual loss to improve the students even further. For our contextual loss,
+we use SoftCCA loss to increase the correlation between the student's and the
 contextual teacher's embeddings projected via two feed-forward networks. After
 finding promising training hyperparameters for Paragraph Vector, we show that
 the contextual loss alone can improve Longformer's results. Yet, it cannot
@@ -1239,27 +1199,18 @@ surpass SBERT or the student models trained with only the structural loss. This
 demonstrates that, in our setting, the structural teacher is more important to
 the student's performance than the contextual teacher. We also find the optimal
 contextual loss for cosine and max-margin MSE loss. We show that the student
-can benefit from both cosine structural loss and the SoftCCA contextual loss,
-with the right projections. On the other hand, max-margin MSE loss is not as
+can benefit from both cosine structural loss and the SoftCCA contextual loss with the right projections. On the other hand, max-margin MSE loss is not as
 compatible with the contextual loss. Even after many trials, we fail to find
-projections, that would together with the max-margin MSE structural loss
+projections that would, together with the max-margin MSE structural loss,
 improve the performance of a student trained with the given structural loss
 only.
 
-We also try several ways to weigh the contextual and the structural loss. In the
-case of max-margin MSE structural loss, we find that even with a significant
-emphasis on the structural loss, the student model suffers from both the
-contextual loss and the max-margin MSE loss used simultaneously. On the other
-hand, with cosine structural loss, the student model behaves intuitively. It
+We also try several ways to weigh the contextual and the structural loss. In the case of max-margin MSE structural loss, we find that even with a significant emphasis on the structural loss, the student model suffers from both the contextual loss and the max-margin MSE loss used simultaneously. Conversely, with cosine structural loss, the student model behaves intuitively. It
 prefers an equal balance of the structural and the contextual loss, where the
 structural loss is used only for inputs the structural teacher can encode
 whole.
 
-To summarize, we demonstrate that, with little finetuning data, our method can
-improve the students embeddings with only about 2.5k training iterations. We
-present the performance of the best two student models on the validation tasks
-for each structural loss in Figure~\ref{fig:experiments_final_comparison}. For
-clarity we also include the configuration of all 4 variants in
+We demonstrate that our method can improve the student's embeddings with only about 2.5k training iterations. With the hyperparameters we listed in Table~\ref{table:student_train_params}, the student's training takes approximately 3-5 hours on a consumer-grade GPU card and requires only about 12GB of VRAM. As we see in Figure~\ref{fig:experiments_final_comparison}, with such low resource consumption, our method is able to significantly improve Longformer's performance, while also outperforming both teachers on validation tasks. For clarity, we also include the configuration of all 4 variants in
 Table~\ref{table:experiments_final_config}.
 
 \begin{figure}

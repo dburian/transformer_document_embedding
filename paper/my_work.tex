@@ -1,9 +1,8 @@
-\chapter{Distilling qualities of document
-embeddings}\label{chapter:training_method}
+\chapter{Distilling qualities of document embeddings}\label{chapter:training_method}
 
 In this chapter, we introduce our method of training document embeddings. We
 base our approach on teacher-student training, distilling the knowledge of two
-embedding models (referred to as \emph{teachers}) into one  \emph{student}
+embedding models (referred to as \emph{teachers}) into one \emph{student}
 model. Section~\ref{section:training_method} explains our training method in
 detail and outlines the used loss function. In the rest of this chapter, we
 describe the two teacher models in Section~\ref{section:teacher_models} and the
@@ -11,11 +10,10 @@ student in Section~\ref{section:student_model}.
 
 \section{Training methodology}\label{section:training_method}
 
-Our training methodology aims to train an embedding model such that its
-embeddings more faithfully represent the input. As we describe in
+Our training methodology aims to improve a model's embeddings such that they represent the input more faithfully. As we describe in
 Chapter~\ref{chapter:document_representation}, we distinguish two qualities of
 faithful representations: structural and contextual. The goal is to instill
-both qualities into a single embedding model. To do so, we use teacher-student
+both qualities into a single embedding model and thus gain the advantage of both of them at the same time. To do so, we use teacher-student
 training with two teacher embedding models, one with high structural capacity
 and the other with high contextual capacity.
 
@@ -39,9 +37,7 @@ We assume two embedding models in our setting: a structural teacher
 $\Teacher_S$ and a contextual teacher $\Teacher_C$ with high structural and
 contextual capacities, respectively. Teacher-student training allows us to
 instill both capacities into a third student model {\Student} while avoiding
-the architectural limitations of the teachers. We hypothesize that we can
-efficiently direct the two training signals so that they do not push against
-each other.
+the architectural limitations of the teachers.
 
 
 \subsection{Abstract loss formulation}\label{section:abstract_loss}
@@ -49,9 +45,9 @@ each other.
 
 We instill a quality of a teacher's embedding by simply enforcing a similarity
 between the teacher's and student's embedding. Since we have two teachers, we
-use two similarities $\Loss_S$, and $\Loss_C$, which compare the student's
+use two similarities $\Loss_S$ and $\Loss_C$, which compare the student's
 embedding $y_\Student$ with the structural teacher's embedding $y_{\Teacher_S}$
-and the contextual teacher's embedding $y_{\Teacher_C}$, respectively. We show
+or the contextual teacher's embedding $y_{\Teacher_C}$, respectively. We show
 a graphical overview of the training architecture in
 Figure~\ref{fig:teacher_student_train_arch}.
 
@@ -81,8 +77,7 @@ training. To avoid that, we choose one of the losses to be more strict while
 the other to be more forgiving. In that way, the more forgiving loss should
 adapt to the strict one instead of pushing against it. As mentioned in
 Section~\ref{section:combine_structural_and_contextual}, we view structural
-quality as the more important. Therefore, we choose the structural loss
-$\Loss_S$ as the stricter and exact loss, forcing the student to mimic the
+quality as the more important. Therefore, we choose the structural loss $\Loss_S$ as the stricter and exact loss, forcing the student to mimic the
 structural teacher as much as possible. On the other hand, the contextual loss
 $\Loss_C$ should give the student model more freedom in the form of the
 produced embedding but still force it to incorporate the information from the
@@ -106,15 +101,14 @@ contextual embedding.
 This section introduces the teacher models used during our experiments in
 Chapter~\ref{chapter:experiments}. We chose Sentence-BERT
 \citep{reimers2019sentence} as the structural teacher model and Paragraph
-Vector \citep{le2014distributed} (or \emph{PV}) as the context teacher model.
+Vector \citep{le2014distributed} (or \emph{PV}) as the contextual teacher model.
 As explained in Chapter~\ref{chapter:document_representation}, each of the two
-mentioned models specializes in a different quality of produced embeddings.
-SBERT can compare word relationships on many levels and thus understand even
+mentioned models can generate embedding of a different quality. SBERT can compare word relationships on many levels and thus understand even
 complex text structures. However, it cannot process long texts. On the other
-hand, Paragraph Vectors can produce embeddings even for long documents, but they
-process text very shallowly, which prohibits understanding any complex
-structures. We hope to synthesize both qualities by combining the two
-teacher models in a single model.
+hand, Paragraph Vector can produce embeddings even for long documents, but it
+processes text very shallowly, which prohibits understanding any complex
+structures. We hope to synthesize both qualities by distilling the knowledge of the two
+teacher models into a single model.
 
 \subsection{SBERT}
 
@@ -130,8 +124,8 @@ sentence-level text-understanding tasks \citep{reimers2019sentence}.
   \centering
   \includegraphics[width=0.5\textwidth]{./img/sbert_architecture.pdf}
 
-  \caption{Siamese network architecture used to train SBERT. The pair of
-  sentences from an NLI dataset is classified into three classes
+  \caption{Siamese network architecture used to train SBERT. During training, SBERT classifies a pair of
+  sentences from an NLI dataset into three classes
   ``entailment'', ``neutral'' and ``contradiction''.}
 
   \label{fig:sbert}
@@ -143,9 +137,8 @@ sentence-level text-understanding tasks \citep{reimers2019sentence}.
 Paragraph Vector \citep{le2014distributed}, sometimes referred to as Doc2Vec, is a simple
 text-embedding model that views the input as a Bag of Words (or BoW). Paragraph
 Vector comprises two sub-models: Distributed Memory (DM) and Distributed Bag of
-Words (DBOW). While each model is trained separately, the authors recommend combining both architectures into a single model, where the combined models' embeddings are simply concatenated. The models are trained to
-predict a word within a window in the given document. As shown in
-Figure~\ref{fig:dbow}, DBOW bases its prediction only on the whole paragraph's embedding. On the other hand, DM, whose architecture is depicted in
+Words (DBOW). While each model is trained separately, the authors recommend combining both architectures into a single model, where the combined models' embeddings are concatenated. The models are trained to predict a word within a window in the given document. As shown in
+Figure~\ref{fig:dbow}, DBOW bases its prediction only on the whole paragraph's embedding. DM, whose architecture is depicted in
 Figure~\ref{fig:dm}, additionally uses the embeddings of the surrounding words
 within a given window.
 
@@ -187,15 +180,14 @@ give it a slight advantage.
 
 \section{Student model}\label{section:student_model}
 
-In our teacher-student training, the student model is our primary embedding
-model, which we train based on the outputs of the teacher models. By using
+The student model is the embedding model we train based on the outputs of the teacher models. By using
 teacher-student training, we can avoid some of the architectural drawbacks of
 both teacher models while still benefiting from the qualities of the teachers'
 embeddings. We choose the student's architecture at a midpoint between
 the two teachers' architectures. In other words, not to be as complex as the
-architecture of SBERT, so it can process longer inputs while still having a
-manageable memory footprint, but not as simple as the architecture of PV, so
-that the student can model complex world relationships. We chose a Transformer
+architecture of SBERT but not as simple as the architecture of PV. Therefore the student model
+can model world relationships, similarly to SBERT, and process longer inputs, while still having a
+manageable memory footprint. We chose a Transformer
 with a sparse attention mechanism. Transformer is a well-tested architecture
 that is used throughout NLP. Additionally, with sparse attention, Transformers
 consume a relatively small amount of memory even for longer inputs, as we
@@ -221,26 +213,24 @@ would not mind a more complex model, we could use Reformer
 Longformer \citep{beltagy2020longformer} is a Transformer encoder with sparse
 attention. Because we refer to Longformer's configuration and training in the
 following chapters, we briefly explain Longformer's self-attention mechanism
-and the training data of the pre-trained checkpoint.
+and training data.
 
 
 \subsubsection{Self-attention mechanism}
 
 Longformer has a sparse self-attention mechanism that composes three different
-patterns: local, global, and dilated local attention. Local attention is simply
-full attention but only within the neighborhood of $\frac{1}{2}\omega$ tokens
-on either side of the key token. $\omega$ can be set differently per
+patterns: local, global, and dilated local attention. Local attention is
+full attention limited to the neighborhood of $\frac{1}{2}\omega$ tokens
+on either side of the key token, where $\omega$ can be set differently per
 self-attention layer. In global attention, few selected tokens attend to all
 other tokens. The tokens on which Longformer computes global attention can be
 selected per each input. Global attention's parameters are not pre-trained.
-Instead, at the beginning of the training, they are initialized by the
-parameters from local attention and finetuned for a given task. With dilated
+Instead, at the beginning of the training, they are initialized with the
+local attention's parameters and finetuned for a given task. With dilated
 local attention, every key token attends to every $k$ neighboring query token.
 So, it is analogous to a one-dimensional Convolution layer
-\citep{van2016wavenet} with stride, or dilatation of $k$. However, to use
-dilated local attention, one has to use a custom CUDA kernel or a slow
-implementation in Python using loops. The authors also provide a reasonably
-fast, memory-efficient block implementation for global and local
+\citep{van2016wavenet} with stride, or dilatation of $k$. However, dilated local attention is only available
+with a custom CUDA kernel or slow Python implementation using loops in Python. The authors also provide a reasonably fast, memory-efficient block implementation for global and local
 attention.
 
 \subsubsection{Training}
@@ -251,7 +241,7 @@ up to 4096 tokens long. The authors show that duplicating RoBERTa's positional
 embeddings is faster than training position embeddings for all 4096 positions
 from scratch. Then, the authors train Longformer using MLM on long documents
 for 65k gradient steps to improve its capabilities for longer inputs. The
-training corpus overlaps with RoBERTa's pretraining corpus but is more focused
+training corpus overlaps with RoBERTa's pre-training corpus but is more focused
 on longer pieces of text. It includes the following datasets:
 
 \begin{itemize}
