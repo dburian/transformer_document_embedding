@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from datasets.load import load_dataset
+from transformer_document_embedding.datasets import col
 
-from transformer_document_embedding.tasks.wikipedia_similarities import (
+from transformer_document_embedding.datasets.wikipedia_similarities import (
     WikipediaSimilarities,
 )
 
@@ -16,11 +17,20 @@ articles = load_dataset(
     "../data/wikipedia_similarities.py", "game_articles", split="train"
 )
 # %%
-sims = load_dataset("../data/wikipedia_similarities.py", "wine_sims", split="train")
+sims = load_dataset("../data/wikipedia_similarities.py", "game_sims", split="train")
 # %%
 print(sims[0])
 # %%
+len(sims)
+
+# %%
+len(sims.unique("source_id"))
+
+# %%
 print(articles[123])
+
+
+# %%
 
 
 # %%
@@ -74,7 +84,7 @@ def create_text(article: dict[str, Any]) -> dict[str, Any]:
             article["section_titles"], article["section_texts"], strict=True
         )
     ]
-    return {"text": " ".join(sections_text)}
+    return {col.TEXT: " ".join(sections_text)}
 
 
 text_articles = articles.map(create_text)
@@ -128,12 +138,15 @@ sns.histplot(target_title_freqs, bins=np.arange(-0.5, 30.5, 1))
 # %% [markdown]
 # ## Looking at the task
 # %%
-wines = WikipediaSimilarities(dataset="game", datasets_dir="../data")
+wines = WikipediaSimilarities(dataset="game", path="../data/wikipedia_similarities.py")
 # %%
-len(wines.train)
+wines.splits
 
 # %%
-len(wines.test)
+source_docs = sum(len(doc[col.LABEL]) > 0 for doc in wines.splits["test"])
+
+# %%
+source_docs / 3
 
 # %%
 replaced_char_count = 0

@@ -9,18 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # %%
-plt.rc("figure", figsize=(15, 8))
-sns.set_context("paper")
-sns.set_style("whitegrid")
-# deep, muted, bright, pastel, dark, colorblind
-sns.color_palette("muted")
-sns.set_palette(sns.color_palette("colorblind"))
+ntb_utils.seaborn_defaults()
+ntb_utils.uncompressed_tables()
 
-
-# %%
-pd.set_option("display.max_columns", 1000)
-pd.set_option("display.max_rows", 1000)
-pd.set_option("display.max_colwidth", 500)
 
 # %%
 from typing import Any, Callable, NamedTuple
@@ -79,76 +70,7 @@ old_cls_evals = ntb_utils.load_validation_results(
 )
 
 # %% [markdown]
-# # Exploration
-#
-# > **Outdated**
-
-# %% [markdown]
-# ## Retrieval tasks
-# %%
-ret_evals = old_evals[old_evals["task_type"] == "retrieval"]
-
-
-# %%
-def permutation_testing(df, metric_blacklist=None, less_is_better=None):
-    if less_is_better is None:
-        less_is_better = ["mean_percentile_rank"]
-    if metric_blacklist is None:
-        metric_blacklist = ["auprc"]
-
-    df = df.set_index(["task", "metric"]).sort_index()
-    results = []
-    for (task, metric), row in df.iterrows():
-        if metric in metric_blacklist:
-            continue
-
-        for _, other_row in df.loc[(task, metric)].iterrows():
-            if other_row["model"] == row["model"]:
-                continue
-
-            other_value = other_row["normalized_value"]
-            value = row["normalized_value"]
-            won_by = (
-                (other_value - value)
-                if metric in less_is_better
-                else (value - other_value)
-            )
-            results.append(
-                {
-                    "other_model": other_row["model"],
-                    "task": task,
-                    "metric": metric,
-                    "won_by": won_by,
-                    "won": won_by > 0,
-                    **row,
-                }
-            )
-
-    return pd.DataFrame(results)
-
-
-# %%
-sns.barplot(
-    ret_evals,
-    y="model",
-    x="normalized_value",
-    hue="metric",
-    errorbar=("pi", 100),
-    order=ret_evals.groupby("model")["normalized_value"].mean().sort_values().index,
-)
-
-# %%
-matches = permutation_testing(ret_evals)
-res = matches.groupby("model")[["won", "won_by"]].mean().reset_index()
-
-# %%
-sns.barplot(res, y="model", x="won_by", order=res.sort_values("won_by")["model"])
-
-# %%
-sns.barplot(res, y="model", x="won", order=res.sort_values("won")["model"])
-
-# %% [markdown]
-# # Presentable
+# # Comparisons
 
 # %%
 pres_all = {
@@ -260,11 +182,13 @@ new_glb_evals = new_glb_evals[new_glb_evals["metric"] == "accuracy"]
 new_glb_evals = ntb_utils.add_normalized_score(new_glb_evals)
 
 # %%
-sns.barplot(
+sns.boxplot(
     new_glb_evals,
     x="normalized_score",
     y="model",
     order=new_glb_evals.groupby("model")["normalized_score"].mean().sort_values().index,
+    showmeans=True,
+    meanprops={"markeredgecolor": "black", "fillstyle": "none"},
 )
 
 # %%
@@ -310,3 +234,251 @@ sns.barplot(
     y="model",
     hue="task",
 )
+
+# %% [markdown]
+# ## Similarity-based tasks
+
+# %%
+sims_new_evals = ntb_utils.load_validation_results(
+    "../evaluations/structural_eval_sims/", struct_features
+)
+sims_new_evals = ntb_utils.add_normalized_score(sims_new_evals)
+
+sims_glb_evals = ntb_utils.load_validation_results(
+    "../evaluations/glb_structural_eval_sims/", struct_features
+)
+sims_glb_evals = ntb_utils.add_normalized_score(sims_glb_evals)
+
+
+# %%
+def permutation_testing(df, metric_blacklist=None, less_is_better=None):
+    if less_is_better is None:
+        less_is_better = ["mean_percentile_rank"]
+    if metric_blacklist is None:
+        metric_blacklist = ["auprc"]
+
+    df = df.set_index(["task", "metric"]).sort_index()
+    results = []
+    for (task, metric), row in df.iterrows():
+        if metric in metric_blacklist:
+            continue
+
+        for _, other_row in df.loc[(task, metric)].iterrows():
+            if other_row["model"] == row["model"]:
+                continue
+
+            other_value = other_row["normalized_value"]
+            value = row["normalized_value"]
+            won_by = (
+                (other_value - value)
+                if metric in less_is_better
+                else (value - other_value)
+            )
+            results.append(
+                {
+                    "other_model": other_row["model"],
+                    "task": task,
+                    "metric": metric,
+                    "won_by": won_by,
+                    "won": won_by > 0,
+                    **row,
+                }
+            )
+
+    return pd.DataFrame(results)
+
+
+# %%
+sns.barplot(
+    sims_new_evals,
+    y="model",
+    x="normalized_score",
+    hue="metric",
+    errorbar=("pi", 100),
+    order=sims_new_evals.groupby("model")["normalized_score"]
+    .mean()
+    .sort_values()
+    .index,
+)
+
+# %%
+sns.barplot(
+    sims_glb_evals,
+    y="model",
+    x="normalized_score",
+    hue="metric",
+    errorbar=("pi", 100),
+    order=sims_glb_evals.groupby("model")["normalized_score"]
+    .mean()
+    .sort_values()
+    .index,
+)
+
+# %%
+metric = "mean_reciprocal_rank"
+
+# %%
+sns.barplot(
+    sims_new_evals[sims_new_evals["metric"] == metric],
+    y="model",
+    x="score",
+    hue="task",
+    errorbar=("pi", 100),
+    order=sims_new_evals[sims_new_evals["metric"] == metric]
+    .groupby("model")["score"]
+    .mean()
+    .sort_values()
+    .index,
+)
+plt.title(metric + ", glb")
+
+# %%
+sns.barplot(
+    sims_glb_evals[sims_glb_evals["metric"] == metric],
+    y="model",
+    x="score",
+    hue="task",
+    errorbar=("pi", 100),
+    order=sims_glb_evals[sims_glb_evals["metric"] == metric]
+    .groupby("model")["score"]
+    .mean()
+    .sort_values()
+    .index,
+)
+plt.title(metric + ", no glb")
+
+# %% [markdown]
+# ---
+#
+# > **Outdated**
+
+# %%
+matches = permutation_testing(ret_evals)
+res = matches.groupby("model")[["won", "won_by"]].mean().reset_index()
+
+# %%
+sns.barplot(res, y="model", x="won_by", order=res.sort_values("won_by")["model"])
+
+# %%
+sns.barplot(res, y="model", x="won", order=res.sort_values("won")["model"])
+
+# %% [markdown]
+# # Paper graphs
+
+# %%
+new_glb_evals = new_glb_evals[new_glb_evals["metric"] == "accuracy"]
+new_glb_evals = ntb_utils.add_normalized_score(new_glb_evals)
+
+new_glb_evals["baseline"] = new_glb_evals["model"].isin(["longformer", "sbert"])
+new_glb_evals["model_type_nice"] = new_glb_evals["baseline"].apply(
+    lambda b: "Baseline" if b else "Student"
+)
+
+nice_loss = {
+    "mse": "MSE",
+    "cos_dist": "cosine",
+    "contrastive": "contrastive",
+    "max_marginals": "max-margin",
+}
+
+new_glb_evals["loss_type_nice"] = new_glb_evals.apply(
+    lambda row: "Baseline"
+    if row["baseline"]
+    else nice_loss[row["loss_type"]].capitalize(),
+    axis=1,
+)
+
+new_glb_evals.loc[new_glb_evals["loss_type_nice"] == "Mse", "loss_type_nice"] = "MSE"
+
+
+def model_nice_str(model_str):
+    if model_str == "longformer":
+        return model_str.capitalize()
+    if model_str == "sbert":
+        return model_str.upper()
+
+    features = struct_features(model_str)
+
+    if features["loss_type"] == "max_marginals":
+        return (
+            f"max-margin;{nice_loss[features['mm_loss_type']]}"
+            r";$\gamma$="
+            f"{features['mm_lam']}"
+        )
+
+    return f"{nice_loss[features['loss_type']]}"
+
+
+new_glb_evals["model_nice"] = new_glb_evals["model"].apply(model_nice_str)
+
+# %%
+sns.boxplot(
+    new_glb_evals,
+    x="normalized_score",
+    y="model_nice",
+    hue="baseline",
+    order=new_glb_evals.groupby("model_nice")["normalized_score"]
+    .mean()
+    .sort_values()
+    .index,
+    **ntb_utils.boxplot_kwargs,
+)
+
+# %% [markdown]
+# ## Only simple losses
+
+# %%
+simple_losses = new_glb_evals[
+    new_glb_evals["baseline"] | new_glb_evals["loss_type"].isin(["mse", "cos_dist"])
+]
+simple_losses = ntb_utils.add_normalized_score(simple_losses)
+
+# %%
+fig, ax = plt.subplots(figsize=(8, 5))
+
+sns.boxplot(
+    simple_losses,
+    x="normalized_score",
+    y="model_nice",
+    hue="model_type_nice",
+    hue_order=["Student", "Baseline"],
+    order=simple_losses.groupby("model_nice")["normalized_score"]
+    .mean()
+    .sort_values()
+    .index,
+    **ntb_utils.boxplot_kwargs,
+)
+
+sns.move_legend(ax, "lower left")
+
+ax.set_xlabel("Normalized accuracy")
+ax.set_ylabel("Model")
+ax.get_legend().set_title("")
+
+# %%
+fig.savefig("../paper/img/structural_simple_losses.pdf", bbox_inches="tight")
+
+# %% [markdown]
+# ## Both losses
+
+# %%
+fig, ax = plt.subplots(figsize=(8, 7))
+
+sns.boxplot(
+    new_glb_evals,
+    x="normalized_score",
+    y="model_nice",
+    hue="loss_type_nice",
+    order=new_glb_evals.groupby("model_nice")["normalized_score"]
+    .mean()
+    .sort_values()
+    .index,
+    **ntb_utils.boxplot_kwargs,
+)
+
+ax.set_ylabel("Model")
+ax.set_xlabel("Normalized accuracy")
+ax.get_legend().set_title("Loss")
+
+# %%
+fig.savefig("../paper/img/structural_both_losses.pdf", bbox_inches="tight")

@@ -1,204 +1,300 @@
-# %%
-from transformer_document_embedding.scripts import config_specs
-import transformer_document_embedding.utils.training as train_utils
-from transformer_document_embedding.utils.tokenizers import create_tokenized_data_loader
-import yaml
+# %% [markdown]
+# # Validation analysis of composite losses
 
 # %%
-config = config_specs.ExperimentSpec.from_dict(
-    yaml.safe_load(
-        """
-model:
-  module: transformer:TransformerEmbedder
-  kwargs:
-    transformer_name: allenai/longformer-base-4096
-    #transformer_name: sentence-transformers/all-mpnet-base-v2
-    pooler_type: mean
-
-head:
-  module: structural_contextual_head:StructuralContextualHead
-  kwargs:
-    max_structural_length: null
-    lam: 1
-    structural_head_kwargs:
-      loss_type: max_marginals_cos_dist
-      max_marginals_lam: 1
-    contextual_head_kwargs: null
-
-
-
-train_pipeline:
-  kind: student
-  kwargs:
-    batch_size: 4
-    epochs: 1
-    warmup_steps: 100
-    grad_accumulation_steps: 2
-    weight_decay: 0.01
-    fp16: True
-    lr_scheduler_type: cos
-    lr: 1.0e-4
-    max_grad_norm: 1.0
-    log_every_step: 1
-    validate_every_step: 100
-    save_best: True
-    patience: 2
-    global_attention_type: cls
-    dataloader_sampling: consistent
-    sampler_kwargs:
-      bucket_limits: [512, 1024, 2048, 4096]
-
-dataset:
-  module: teacher_embedding:TeacherEmbedding
-  kwargs:
-    path: /mnt/data/datasets/wikipedia_resampled_eval
-    contextual_embedding_col: dbow
-    structural_embedding_col: hf_sbert
-    data_size_limit:
-      train: 1000
-      validation: 1000
-      test: 50
-"""
-    )
-)
-
-# %%
-model = config.model.initialize()
-
-# %%
-learned_model = config.model.initialize()
-
-# %%
-learned_model.load_weights(
-    "../hp_searches/depth_loss/m.k.d_l_k.l_t=contrastive_cos_dist/model/model"
-)
-
-# %%
-head = config.head.initialize(model)
-
-# %%
-dataset = config.dataset.initialize()
-
-# %%
-import torch
-from transformers import AutoTokenizer
-
-# %%
-dataloader = create_tokenized_data_loader(
-    dataset.splits["validation"],
-    batch_size=config.train_pipeline.kwargs["batch_size"],
-    tokenizer=AutoTokenizer.from_pretrained(config.model.kwargs["transformer_name"]),
-)
-
-# %%
-dataset.splits["train"]
-
-# %%
+from transformer_document_embedding.datasets import col
+from transformer_document_embedding.models.embedding_model import EmbeddingModel
+import transformer_document_embedding.notebook_utils as ntb_utils
 from transformer_document_embedding.utils.similarity_losses import (
     MaskedMSE,
     MaskedCosineDistance,
 )
-
-# %%
-dissimilarity = MaskedMSE()
-
-# %%
-dissimilarity = MaskedCosineDistance(dim=0)
-
-# %%
+from datasets import load_from_disk
+import torch
+import numpy as np
+import pandas as pd
+from transformers import AutoTokenizer
+import transformer_document_embedding.utils.training as train_utils
 from tqdm.auto import tqdm
-
-# %%
-prev_batch = next(iter(dataloader))
-train_utils.batch_to_device(prev_batch)
-
-# %%
-embed_model = learned_model
-
-device = "cuda"
-
-embed_model.to(device)
-head.to(device)
-
-dists_list = []
-embed_model.eval()
-head.eval()
-with torch.inference_mode():
-    for batch_num, batch in tqdm(
-        enumerate(dataloader), desc="Batches", total=len(dataloader)
-    ):
-        train_utils.batch_to_device(batch, device)
-        model_outputs = embed_model(**batch)
-        head_outputs = head(**model_outputs, **batch)
-        for i, embed in enumerate(model_outputs["embedding"]):
-            for j, sbert_embed in enumerate(batch["structural_embed"]):
-                dis_sim = (
-                    dissimilarity(embed, sbert_embed)["loss"].numpy(force=True).item()
-                )
-                dists_list.append(
-                    {
-                        "dist": dis_sim,
-                        "batch": batch_num,
-                        "type": "positive" if i == j else "negative",
-                    }
-                )
-        prev_batch = batch
-
-# %%
 import seaborn as sns
 import matplotlib.pyplot as plt
-import pandas as pd
+
+from transformer_document_embedding.utils.tokenizers import create_tokenized_data_loader
 
 # %%
-plt.rc("figure", figsize=(16, 10))
+ntb_utils.seaborn_defaults()
 
 # %%
-dists = pd.DataFrame(dists_list)
+models = {
+    "Longformer": lambda: ntb_utils.load_model_save(
+        "../results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/longformer_save/trained_model"
+    ),
+    "MSE": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_basic_loss/h.k.s_h_k.l_t=mse/trained_model"
+    ),
+    "max-marginals;MSE;"
+    r"$\gamma$=1.0": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_max_marginals_loss/h.k.s_h_k.l_t=max_marginals_mse-h.k.s_h_k.m_m_l=1/trained_model"
+    ),
+    "max-marginals;MSE;"
+    r"$\gamma$=1.5": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_max_marginals_loss/h.k.s_h_k.l_t=max_marginals_mse-h.k.s_h_k.m_m_l=1.5/trained_model"
+    ),
+    "max-marginals;MSE;"
+    r"$\gamma$=0.5": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_max_marginals_loss/h.k.s_h_k.l_t=max_marginals_mse-h.k.s_h_k.m_m_l=0.5/trained_model"
+    ),
+    "cosine": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_basic_loss/h.k.s_h_k.l_t=cos_dist/trained_model"
+    ),
+    "contrastive": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_basic_loss/h.k.s_h_k.l_t=contrastive/trained_model"
+    ),
+    "max-marginals;cosine;"
+    r"$\gamma$=0.5": lambda: ntb_utils.load_model_save(
+        "../hp_searches/glb_structural_max_marginals_loss/h.k.s_h_k.l_t=max_marginals_cos_dist-h.k.s_h_k.m_m_l=0.5/trained_model"
+    ),
+}
 
 # %%
-ax = sns.histplot(dists, x="dist", hue="type", binwidth=0.001)
-# ax.set_xlim((-0.03, 0.03))
+models = {
+    "final_cosine": ntb_utils.load_model_save(
+        "../results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/cos_final/trained_model"
+    ),
+    "final_just_mm_mse": ntb_utils.load_model_save(
+        "../results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/just_mm_mse_final/trained_model"
+    ),
+    "final_mm_mse_contextual": ntb_utils.load_model_save(
+        "../results/teacher_embedding:TeacherEmbedding/transformer:TransformerEmbedder/mm_mse_contextual_final/trained_model"
+    ),
+}
 
 # %%
-ax = sns.histplot(dists, x="dist", hue="type", binwidth=0.001)
+val_corpus = load_from_disk("/mnt/data/datasets/val_corpus_500k/")
+val_corpus
+
 
 # %%
-dists.groupby("type")["dist"].agg(["mean", "std", "max", "min"])
+def get_dists(
+    model: EmbeddingModel,
+    device: str = "cuda",
+    samples: int = 1000,
+) -> tuple[np.ndarray, np.ndarray]:
+    assert isinstance(model, torch.nn.Module)
+
+    device = torch.device(device)
+    model.to(device)
+
+    dists = {
+        "mse": MaskedMSE().to(device).eval(),
+        "cos": MaskedCosineDistance().to(device).eval(),
+    }
+
+    def get_dist(
+        embeds: torch.Tensor, sbert_embeds: torch.Tensor, acc: dict[str, list[int]]
+    ) -> None:
+        for name, dist_fn in dists.items():
+            dist_outputs = dist_fn(embeds, sbert_embeds)
+            acc[name].extend(dist_outputs["loss"].numpy(force=True))
+
+    model.eval()
+
+    dataloader = create_tokenized_data_loader(
+        val_corpus["validation"].select(range(samples)),
+        batch_size=6,
+        training=False,
+        tokenizer=AutoTokenizer.from_pretrained("allenai/longformer-base-4096"),
+    )
+
+    positive_dists = {name: [] for name in dists}
+    negative_dists = {name: [] for name in dists}
+
+    with torch.inference_mode():
+        for _, batch in tqdm(
+            enumerate(dataloader), desc="Batches", total=len(dataloader)
+        ):
+            train_utils.batch_to_device(batch, device)
+            model_outputs = model(**batch)
+            get_dist(model_outputs[col.EMBEDDING], batch["sbert"], positive_dists)
+
+            batch_size = batch["input_ids"].shape[0]
+            for i in range(1, batch_size):
+                get_dist(
+                    model_outputs[col.EMBEDDING],
+                    torch.roll(batch["sbert"], i),
+                    negative_dists,
+                )
+
+    return positive_dists, negative_dists
+
+
+def df_dists(models: dict[str, EmbeddingModel], samples: int) -> pd.DataFrame:
+    dists = []
+    for model_name, model in models.items():
+        positives, negatives = get_dists(model(), samples=samples)
+        positives = pd.DataFrame(positives)
+        positives["type"] = "Positives"
+        negatives = pd.DataFrame(negatives)
+        negatives["type"] = "Negatives"
+
+        model_dists = pd.concat([positives, negatives])
+        model_dists["model"] = model_name
+        dists.append(model_dists)
+
+    return pd.concat(dists).melt(id_vars=["type", "model"])
+
 
 # %%
-dists.groupby("type")["dist"].agg(["mean", "std", "max", "min"])
+dists = df_dists(models, 1000)
 
 # %%
-dists_in_batch = dists.groupby("batch")["dist"].agg(["mean", "std"]).reset_index()
+del models
 
 # %%
-sns.lineplot(dists_in_batch["std"])
+fig, axes = plt.subplots(2, 1, figsize=(8.26, 9))
+
+for ax, dist_name in zip(axes, ["cos", "mse"]):
+    sns.violinplot(
+        dists[dists["variable"] == dist_name],
+        y="model",
+        x="value",
+        hue="type",
+        density_norm="width",
+        split=True,
+        inner=None,
+        ax=ax,
+    )
+
+    ax.get_legend().set_title("Distance to")
+    ax.set_xlabel(f"{dist_name} distance")
+    ax.set_ylabel("Model")
+
 
 # %%
-sns.lineplot(dists, x="batch", y="dist", hue="type")
+def rename(model):
+    if "max-marginals" in model:
+        return "max-margin" + model[len("max-marginals") :]
+    return model
+
+
+dists["model"] = dists["model"].apply(rename)
+
 
 # %%
-sns.lineplot(dists, x="batch", y="dist", hue="type")
+def rename_dist(dist):
+    if dist == "cos":
+        return "cosine"
+    else:
+        return "MSE"
+
+
+dists["Distance type"] = dists["variable"].apply(rename_dist)
 
 # %%
-random_dists = []
+fig, axes = plt.subplots(2, 1, figsize=(8.26, 9))
+
+for ax, dist_name in zip(axes, ["cos", "mse"]):
+    sns.violinplot(
+        dists[dists["variable"] == dist_name],
+        y="model",
+        x="value",
+        hue="type",
+        density_norm="width",
+        split=True,
+        inner=None,
+        ax=ax,
+    )
+
+    ax.get_legend().set_title("Distance to")
+    ax.set_xlabel("Cosine distance" if dist_name == "cos" else "Squared L2 distance")
+    ax.set_ylabel("Model")
 
 # %%
-import random
+fig.savefig("../paper/img/composite_distances.pdf", bbox_inches="tight")
 
 # %%
-sbert_embeds = dataset.splits["train"].with_format("torch")
+fig, axes = plt.subplots(3, 1)
+
+for ax, model in zip(axes, mse_dists["model"].unique()):
+    sns.violinplot(
+        mse_dists[mse_dists["model"] == model],
+        x="dist",
+        y="model",
+        hue="type",
+        ax=ax,
+        # dodge=False,
+        split=True,
+        inner="quart",
+    )
+
 
 # %%
-with torch.inference_mode():
-    for _ in tqdm(range(10000)):
-        i, j = (
-            random.randint(0, len(sbert_embeds) - 1),
-            random.randint(0, (len(sbert_embeds) - 1)),
-        )
-        a, b = sbert_embeds.select([i, j])
-        a, b = a["structural_embed"], b["structural_embed"]
-        random_dists.append(dissimilarity(a, b)["loss"].item())
+sns.barplot(mse_dists, x="model", y="dist", hue="type", errorbar="se")
 
 # %%
-sns.histplot(random_dists)
+width = 8.26
+height_per_model = 6.5 / (len(cos_models) + len(mse_models))
+
+# %%
+fig, ax = plt.subplots(figsize=(width, height_per_model * 3))
+
+sns.violinplot(
+    mse_dists,
+    y="model",
+    x="dist",
+    hue="type",
+    density_norm="width",
+    split=True,
+    inner=None,
+    ax=ax,
+)
+
+ax.get_legend().set_title("Distance to")
+ax.set_xlabel("Squared L2 distance")
+ax.set_ylabel("Model")
+
+# %%
+fig, ax = plt.subplots(figsize=(width, height_per_model * 3))
+
+sns.violinplot(
+    mse_dists_cos,
+    y="model",
+    x="dist",
+    hue="type",
+    density_norm="width",
+    split=True,
+    inner=None,
+    ax=ax,
+)
+
+ax.get_legend().set_title("Distance to")
+ax.set_xlabel("Squared L2 distance")
+ax.set_ylabel("Model")
+
+# %%
+fig.savefig("../paper/img/composite_mse_distances.pdf", bbox_inches="tight")
+
+# %%
+fig, ax = plt.subplots(figsize=(width, height_per_model * 4))
+
+sns.violinplot(
+    cos_dists,
+    y="model",
+    x="dist",
+    hue="type",
+    density_norm="width",
+    split=True,
+    inner=None,
+    ax=ax,
+)
+
+sns.move_legend(ax, "upper left")
+ax.get_legend().set_title("Distance to")
+ax.set_xlabel("Cosine distance")
+ax.set_ylabel("Model")
+
+# %%
+fig.savefig("../paper/img/composite_cos_distances.pdf", bbox_inches="tight")
+
+# %%
+cos_dists.groupby(["model", "type"])["dist"].median()
