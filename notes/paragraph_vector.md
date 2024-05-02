@@ -70,3 +70,7 @@ are fixed.
   analysed PV for IR tasks
 - [Ai et al. (2016)](https://dl.acm.org/doi/abs/10.1145/2911451.2914688) --
   improved PV for IR tasks
+
+- [Lau et al. (2016)](https://arxiv.org/pdf/1607.05368.pdf) -- proposed some
+  hyperparameters for two sets of tasks
+    -- based on this paper I used `dbow_words=1`

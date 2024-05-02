@@ -1,9 +1,9 @@
 [d/approach]: doc/approach.md
-[d/cord_dataset]: doc/cord_dataset.md
+[n/cord_dataset]: notes/cord_dataset.md
 [d/msmarco_dataset]: doc/msmarco_dataset.md
 [d/rcv1_dataset]: doc/rcv1_dataset.md
 [d/relish_dataset]: doc/relish_dataset.md
-[d/imdb_dataset]: doc/imdb_dataset.md
+[n/imdb_dataset]: notes/imdb_dataset.md
 [wang_20]: http://proceedings.mlr.press/v119/wang20k.html
 [jian_22]: https://arxiv.org/pdf/2209.09433.pdf
 [mullenbach_18]: https://aclanthology.org/N18-1100.pdf
@@ -75,6 +75,10 @@ better for shorter ones.
         - ad-hoc search -- ranking query to papers similarity
         - classification -- linear SVM on top of embedding
         - regression -- prediction of continuous quantity from embedding
+    - certainly possible to do but
+        - needs a HF checkpoint (which in my case is not huge a problem)
+        - probably uses only the abstracts -- the proximity tasks with
+          validation splits use only abstracts (so e.g. 130 words mean)
 
 ### Similarity
 
@@ -183,7 +187,7 @@ differentiate documents across diverse set of attributes. There are different
 
 Get an idea how our model compares on shorter inputs:
 
-- [IMDB][d/imdb_dataset] - avg. length of 300 wordpieces, sentiment
+- [IMDB][n/imdb_dataset] - avg. length of 300 wordpieces, sentiment
   classification
 - [Long document dataset (Github)][ldd_github] - 33k Arxiv articles classified
   into 11 topic classes; used by [BigBird][bigbird]; [dataset paper][ldd_paper],
@@ -200,7 +204,7 @@ Get an idea how our model compares on shorter inputs:
     - binary classification: hyperpartisan or not
     - labels by human annotators
     - only ~600 documents long enough (which is about 54% of the dataset)
-    - used by [BigBird][bigbird]
+    - used by [BigBird][bigbird] and [Longformer](./longformer.md)
 
 #### Alternatives
 
@@ -279,7 +283,7 @@ Any document retrieval datasets (there are better models for that):
   was built by linking query to documents which contained answers to the given
   query. The documents were picked by humans. There is v1 version and a bigger
   v2 version. Paper for [v1][msmarco_v1paper]. 480 queries, 12M docs, 13K qrels.
-- [TREC COVID-19][d/cord_dataset] - TREC track for CORD dataset, 50 topics
+- [TREC COVID-19][n/cord_dataset] - TREC track for CORD dataset, 50 topics
   (queries) each with ranked list of relevant articles, the average text length
   is 1.7k words, abstract length is 140 words. Available on `ir_datasets`.
 - [S2ORC][s2orc] - scientific articles in a citation graph with full parsed text

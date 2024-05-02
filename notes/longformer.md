@@ -118,7 +118,7 @@ The authors collected corpus of long document to support long dependencies.
     - the original dataset is currently not available due to its many problems
       such as licensing
     - the replacement is *Open book corpus* available on
-      [HuggingFace][open_book_corpus_hf]
+      [HuggingFace][open_book_corpus_hf] (no longer available)
     - the dataset is about 6 GB big with almost 18k books
     - also there is an [Home-made book corpus][home_made_book_corpus] --- a
       collection of books from smashwords.com, also available in
