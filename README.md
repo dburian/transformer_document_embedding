@@ -56,10 +56,4 @@ pip install --editable .
 - `paper` - latex source code of my thesis paper
 - `notes` - my research notes,
 - `log` - development logs (may contain some info but do not expect
-  documentation),
-- `model` - repository of our new model, which resulted from our research
-- [Sparse transformers from OpenAI][openai_19]
-
-## Ideas
-
-- probing - what is represented by the document embedding
+  documentation)
